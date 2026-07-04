@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireOnboarded } from "@/lib/auth";
+import { requireEntitled } from "@/lib/auth";
 import {
   ACTIVITY_METHODS,
   ACTIVITY_RESULTS,
@@ -8,7 +8,7 @@ import {
 import { createEntry } from "./actions";
 
 export default async function NewEntryPage() {
-  await requireOnboarded();
+  await requireEntitled();
   const today = toISODate(new Date());
 
   const inputClass =

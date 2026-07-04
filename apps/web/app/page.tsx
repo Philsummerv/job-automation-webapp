@@ -50,7 +50,8 @@ export default function LandingPage() {
           </a>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          No credit card to start. $12/month after your trial.
+          14-day free trial — card required, you won&apos;t be charged until it
+          ends. $12/month after. Cancel anytime.
         </p>
       </section>
 
@@ -107,7 +108,7 @@ export default function LandingPage() {
               <span className="text-base font-normal text-slate-500">/month</span>
             </div>
             <p className="mt-1 text-sm text-slate-600">
-              Start with a 14-day free trial.
+              Start with a 14-day free trial (card required, cancel anytime).
             </p>
             <ul className="mt-6 space-y-2 text-left text-sm text-slate-700">
               <li>✓ Unlimited activity logging</li>

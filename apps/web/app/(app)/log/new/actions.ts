@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { getProfileContext } from "@/lib/auth";
+import { requireEntitled } from "@/lib/auth";
 import {
   ACTIVITY_METHODS,
   ACTIVITY_RESULTS,
@@ -21,7 +21,7 @@ function whitelist<T extends string>(
 }
 
 export async function createEntry(formData: FormData) {
-  const { supabase, user, profile } = await getProfileContext();
+  const { supabase, user, profile } = await requireEntitled();
 
   const date = String(formData.get("date") || "").trim();
   const employer_name = String(formData.get("employer_name") || "").trim();

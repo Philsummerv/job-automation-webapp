@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireOnboarded } from "@/lib/auth";
+import { requireEntitled } from "@/lib/auth";
 import {
   groupByReportingPeriod,
   reportingPeriodKey,
@@ -15,7 +15,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ added?: string }>;
 }) {
-  const { supabase, profile } = await requireOnboarded();
+  const { supabase, profile } = await requireEntitled();
   const sp = await searchParams;
 
   const { data } = await supabase

@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { requireEntitled } from "@/lib/auth";
 import { getPeriodEntries, toCsv } from "@/lib/export";
 
 export async function GET(request: NextRequest) {
-  const { supabase } = await requireUser();
+  const { supabase } = await requireEntitled();
   const period = request.nextUrl.searchParams.get("period");
   if (!period || !/^\d{4}-\d{2}-\d{2}$/.test(period)) {
     return NextResponse.json({ error: "Missing or invalid ?period" }, { status: 400 });

@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireUser } from "@/lib/auth";
+import { requireEntitled } from "@/lib/auth";
 
 export async function deleteEntry(formData: FormData) {
-  const { supabase, user } = await requireUser();
+  const { supabase, user } = await requireEntitled();
   const id = String(formData.get("id") || "");
   if (!id) return;
 

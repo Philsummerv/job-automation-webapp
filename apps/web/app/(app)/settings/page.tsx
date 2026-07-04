@@ -1,6 +1,20 @@
+import Link from "next/link";
 import { getProfileContext } from "@/lib/auth";
-import { US_STATES, DAYS_OF_WEEK } from "@applyassistui/shared";
+import {
+  US_STATES,
+  DAYS_OF_WEEK,
+  type SubscriptionStatus,
+} from "@applyassistui/shared";
 import { saveSettings } from "./actions";
+
+const SUBSCRIPTION_LABELS: Record<SubscriptionStatus, string> = {
+  none: "No subscription",
+  incomplete: "Checkout incomplete",
+  trialing: "Free trial",
+  active: "Active",
+  past_due: "Payment failed",
+  canceled: "Canceled",
+};
 
 export default async function SettingsPage({
   searchParams,
@@ -128,6 +142,42 @@ export default async function SettingsPage({
           {onboarding ? "Get started" : "Save settings"}
         </button>
       </form>
+
+      {!onboarding && (
+        <div className="mt-10 rounded-xl border border-slate-200 p-5">
+          <h2 className="text-sm font-semibold text-slate-900">Billing</h2>
+          <dl className="mt-3 space-y-1 text-sm text-slate-600">
+            <div className="flex justify-between">
+              <dt>Status</dt>
+              <dd className="font-medium text-slate-900">
+                {SUBSCRIPTION_LABELS[profile.subscription_status]}
+              </dd>
+            </div>
+            {profile.subscription_status === "trialing" &&
+              profile.trial_ends_at && (
+                <div className="flex justify-between">
+                  <dt>Trial ends</dt>
+                  <dd>{new Date(profile.trial_ends_at).toLocaleDateString()}</dd>
+                </div>
+              )}
+            {profile.subscription_status === "active" &&
+              profile.current_period_end && (
+                <div className="flex justify-between">
+                  <dt>Renews</dt>
+                  <dd>
+                    {new Date(profile.current_period_end).toLocaleDateString()}
+                  </dd>
+                </div>
+              )}
+          </dl>
+          <Link
+            href="/billing"
+            className="mt-4 inline-block text-sm font-medium text-brand hover:underline"
+          >
+            Manage billing →
+          </Link>
+        </div>
+      )}
     </div>
   );
 }
