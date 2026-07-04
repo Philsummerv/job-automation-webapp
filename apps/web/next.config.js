@@ -2,7 +2,7 @@
 const nextConfig = {
   reactStrictMode: true,
   // Shared workspace packages ship raw TS/TSX; Next transpiles them.
-  transpilePackages: ["@autoapply/shared", "@autoapply/db"],
+  transpilePackages: ["@applyassistui/shared", "@applyassistui/db"],
 };
 
 module.exports = nextConfig;

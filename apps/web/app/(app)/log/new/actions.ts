@@ -10,7 +10,7 @@ import {
   parseISODate,
   type ActivityMethod,
   type ActivityResult,
-} from "@autoapply/shared";
+} from "@applyassistui/shared";
 
 function whitelist<T extends string>(
   value: string,

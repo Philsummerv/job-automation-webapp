@@ -4,7 +4,7 @@ import {
   ACTIVITY_METHODS,
   ACTIVITY_RESULTS,
   toISODate,
-} from "@autoapply/shared";
+} from "@applyassistui/shared";
 import { createEntry } from "./actions";
 
 export default async function NewEntryPage() {

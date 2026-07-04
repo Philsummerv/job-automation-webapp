@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile } from "@autoapply/shared";
+import type { Profile } from "@applyassistui/shared";
 
 // Redirects to /login if there's no session; otherwise returns the client+user.
 export async function requireUser() {

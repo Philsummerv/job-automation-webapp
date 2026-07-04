@@ -1,5 +1,5 @@
 import { getProfileContext } from "@/lib/auth";
-import { US_STATES, DAYS_OF_WEEK } from "@autoapply/shared";
+import { US_STATES, DAYS_OF_WEEK } from "@applyassistui/shared";
 import { saveSettings } from "./actions";
 
 export default async function SettingsPage({
@@ -112,10 +112,10 @@ export default async function SettingsPage({
               className="mt-0.5"
             />
             <span className="text-slate-700">
-              I understand AutoApply is a{" "}
+              I understand ApplyAssistUI is a{" "}
               <strong>user-directed job-search documentation tool</strong>. I am
               responsible for the accuracy of my log and for meeting my state&apos;s
-              requirements. AutoApply never submits anything without me present,
+              requirements. ApplyAssistUI never submits anything without me present,
               and I initiate and confirm every action.
             </span>
           </label>

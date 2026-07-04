@@ -6,7 +6,7 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <span className="text-lg font-bold text-brand">AutoApply</span>
+          <span className="text-lg font-bold text-brand">ApplyAssistUI</span>
           <div className="flex items-center gap-4 text-sm">
             <a href="#how" className="text-slate-600 hover:text-slate-900">
               How it works
@@ -34,7 +34,7 @@ export default function LandingPage() {
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
           Most states require you to document 3–5 job-search activities every
-          week to keep your benefits. AutoApply keeps a clean, exportable log of
+          week to keep your benefits. ApplyAssistUI keeps a clean, exportable log of
           every activity — with dates, employers, methods, and evidence — ready
           for your reporting period.
         </p>
@@ -87,7 +87,7 @@ export default function LandingPage() {
               When you&apos;re applying online, Guided mode streamlines the form and
               captures your confirmation as evidence automatically — but{" "}
               <strong>you stay in control and confirm every submission.</strong>{" "}
-              AutoApply never applies to anything without you present.
+              ApplyAssistUI never applies to anything without you present.
             </p>
           </div>
         </div>
@@ -128,7 +128,7 @@ export default function LandingPage() {
 
       <footer className="border-t border-slate-100">
         <div className="mx-auto max-w-5xl px-6 py-8 text-center text-xs text-slate-500">
-          AutoApply is a user-directed job-search documentation tool. It does not
+          ApplyAssistUI is a user-directed job-search documentation tool. It does not
           provide legal advice; requirements vary by state. You are responsible
           for the accuracy of your records and for meeting your state&apos;s rules.
         </div>

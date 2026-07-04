@@ -1,5 +1,5 @@
 {
-  "name": "autoapply-webapp",
+  "name": "applyassistui-webapp",
   "private": true,
   "version": "0.1.0",
   "description": "Job-search activity documentation tool for unemployment compliance (with Guided browser assistance).",

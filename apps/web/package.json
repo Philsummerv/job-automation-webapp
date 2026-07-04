@@ -1,5 +1,5 @@
 {
-  "name": "@autoapply/web",
+  "name": "@applyassistui/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@autoapply/db": "*",
-    "@autoapply/shared": "*",
+    "@applyassistui/db": "*",
+    "@applyassistui/shared": "*",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
     "next": "^15.1.3",

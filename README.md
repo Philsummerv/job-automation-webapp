@@ -1,4 +1,4 @@
-# AutoApply — web app
+# ApplyAssistUI — web app
 
 A job-search **activity documentation tool for unemployment compliance**, with
 optional Guided browser assistance. Users log every job-search activity, track

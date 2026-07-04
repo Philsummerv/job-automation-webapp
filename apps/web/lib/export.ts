@@ -5,7 +5,7 @@ import {
   methodLabel,
   resultLabel,
   type ActivityLogEntry,
-} from "@autoapply/shared";
+} from "@applyassistui/shared";
 
 // Loosely typed to stay compatible with the untyped Supabase client (row
 // shapes are enforced by the `as ActivityLogEntry[]` cast below).

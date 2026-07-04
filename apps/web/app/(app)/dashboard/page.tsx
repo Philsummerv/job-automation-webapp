@@ -6,7 +6,7 @@ import {
   methodLabel,
   resultLabel,
   type ActivityLogEntry,
-} from "@autoapply/shared";
+} from "@applyassistui/shared";
 import { deleteEntry } from "./actions";
 import { DeleteEntryForm } from "@/components/DeleteEntryForm";
 
