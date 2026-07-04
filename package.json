@@ -1,0 +1,20 @@
+{
+  "name": "autoapply-webapp",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Job-search activity documentation tool for unemployment compliance (with Guided browser assistance).",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace apps/web",
+    "build": "npm run build --workspace apps/web",
+    "start": "npm run start --workspace apps/web",
+    "lint": "npm run lint --workspace apps/web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

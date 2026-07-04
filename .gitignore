@@ -1,0 +1,21 @@
+node_modules/
+.next/
+out/
+dist/
+.turbo/
+*.log
+.DS_Store
+
+# Build artifacts / generated
+*.tsbuildinfo
+next-env.d.ts
+
+# Env files (never commit secrets)
+.env
+.env.local
+.env*.local
+apps/*/.env
+apps/*/.env.local
+
+# Supabase local
+.supabase/
