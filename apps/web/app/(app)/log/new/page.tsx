@@ -22,11 +22,7 @@ export default async function NewEntryPage() {
         Log and counts toward your weekly requirement.
       </p>
 
-      <form
-        action={createEntry}
-        encType="multipart/form-data"
-        className="mt-6 space-y-5"
-      >
+      <form action={createEntry} className="mt-6 space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label htmlFor="date" className="block text-sm font-medium">

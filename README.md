@@ -17,7 +17,7 @@ Implemented:
 - PDF (DOL-style) and CSV export per reporting week
 - Compliance-first marketing landing page
 
-Deferred to later milestones: M1 billing ($14/mo subscription + 14-day trial),
+Deferred to later milestones: M1 billing ($12/mo subscription + 14-day trial),
 M2 Guided browser runs, M3 resume management + evidence capture polish.
 
 ## Stack

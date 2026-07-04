@@ -8,6 +8,7 @@ import {
   type ActivityLogEntry,
 } from "@autoapply/shared";
 import { deleteEntry } from "./actions";
+import { DeleteEntryForm } from "@/components/DeleteEntryForm";
 
 export default async function DashboardPage({
   searchParams,
@@ -196,15 +197,7 @@ export default async function DashboardPage({
                             )}
                           </td>
                           <td className="px-4 py-2 text-right">
-                            <form action={deleteEntry}>
-                              <input type="hidden" name="id" value={e.id} />
-                              <button
-                                type="submit"
-                                className="text-xs text-slate-400 hover:text-red-600"
-                              >
-                                Delete
-                              </button>
-                            </form>
+                            <DeleteEntryForm entryId={e.id} action={deleteEntry} />
                           </td>
                         </tr>
                       ))}

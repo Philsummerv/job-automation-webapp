@@ -48,11 +48,10 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isAppRoute =
-    path.startsWith("/dashboard") ||
-    path.startsWith("/log") ||
-    path.startsWith("/settings") ||
-    path.startsWith("/export");
+  // Segment-exact prefixes: "/log".startsWith would also capture "/login".
+  const isAppRoute = ["/dashboard", "/log", "/settings", "/export"].some(
+    (p) => path === p || path.startsWith(`${p}/`),
+  );
 
   if (!user && isAppRoute) {
     const url = request.nextUrl.clone();
