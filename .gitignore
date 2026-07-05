@@ -19,3 +19,7 @@ apps/*/.env.local
 
 # Supabase local
 .supabase/
+
+# Automation driver — personal details + run screenshots (never commit)
+packages/automation/driver.config.json
+packages/automation/artifacts/

@@ -176,3 +176,22 @@ export function groupByReportingPeriod(
 export function isEntitled(status: SubscriptionStatus): boolean {
   return status === "trialing" || status === "active";
 }
+
+/**
+ * Emitted by the Guided automation core (packages/automation) on each verified
+ * application submit. The worker (M2 Stage B) maps this to an ActivityLogEntry
+ * insert; the Stage A console driver just prints it.
+ */
+export interface GuidedActivityEvent {
+  employer_name: string;
+  job_title: string | null;
+  url: string | null;
+  /** YYYY-MM-DD */
+  date: string;
+  method: "online";
+  result: "applied";
+  source: "guided";
+  notes: string | null;
+  /** Stage A: local screenshot file path; later: evidence-bucket path. */
+  screenshotPath?: string | null;
+}

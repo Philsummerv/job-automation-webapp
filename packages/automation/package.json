@@ -1,0 +1,29 @@
+{
+  "name": "@applyassistui/automation",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "driver": "tsx src/drivers/console.ts",
+    "smoke": "tsx src/drivers/smoke.ts"
+  },
+  "dependencies": {
+    "@applyassistui/shared": "*",
+    "@browserbasehq/sdk": "^2.6.0",
+    "dotenv": "^17.3.1",
+    "pdf-parse": "^1.1.1",
+    "playwright-core": "^1.58.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pdf-parse": "^1.1.4",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.3"
+  }
+}
