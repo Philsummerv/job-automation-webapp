@@ -8,12 +8,27 @@ export interface BrowserbaseProviderOptions {
   projectId?: string;
   /** Session hard timeout in seconds. Free tier caps sessions around 15 min. */
   timeoutSeconds?: number;
+  /**
+   * Persistent-context id (cookies/logins saved across sessions). Create one
+   * with BrowserbaseProvider.createContext(); pass it here and every session
+   * reuses + re-persists the same signed-in state.
+   */
+  contextId?: string;
 }
 
 export class BrowserbaseProvider implements BrowserProvider {
   readonly name = "browserbase";
 
   constructor(private readonly opts: BrowserbaseProviderOptions) {}
+
+  /** Creates a persistent context whose id can be reused across sessions. */
+  static async createContext(apiKey: string, projectId?: string): Promise<string> {
+    const bb = new Browserbase({ apiKey });
+    const ctx = await bb.contexts.create({
+      ...(projectId ? { projectId } : {}),
+    } as Parameters<typeof bb.contexts.create>[0]);
+    return ctx.id;
+  }
 
   async connect(): Promise<BrowserSession> {
     const bb = new Browserbase({ apiKey: this.opts.apiKey });
@@ -22,6 +37,11 @@ export class BrowserbaseProvider implements BrowserProvider {
       ...(this.opts.projectId && { projectId: this.opts.projectId }),
       timeout: this.opts.timeoutSeconds ?? 900,
       // keepAlive stays false: the session ends when we disconnect.
+      ...(this.opts.contextId && {
+        browserSettings: {
+          context: { id: this.opts.contextId, persist: true },
+        },
+      }),
     });
 
     const browser = await chromium.connectOverCDP(session.connectUrl);
@@ -43,6 +63,7 @@ export class BrowserbaseProvider implements BrowserProvider {
       page,
       sessionId: session.id,
       liveViewUrl,
+      contextId: this.opts.contextId,
       close: async () => {
         if (closed) return;
         closed = true;

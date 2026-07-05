@@ -42,6 +42,16 @@ if (!apiKey) {
 // Optional — the API key resolves the project automatically.
 const projectId = process.env.BROWSERBASE_PROJECT_ID || undefined;
 
+// Persistent context: cookies/logins survive across sessions, so the user
+// logs into Indeed ONCE. Auto-created on first run and appended to .env.
+let contextId = process.env.BROWSERBASE_CONTEXT_ID || undefined;
+if (!contextId) {
+  console.log("No persistent context yet — creating one (your logins will be saved across runs)...");
+  contextId = await BrowserbaseProvider.createContext(apiKey, projectId);
+  fs.appendFileSync(path.join(pkgDir, ".env"), `\nBROWSERBASE_CONTEXT_ID=${contextId}\n`);
+  console.log(`Created context ${contextId} (saved to .env).`);
+}
+
 const config: Partial<ScoutConfig> = {
   ...DEFAULT_CONFIG,
   ...fileConfig,
@@ -56,7 +66,7 @@ if (config.resumePath && !path.isAbsolute(config.resumePath)) {
 const timeoutSeconds = Number(process.env.BROWSERBASE_SESSION_TIMEOUT_SECONDS) || undefined;
 let activeSession: BrowserSession | null = null;
 
-const base = new BrowserbaseProvider({ apiKey, projectId, timeoutSeconds });
+const base = new BrowserbaseProvider({ apiKey, projectId, timeoutSeconds, contextId });
 const provider: BrowserProvider = {
   name: base.name,
   connect: async () => {
