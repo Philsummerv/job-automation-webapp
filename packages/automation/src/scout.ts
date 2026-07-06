@@ -64,7 +64,7 @@ export async function runScout(opts: RunScoutOptions): Promise<RunScoutResult> {
     }
   } else if (config.resumeFile) {
     try {
-      const pdfData = await pdf(config.resumeFile.buffer);
+      const pdfData = await pdf(Buffer.from(config.resumeFile.buffer));
       resumeContext = pdfData.text;
       log.info(`Resume loaded from buffer (${resumeContext.length} chars).`);
     } catch (err) {

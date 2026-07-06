@@ -50,11 +50,25 @@ export async function requireOnboarded() {
   return ctx;
 }
 
-// Onboarded + active trial/subscription; otherwise bounce to the paywall.
-// Everything except /settings and /billing itself sits behind this.
+// Complimentary access: comma-separated emails in COMPED_EMAILS bypass the
+// paywall entirely (owner account, beta testers). Case-insensitive.
+export function isCompedEmail(email: string | undefined | null): boolean {
+  if (!email) return false;
+  return (process.env.COMPED_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean)
+    .includes(email.toLowerCase());
+}
+
+// Onboarded + active trial/subscription (or comped); otherwise bounce to the
+// paywall. Everything except /settings and /billing itself sits behind this.
 export async function requireEntitled() {
   const ctx = await requireOnboarded();
-  if (!isEntitled(ctx.profile.subscription_status)) {
+  if (
+    !isEntitled(ctx.profile.subscription_status) &&
+    !isCompedEmail(ctx.user.email)
+  ) {
     redirect("/billing");
   }
   return ctx;

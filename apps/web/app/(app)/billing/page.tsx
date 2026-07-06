@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { isEntitled, type Profile } from "@applyassistui/shared";
-import { requireOnboarded } from "@/lib/auth";
+import { isCompedEmail, requireOnboarded } from "@/lib/auth";
 import { syncFromCustomer } from "@/lib/billing";
 import { openBillingPortal, startCheckout } from "./actions";
 
@@ -46,6 +46,7 @@ export default async function BillingPage({
   }
 
   const status = profile.subscription_status;
+  const comped = isCompedEmail(ctx.user.email);
 
   return (
     <div className="mx-auto max-w-xl">
@@ -57,7 +58,21 @@ export default async function BillingPage({
         </div>
       )}
 
-      {(status === "none" || status === "incomplete") && (
+      {comped && !isEntitled(status) && (
+        <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-8">
+          <h2 className="text-lg font-semibold text-emerald-900">
+            Complimentary access
+          </h2>
+          <p className="mt-2 text-sm text-emerald-800">
+            This account has full access without a subscription.
+          </p>
+          <div className="mt-6">
+            <StartApplyingButton />
+          </div>
+        </div>
+      )}
+
+      {!comped && (status === "none" || status === "incomplete") && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">
             Start your 14-day free trial

@@ -9,8 +9,12 @@ import type { FormField, Logger } from "./types.js";
 
 export type PageOrFrame = Page | Frame;
 
-export async function scrapeFormQuestions(target: PageOrFrame): Promise<FormField[]> {
-  return target.evaluate(() => {
+// Pure-DOM question collector. SELF-CONTAINED ON PURPOSE (no imports, no
+// closures): Playwright serializes it into the page via evaluate(), and the
+// browser-extension content script calls it directly — one implementation,
+// two runtimes.
+export function collectFormQuestions(): FormField[] {
+  {
     const questions: {
       text: string;
       type: string;
@@ -82,7 +86,11 @@ export async function scrapeFormQuestions(target: PageOrFrame): Promise<FormFiel
     }
 
     return questions;
-  });
+  }
+}
+
+export async function scrapeFormQuestions(target: PageOrFrame): Promise<FormField[]> {
+  return target.evaluate(collectFormQuestions);
 }
 
 export async function fillFormField(

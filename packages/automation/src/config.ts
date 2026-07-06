@@ -7,7 +7,9 @@
 export interface ResumeFile {
   name: string;
   mimeType: string;
-  buffer: Buffer;
+  // Uint8Array (not Buffer) so this type is loadable in browser contexts
+  // (the extension imports this module); Node Buffers satisfy it directly.
+  buffer: Uint8Array;
 }
 
 export interface ScoutConfig {

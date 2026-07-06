@@ -199,7 +199,7 @@ export async function fillApplicationPages(
                 await fileInput.setInputFiles({
                   name: config.resumeFile.name,
                   mimeType: config.resumeFile.mimeType,
-                  buffer: config.resumeFile.buffer,
+                  buffer: Buffer.from(config.resumeFile.buffer),
                 });
                 log.info(`  Uploaded resume: ${config.resumeFile.name}`);
                 resumeClicked = true;
