@@ -22,7 +22,7 @@ import { makeAutoFillAnswer } from "@applyassistui/automation/autofill";
 import { DEFAULT_CONFIG } from "@applyassistui/automation/config";
 import type { FormField } from "@applyassistui/automation/types";
 import { sendToWorker } from "./messages";
-import type { ContentBoundMsg, ReviewDecisionMsg } from "./messages";
+import type { ContentBoundMsg } from "./messages";
 
 // Only mount where it makes sense: the top frame, or any child frame that
 // actually contains a form (Indeed sometimes iframes the apply flow).
@@ -148,22 +148,147 @@ function init() {
     return true;
   }
 
-  /** Temporary review bar (M-B5 replaces with the real gate). */
-  function showReviewGate(runId: string): void {
-    reviewEl.innerHTML = `
-      <div style="margin:4px 0 8px;padding:8px;background:#422006;border:1px solid #d97706;border-radius:6px">
-        <div style="margin-bottom:6px">Does this page look right? <span style="opacity:.6">(placeholder gate)</span></div>
-        <div style="display:flex;gap:6px">
-          <button id="aaui-approve" style="flex:1;padding:5px;border:0;border-radius:5px;background:#059669;color:#fff;cursor:pointer">Looks right</button>
-          <button id="aaui-reject" style="flex:1;padding:5px;border:0;border-radius:5px;background:#b91c1c;color:#fff;cursor:pointer">Stop</button>
-        </div>
-      </div>`;
-    const decide = (decision: ReviewDecisionMsg["decision"]) => {
+  // ─── Review gate ──────────────────────────────────────────────────────────
+  // Shows every scanned question in its NATIVE control type, reflecting the real
+  // form's current state (i.e. what the assist managed to fill). Editing a
+  // control writes straight back to the real Indeed form. The user approves the
+  // whole page at once, pauses to edit the page by hand, or stops the run.
+
+  function renderReviewGate(runId: string): void {
+    reviewEl.innerHTML = "";
+    reviewEl.appendChild(hHeader("Does this look right?", "Edit anything below — changes apply to the form."));
+
+    for (const q of questions) reviewEl.appendChild(renderQuestionCard(q));
+
+    const footer = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:8px");
+    footer.appendChild(mkBtn("Looks right → Continue", "#059669", () => {
       reviewEl.innerHTML = "";
-      sendToWorker({ type: "review-decision", runId, decision });
-    };
-    reviewEl.querySelector("#aaui-approve")!.addEventListener("click", () => decide("approved"));
-    reviewEl.querySelector("#aaui-reject")!.addEventListener("click", () => decide("rejected"));
+      sendToWorker({ type: "review-decision", runId, decision: "approved" });
+    }));
+    const row = mkEl("div", "display:flex;gap:6px");
+    row.appendChild(mkBtn("Pause — I'll do it myself", "#475569", () => {
+      sendToWorker({ type: "pause-run", runId });
+      renderPausedView(runId);
+    }));
+    row.appendChild(mkBtn("Stop", "#b91c1c", () => {
+      reviewEl.innerHTML = "";
+      sendToWorker({ type: "review-decision", runId, decision: "rejected" });
+    }));
+    footer.appendChild(row);
+    reviewEl.appendChild(footer);
+  }
+
+  function renderPausedView(runId: string): void {
+    reviewEl.innerHTML = "";
+    const box = mkEl("div", "margin:4px 0 8px;padding:8px;background:#1e293b;border:1px solid #475569;border-radius:6px");
+    box.appendChild(mkEl("div", "margin-bottom:6px", "Paused — edit the form yourself, then resume."));
+    const row = mkEl("div", "display:flex;gap:6px");
+    row.appendChild(mkBtn("Resume assist", "#7c3aed", () => sendToWorker({ type: "resume-run", runId })));
+    row.appendChild(mkBtn("Stop", "#b91c1c", () => {
+      reviewEl.innerHTML = "";
+      sendToWorker({ type: "review-decision", runId, decision: "rejected" });
+    }));
+    box.appendChild(row);
+    reviewEl.appendChild(box);
+  }
+
+  /** One question card, rendering the control that matches the field type. */
+  function renderQuestionCard(q: FormField): HTMLElement {
+    const card = mkEl("div", "margin:6px 0;padding:8px;background:#1e293b;border-radius:6px");
+    card.appendChild(mkEl("div", "font-weight:600;margin-bottom:2px", q.text.slice(0, 120)));
+    const meta = mkEl("div", "opacity:.55;font-size:11px;margin-bottom:6px", q.type + (q.options.length ? ` · ${q.options.length} options` : ""));
+    card.appendChild(meta);
+    card.appendChild(buildControl(q, (filled) => {
+      meta.textContent = q.type + (q.options.length ? ` · ${q.options.length} options` : "") + (filled ? "  ✓ filled" : "  — needs you");
+      meta.style.color = filled ? "#4ade80" : "#fbbf24";
+    }));
+    return card;
+  }
+
+  /** Build the editable control for a field, wired to the real form. */
+  function buildControl(q: FormField, onState: (filled: boolean) => void): HTMLElement {
+    const t = q.type;
+
+    if (t === "checkbox" || t === "radio") {
+      const wrap = mkEl("div", "display:flex;flex-direction:column;gap:4px");
+      const groupName = `aaui-${Math.random().toString(36).slice(2)}`;
+      const syncState = () => onState(q.options.some((o) => realOptionEl(q, o)?.checked));
+      for (const opt of q.options) {
+        const realEl = realOptionEl(q, opt);
+        const lbl = mkEl("label", "display:flex;align-items:center;gap:6px;cursor:pointer");
+        const box = document.createElement("input");
+        box.type = t === "radio" ? "radio" : "checkbox";
+        if (t === "radio") box.name = groupName;
+        box.checked = !!realEl?.checked;
+        box.addEventListener("change", () => {
+          if (realEl && realEl.checked !== box.checked) realEl.click();
+          // Re-sync from the real element after React settles.
+          setTimeout(() => {
+            box.checked = !!realEl?.checked;
+            syncState();
+          }, 0);
+        });
+        lbl.appendChild(box);
+        lbl.appendChild(mkEl("span", "", opt.label.slice(0, 60)));
+        wrap.appendChild(lbl);
+      }
+      syncState();
+      return wrap;
+    }
+
+    if (t === "select") {
+      const realEl = realSelectEl(q);
+      const sel = document.createElement("select");
+      sel.style.cssText = "width:100%;padding:4px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0";
+      const blank = document.createElement("option");
+      blank.value = ""; blank.textContent = "— select —";
+      sel.appendChild(blank);
+      for (const opt of q.options) {
+        const o = document.createElement("option");
+        o.value = opt.value; o.textContent = opt.label.slice(0, 60);
+        sel.appendChild(o);
+      }
+      sel.value = realEl?.value ?? "";
+      sel.addEventListener("change", () => {
+        if (realEl) setNativeValue(realEl, sel.value);
+        setTimeout(() => { sel.value = realEl?.value ?? ""; onState(!!realEl?.value); }, 0);
+      });
+      onState(!!realEl?.value);
+      return sel;
+    }
+
+    if (t === "combobox") {
+      // Indeed's custom multi-select: options live in a popup that only exists
+      // when opened, so we can't render them inline reliably. Surface current
+      // selection + a button that opens Indeed's own dialog for the user.
+      const realEl = realComboboxEl(q);
+      const wrap = mkEl("div", "display:flex;flex-direction:column;gap:4px");
+      const current = mkEl("div", "opacity:.8;font-size:11px", `current: ${(realEl?.innerText || "(nothing)").trim().slice(0, 40)}`);
+      wrap.appendChild(current);
+      wrap.appendChild(mkBtn("Choose on page ▾", "#2563eb", () => {
+        realEl?.click();
+        (realEl as HTMLElement | null)?.focus?.();
+        // Re-read the selection shortly after the user interacts.
+        setTimeout(() => {
+          current.textContent = `current: ${(realEl?.innerText || "(nothing)").trim().slice(0, 40)}`;
+          onState(!!realEl && !/^\s*(select an option|nothing)?\s*$/i.test(realEl.innerText || ""));
+        }, 1500);
+      }));
+      onState(!!realEl && !/select an option/i.test(realEl.innerText || ""));
+      return wrap;
+    }
+
+    // Text-like (text, textarea, number, email, tel, url, unknown).
+    const realEl = realTextEl(q);
+    const input = t === "textarea" ? document.createElement("textarea") : document.createElement("input");
+    input.style.cssText = "width:100%;padding:4px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0";
+    input.value = realEl?.value ?? "";
+    input.addEventListener("input", () => {
+      if (realEl) setNativeValue(realEl, input.value);
+      onState(!!input.value.trim());
+    });
+    onState(!!realEl?.value?.trim());
+    return input;
   }
 
   // ─── Manual buttons (debug) ──────────────────────────────────────────────────
@@ -206,7 +331,7 @@ function init() {
         return false;
       }
       case "review": {
-        showReviewGate(msg.runId);
+        renderReviewGate(msg.runId);
         sendResponse({ ok: true });
         return false;
       }
@@ -238,6 +363,60 @@ function setNativeValue(el: HTMLElement, value: string) {
   setter?.call(el, value);
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+// ─── Review-gate helpers ──────────────────────────────────────────────────────
+// UI builders + finders that map a scanned FormField back to its live element(s)
+// on the page, so the review controls can read and write the real form.
+
+function mkEl(tag: string, css: string, text?: string): HTMLElement {
+  const e = document.createElement(tag);
+  if (css) e.style.cssText = css;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function mkBtn(label: string, bg: string, onClick: () => void): HTMLButtonElement {
+  const b = document.createElement("button");
+  b.textContent = label;
+  b.style.cssText = `flex:1;padding:6px;border:0;border-radius:6px;background:${bg};color:#fff;cursor:pointer;font:inherit`;
+  b.addEventListener("click", onClick);
+  return b;
+}
+
+function hHeader(title: string, sub: string): HTMLElement {
+  const box = mkEl("div", "margin:4px 0 6px");
+  box.appendChild(mkEl("div", "font-weight:700", title));
+  box.appendChild(mkEl("div", "opacity:.6;font-size:11px", sub));
+  return box;
+}
+
+function realTextEl(q: FormField): HTMLInputElement | HTMLTextAreaElement | null {
+  if (q.inputId) return document.getElementById(q.inputId) as HTMLInputElement | HTMLTextAreaElement | null;
+  if (q.inputName) {
+    return document.querySelector(
+      `input[name="${CSS.escape(q.inputName)}"], textarea[name="${CSS.escape(q.inputName)}"]`,
+    );
+  }
+  return null;
+}
+
+function realOptionEl(q: FormField, opt: { value: string; id?: string }): HTMLInputElement | null {
+  if (opt.id) return document.getElementById(opt.id) as HTMLInputElement | null;
+  if (q.inputName) {
+    return document.querySelector<HTMLInputElement>(
+      `input[name="${CSS.escape(q.inputName)}"][value="${CSS.escape(opt.value)}"]`,
+    );
+  }
+  return null;
+}
+
+function realSelectEl(q: FormField): HTMLSelectElement | null {
+  return q.inputId ? (document.getElementById(q.inputId) as HTMLSelectElement | null) : null;
+}
+
+function realComboboxEl(q: FormField): HTMLElement | null {
+  return q.inputId ? document.getElementById(q.inputId) : null;
 }
 
 function fillFieldDom(field: FormField, answer: string): { ok: boolean; detail: string } {

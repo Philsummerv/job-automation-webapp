@@ -16,7 +16,8 @@ export type RunStatus =
   | "starting" // run created; scan command broadcast, waiting for a form frame
   | "scanning" // waiting on scan-result from the form frame
   | "filling" // scan done; fill command sent, waiting on fill-result
-  | "review" // page filled; awaiting the user's review-gate decision (M-B5 UI)
+  | "review" // page filled; awaiting the user's review-gate decision
+  | "paused" // user took manual control; assist idle until they resume
   | "advancing" // user approved; Continue clicked, waiting for next page nav
   | "done" // flow finished (submitted or no more forms)
   | "error"; // halted; state retained for debugging
@@ -65,6 +66,8 @@ export type Action =
   | { type: "scan-result"; runId: string; frameId: number; questions: FormField[]; at: number }
   | { type: "fill-result"; runId: string; at: number }
   | { type: "review-decision"; runId: string; decision: ReviewDecision; at: number }
+  | { type: "pause-run"; runId: string; at: number }
+  | { type: "resume-run"; runId: string; at: number }
   | { type: "nav-completed"; tabId: number; at: number }
   | { type: "no-form"; runId: string; at: number }
   | { type: "run-error"; runId: string; reason: string; at: number };

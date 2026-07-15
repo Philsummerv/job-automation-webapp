@@ -155,6 +155,16 @@ chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse)
         .then(() => sendResponse({ ok: true }));
       return true;
 
+    case "pause-run":
+      dispatch(() => ({ type: "pause-run", runId: msg.runId, at: Date.now() }))
+        .then(() => sendResponse({ ok: true }));
+      return true;
+
+    case "resume-run":
+      dispatch(() => ({ type: "resume-run", runId: msg.runId, at: Date.now() }))
+        .then(() => sendResponse({ ok: true }));
+      return true;
+
     case "run-error":
       dispatch(() => ({ type: "run-error", runId: msg.runId, reason: msg.reason, at: Date.now() }))
         .then(() => sendResponse({ ok: true }));

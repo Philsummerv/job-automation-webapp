@@ -66,11 +66,23 @@ export interface FillResultMsg {
   runId: string;
 }
 
-/** The review gate reports the user's verdict for the current page (M-B5 UI). */
+/** The review gate reports the user's verdict for the current page. */
 export interface ReviewDecisionMsg {
   type: "review-decision";
   runId: string;
   decision: ReviewDecision;
+}
+
+/** User paused the assist to take manual control. */
+export interface PauseRunMsg {
+  type: "pause-run";
+  runId: string;
+}
+
+/** User resumed the assist after manual editing. */
+export interface ResumeRunMsg {
+  type: "resume-run";
+  runId: string;
 }
 
 /** A content-side failure the controller should record on the run. */
@@ -112,6 +124,8 @@ export type WorkerBoundMsg =
   | ScanResultMsg
   | FillResultMsg
   | ReviewDecisionMsg
+  | PauseRunMsg
+  | ResumeRunMsg
   | RunErrorMsg
   | AuthHandoffMsg
   | PingMsg;
@@ -154,6 +168,8 @@ export interface ResponseMap {
   "scan-result": Ack;
   "fill-result": Ack;
   "review-decision": Ack;
+  "pause-run": Ack;
+  "resume-run": Ack;
   "run-error": Ack;
   "auth-handoff": AuthHandoffResponse;
   ping: PingResponse;

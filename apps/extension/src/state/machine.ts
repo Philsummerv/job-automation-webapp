@@ -134,6 +134,46 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
       return { state: advancing, effects };
     }
 
+    // ── Pause / resume (user takes manual control) ────────────────────────────
+    // Pause is allowed from any live, non-terminal status. The assist simply
+    // stops issuing commands; the user edits the real page directly.
+    case "pause-run": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status === "done" || state.status === "error" || state.status === "paused") {
+        return noChange(state);
+      }
+      return { state: withStatus(state, "paused", "user paused — manual control", action.at), effects: [] };
+    }
+
+    // Resume re-opens the review gate on the current page so it reflects any
+    // manual edits (the gate reads live form state). If we somehow have no
+    // questions, fall back to a rescan.
+    case "resume-run": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "paused") return noChange(state);
+
+      if (state.questions.length > 0 && state.formFrameId != null) {
+        const review = withStatus(state, "review", "resumed — re-review current page", action.at, {
+          reviewDecision: null,
+        });
+        return {
+          state: review,
+          effects: [{ kind: "send-command", tabId: state.tabId, frameId: state.formFrameId, command: "review", runId: state.runId }],
+        };
+      }
+      const rescan = withStatus(state, "scanning", "resumed — rescanning", action.at, {
+        formFrameId: null,
+        questions: [],
+      });
+      return {
+        state: rescan,
+        effects: [
+          { kind: "send-command", tabId: state.tabId, command: "scan", runId: state.runId },
+          { kind: "arm-no-form-timeout", tabId: state.tabId, runId: state.runId },
+        ],
+      };
+    }
+
     // ── Navigation completed (from chrome.webNavigation, top frame) ───────────
     // Only advances the run when we were expecting it (status advancing). A nav
     // in any other status (user clicked around) is ignored so we don't rescan
