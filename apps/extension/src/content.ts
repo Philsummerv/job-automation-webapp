@@ -16,6 +16,7 @@ import { collectFormQuestions } from "@applyassistui/automation/forms";
 import { makeAutoFillAnswer } from "@applyassistui/automation/autofill";
 import { DEFAULT_CONFIG } from "@applyassistui/automation/config";
 import type { FormField } from "@applyassistui/automation/types";
+import { sendToWorker } from "./messages";
 
 // Only mount where it makes sense: the top frame, or any child frame that
 // actually contains a form (Indeed sometimes iframes the apply flow).
@@ -63,10 +64,14 @@ function init() {
     logEl.prepend(line);
   };
 
-  // Page-load counter via the background service worker — seeds the Stage B
+  // Announce readiness over the typed protocol. The persisted per-tab load
+  // count (chrome.storage.local now — survives worker death) seeds the Stage B
   // "state survives navigation" pattern.
-  chrome.runtime.sendMessage({ type: "hello" }, (res) => {
-    if (res?.count) log(`page loads this tab: ${res.count}`);
+  sendToWorker({
+    type: "page-ready",
+    frame: { url: location.href, isTopFrame: isTop, hasForm },
+  }).then((res) => {
+    if (res.loadCount) log(`page loads this tab: ${res.loadCount}`);
   });
 
   // ─── Scan ─────────────────────────────────────────────────────────────────
