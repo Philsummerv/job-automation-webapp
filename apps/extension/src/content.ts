@@ -1,22 +1,28 @@
-// POC content script — answers ONE question: can synthetic (isTrusted:false)
-// events from a content script scan and fill Indeed's Easy-Apply form and
-// advance the multi-page flow?
+// Content script. As of M-B2 it plays two roles:
+//   1. A worker-driven EXECUTOR — it receives typed commands (scan/fill/review/
+//      advance) from the run controller and reports results back, closing the
+//      state-machine loop. This is the path that will ship.
+//   2. The POC panel — manual Scan/Fill/Continue buttons plus a live log, kept
+//      as a debugging affordance. M-B5 replaces this with the real review gate.
 //
 // Reuses the ported automation cores directly (the code-sharing proof):
 //   collectFormQuestions — the same DOM scraper Playwright injects
 //   makeAutoFillAnswer   — the ordered auto-fill rule engine
 //
-// What's POC-specific here (would be productionized in Stage B):
+// Stage-B-specific here (productionized further in M-B4/M-B5):
 //   fillFieldDom  — DOM-native fill using React-safe native value setters
-//   findAdvanceDom — visible-first Continue/Submit finder (CSS + text scan,
-//                    since Playwright's :has-text() isn't valid DOM CSS)
-//   the floating panel UI
+//   findAdvanceDom — visible-first Continue/Submit finder
+//
+// NOTE(M-B4): fills still use DEFAULT_CONFIG; the user's answer template
+// replaces it in M-B4. NOTE(M-B5): the review command shows a placeholder
+// approve/reject bar, not the real per-page review gate.
 
 import { collectFormQuestions } from "@applyassistui/automation/forms";
 import { makeAutoFillAnswer } from "@applyassistui/automation/autofill";
 import { DEFAULT_CONFIG } from "@applyassistui/automation/config";
 import type { FormField } from "@applyassistui/automation/types";
 import { sendToWorker } from "./messages";
+import type { ContentBoundMsg, ReviewDecisionMsg } from "./messages";
 
 // Only mount where it makes sense: the top frame, or any child frame that
 // actually contains a form (Indeed sometimes iframes the apply flow).
@@ -27,6 +33,8 @@ if (isTop || hasForm) init();
 function init() {
   const getAutoFillAnswer = makeAutoFillAnswer(DEFAULT_CONFIG);
   let questions: FormField[] = [];
+  // The run this frame is currently serving; learned from the first command.
+  let currentRunId: string | null = null;
 
   // ─── Panel ────────────────────────────────────────────────────────────────
 
@@ -41,14 +49,19 @@ function init() {
   ].join(";");
   panel.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <strong style="font-size:13px">ApplyAssistUI POC</strong>
+      <strong style="font-size:13px">ApplyAssistUI</strong>
       <span style="opacity:.6">${isTop ? "top frame" : "iframe"}</span>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button id="aaui-start" style="flex:1;padding:6px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Start run</button>
+      <button id="aaui-cancel" style="flex:1;padding:6px;border:0;border-radius:6px;background:#475569;color:#fff;cursor:pointer">Cancel</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
       <button id="aaui-scan"  style="flex:1;padding:6px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">Scan</button>
       <button id="aaui-fill"  style="flex:1;padding:6px;border:0;border-radius:6px;background:#059669;color:#fff;cursor:pointer">Fill</button>
       <button id="aaui-next"  style="flex:1;padding:6px;border:0;border-radius:6px;background:#d97706;color:#fff;cursor:pointer">Continue</button>
     </div>
+    <div id="aaui-review"></div>
     <div id="aaui-fields"></div>
     <div id="aaui-log" style="margin-top:8px;border-top:1px solid #334155;padding-top:6px;opacity:.85"></div>
   `;
@@ -56,6 +69,7 @@ function init() {
 
   const logEl = panel.querySelector("#aaui-log") as HTMLElement;
   const fieldsEl = panel.querySelector("#aaui-fields") as HTMLElement;
+  const reviewEl = panel.querySelector("#aaui-review") as HTMLElement;
   const log = (msg: string, ok?: boolean) => {
     const line = document.createElement("div");
     line.textContent = (ok === undefined ? "· " : ok ? "✓ " : "✗ ") + msg;
@@ -65,18 +79,20 @@ function init() {
   };
 
   // Announce readiness over the typed protocol. The persisted per-tab load
-  // count (chrome.storage.local now — survives worker death) seeds the Stage B
+  // count (chrome.storage.local — survives worker death) seeds the Stage B
   // "state survives navigation" pattern.
   sendToWorker({
     type: "page-ready",
     frame: { url: location.href, isTopFrame: isTop, hasForm },
   }).then((res) => {
     if (res.loadCount) log(`page loads this tab: ${res.loadCount}`);
+    if (res.runActive) log("a run is active on this tab");
   });
 
-  // ─── Scan ─────────────────────────────────────────────────────────────────
+  // ─── Reusable executor actions (shared by manual buttons + worker commands) ──
 
-  panel.querySelector("#aaui-scan")!.addEventListener("click", () => {
+  /** Scan the page and render rows. Returns the questions found. */
+  function scanPage(): FormField[] {
     questions = collectFormQuestions();
     fieldsEl.innerHTML = "";
     log(`scanned: ${questions.length} question(s)`);
@@ -96,7 +112,6 @@ function init() {
       `;
       fieldsEl.appendChild(row);
 
-      // Outline the field on the page so you can see what was detected.
       const el = q.inputId
         ? document.getElementById(q.inputId)
         : q.inputName
@@ -104,11 +119,11 @@ function init() {
           : null;
       if (el) (el as HTMLElement).style.outline = "2px dashed #2563eb";
     }
-  });
+    return questions;
+  }
 
-  // ─── Fill ─────────────────────────────────────────────────────────────────
-
-  panel.querySelector("#aaui-fill")!.addEventListener("click", async () => {
+  /** Fill every scanned field from its (auto-filled or edited) answer. */
+  async function fillPage(): Promise<void> {
     const inputs = fieldsEl.querySelectorAll<HTMLInputElement>("input[data-aaui-idx]");
     for (const inp of inputs) {
       const q = questions[Number(inp.dataset.aauiIdx)];
@@ -119,27 +134,99 @@ function init() {
       await sleep(250);
     }
     log("fill pass done — check whether values STUCK (React can revert them)");
-  });
+  }
 
-  // ─── Continue ─────────────────────────────────────────────────────────────
-
-  panel.querySelector("#aaui-next")!.addEventListener("click", () => {
+  /** Click the visible Continue/Submit button. Returns whether one was found. */
+  function advancePage(): boolean {
     const btn = findAdvanceDom();
     if (!btn) {
       log("no visible Continue/Submit button found", false);
-      return;
+      return false;
     }
-    log(`clicking "${(btn.textContent || "").trim().slice(0, 40)}" (isTrusted will be false)`);
+    log(`clicking "${(btn.textContent || "").trim().slice(0, 40)}"`);
     btn.click();
+    return true;
+  }
+
+  /** Temporary review bar (M-B5 replaces with the real gate). */
+  function showReviewGate(runId: string): void {
+    reviewEl.innerHTML = `
+      <div style="margin:4px 0 8px;padding:8px;background:#422006;border:1px solid #d97706;border-radius:6px">
+        <div style="margin-bottom:6px">Does this page look right? <span style="opacity:.6">(placeholder gate)</span></div>
+        <div style="display:flex;gap:6px">
+          <button id="aaui-approve" style="flex:1;padding:5px;border:0;border-radius:5px;background:#059669;color:#fff;cursor:pointer">Looks right</button>
+          <button id="aaui-reject" style="flex:1;padding:5px;border:0;border-radius:5px;background:#b91c1c;color:#fff;cursor:pointer">Stop</button>
+        </div>
+      </div>`;
+    const decide = (decision: ReviewDecisionMsg["decision"]) => {
+      reviewEl.innerHTML = "";
+      sendToWorker({ type: "review-decision", runId, decision });
+    };
+    reviewEl.querySelector("#aaui-approve")!.addEventListener("click", () => decide("approved"));
+    reviewEl.querySelector("#aaui-reject")!.addEventListener("click", () => decide("rejected"));
+  }
+
+  // ─── Manual buttons (debug) ──────────────────────────────────────────────────
+
+  panel.querySelector("#aaui-start")!.addEventListener("click", () => {
+    sendToWorker({ type: "start-run" }).then((res) => log(`start-run → ${res.ok ? "ok" : "failed"}`, res.ok));
   });
+  panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
+    sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
+  });
+  panel.querySelector("#aaui-scan")!.addEventListener("click", () => scanPage());
+  panel.querySelector("#aaui-fill")!.addEventListener("click", () => fillPage());
+  panel.querySelector("#aaui-next")!.addEventListener("click", () => advancePage());
+
+  // ─── Worker command loop ─────────────────────────────────────────────────────
+  // The controller (background.ts) drives the run by sending CommandMsg to this
+  // frame. We execute and report back so the state machine can advance.
+
+  chrome.runtime.onMessage.addListener((msg: ContentBoundMsg, _sender, sendResponse) => {
+    if (msg?.type !== "command") return false;
+    currentRunId = msg.runId;
+
+    switch (msg.command) {
+      case "scan": {
+        const found = scanPage();
+        // Stay silent when this frame has no form so a sibling frame — or the
+        // controller's no-form timeout — decides. An empty reply would be read
+        // as "flow complete".
+        if (found.length > 0) {
+          sendToWorker({ type: "scan-result", runId: msg.runId, questions: found });
+        }
+        sendResponse({ ok: true });
+        return false;
+      }
+      case "fill": {
+        fillPage()
+          .then(() => sendToWorker({ type: "fill-result", runId: msg.runId }))
+          .catch((err) => sendToWorker({ type: "run-error", runId: msg.runId, reason: String(err) }));
+        sendResponse({ ok: true });
+        return false;
+      }
+      case "review": {
+        showReviewGate(msg.runId);
+        sendResponse({ ok: true });
+        return false;
+      }
+      case "advance": {
+        const ok = advancePage();
+        if (!ok) sendToWorker({ type: "run-error", runId: msg.runId, reason: "no advance button" });
+        sendResponse({ ok });
+        return false;
+      }
+    }
+  });
+
+  void currentRunId; // reserved for M-B5 (review edits reference the live run)
 }
 
 // ─── DOM fill (POC version of fillFormField) ──────────────────────────────────
 // The critical difference from the desktop force-set path: React-controlled
 // inputs ignore plain `el.value = x`. You must call the NATIVE value setter
 // (bypassing React's instrumented property) and then dispatch `input` so
-// React's onChange fires and commits the value to its own state. Whether this
-// works on Indeed is exactly what this POC measures.
+// React's onChange fires and commits the value to its own state.
 
 function setNativeValue(el: HTMLElement, value: string) {
   const proto = el instanceof HTMLTextAreaElement
@@ -219,8 +306,6 @@ function fillFieldDom(field: FormField, answer: string): { ok: boolean; detail: 
 }
 
 // ─── Advance-button finder (POC version) ──────────────────────────────────────
-// Playwright's :has-text() isn't valid DOM CSS, so: exact data-testid first,
-// then the same positive/negative text scoring as the ported findAdvanceButton.
 
 const POSITIVE_RE = /\b(review|continue|submit|next|apply|proceed|advance|finish|send)\b/i;
 const NEGATIVE_RE = /\b(back|cancel|withdraw|close|skip|dismiss|report|feedback|help|sign in|sign out|log in|log out|delete|remove|edit|undo)\b/i;

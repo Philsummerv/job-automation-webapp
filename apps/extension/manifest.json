@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "description": "Guided autofill for job-application forms, driven by your saved answer template.",
   "background": { "service_worker": "background.js" },
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "tabs", "webNavigation"],
   "host_permissions": [
     "https://xzptcvgpmshbjvxwgmzi.supabase.co/*",
     "http://localhost:3000/*"

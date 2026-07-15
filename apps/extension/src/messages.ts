@@ -3,12 +3,19 @@
 // `{ type: "hello" }`. Three transports carry these messages:
 //
 //   • content script ⇄ service worker : chrome.runtime.sendMessage / onMessage
+//                                        (content→worker) and tabs.sendMessage
+//                                        (worker→a specific frame)
 //   • web page       → service worker : chrome.runtime.sendMessage(extId, …)
 //                                        via externally_connectable (auth handoff)
 //
-// This file is transport-agnostic — it only describes shapes plus a tiny typed
-// send/response helper. Run-state shapes (RunState, effects, …) live in
-// src/state (M-B2), NOT here; keep this to the wire protocol.
+// This file is transport-agnostic — it only describes wire shapes plus typed
+// send helpers. Run-state shapes and the reducer live in src/state; this file
+// borrows only the small ContentCommand / ReviewDecision unions from there.
+// Wire messages carry NO timestamps — the controller stamps `at` when it turns
+// a message into a reducer Action, so the clock stays out of the protocol.
+
+import type { FormField } from "@applyassistui/automation/types";
+import type { ContentCommand, ReviewDecision } from "./state/types";
 
 // ── Shared value shapes ───────────────────────────────────────────────────────
 
@@ -28,15 +35,49 @@ export interface AuthPayload {
   expiresAt: number;
 }
 
-/** A command the worker can hand back to a content script (M-B2 fills these in). */
-export type Command = "idle" | "scan" | "fill" | "advance";
-
 // ── content script → service worker ───────────────────────────────────────────
 
 /** Content script announced itself on (re)load. Replaces `{type:"hello"}`. */
 export interface PageReadyMsg {
   type: "page-ready";
   frame: FrameInfo;
+}
+
+/** User asked to start a guided run on the sender's tab. */
+export interface StartRunMsg {
+  type: "start-run";
+}
+
+/** User cancelled the active run. */
+export interface CancelRunMsg {
+  type: "cancel-run";
+}
+
+/** A form frame reports the questions it scanned. frameId comes from `sender`. */
+export interface ScanResultMsg {
+  type: "scan-result";
+  runId: string;
+  questions: FormField[];
+}
+
+/** A form frame reports that its fill pass completed. */
+export interface FillResultMsg {
+  type: "fill-result";
+  runId: string;
+}
+
+/** The review gate reports the user's verdict for the current page (M-B5 UI). */
+export interface ReviewDecisionMsg {
+  type: "review-decision";
+  runId: string;
+  decision: ReviewDecision;
+}
+
+/** A content-side failure the controller should record on the run. */
+export interface RunErrorMsg {
+  type: "run-error";
+  runId: string;
+  reason: string;
 }
 
 // ── web page → service worker (externally_connectable) ─────────────────────────
@@ -52,23 +93,43 @@ export interface PingMsg {
   type: "ping";
 }
 
+// ── service worker → content script (via tabs.sendMessage) ─────────────────────
+
+/** A command directed at a specific content-script frame. */
+export interface CommandMsg {
+  type: "command";
+  runId: string;
+  command: ContentCommand;
+}
+
 // ── Unions ─────────────────────────────────────────────────────────────────────
 
-/** Messages the service worker receives. */
-export type WorkerBoundMsg = PageReadyMsg | AuthHandoffMsg | PingMsg;
+/** Messages the service worker receives (runtime + external transports). */
+export type WorkerBoundMsg =
+  | PageReadyMsg
+  | StartRunMsg
+  | CancelRunMsg
+  | ScanResultMsg
+  | FillResultMsg
+  | ReviewDecisionMsg
+  | RunErrorMsg
+  | AuthHandoffMsg
+  | PingMsg;
+
+/** Messages a content script receives from the worker. */
+export type ContentBoundMsg = CommandMsg;
 
 /** Every message shape known to the protocol. */
-export type ExtMessage = WorkerBoundMsg;
+export type ExtMessage = WorkerBoundMsg | ContentBoundMsg;
 
 // ── Request → response typing ──────────────────────────────────────────────────
 // A message type maps to the response the worker sends back for it. Keeping this
-// map here makes `sendToWorker` fully typed at the call site.
+// map here makes `sendToWorker` fully typed at the call site. Fire-and-forget
+// messages resolve to a simple ack.
 
 export interface PageReadyResponse {
   /** True if a run is active for this tab; content script may await commands. */
   runActive: boolean;
-  /** Next command for this frame, or "idle" when nothing to do yet. */
-  command: Command;
   /** Monotonic page-load count for this tab (persisted; survives worker death). */
   loadCount: number;
 }
@@ -82,13 +143,23 @@ export interface PingResponse {
   version: string;
 }
 
+export interface Ack {
+  ok: boolean;
+}
+
 export interface ResponseMap {
   "page-ready": PageReadyResponse;
+  "start-run": Ack;
+  "cancel-run": Ack;
+  "scan-result": Ack;
+  "fill-result": Ack;
+  "review-decision": Ack;
+  "run-error": Ack;
   "auth-handoff": AuthHandoffResponse;
   ping: PingResponse;
 }
 
-// ── Typed helper ────────────────────────────────────────────────────────────────
+// ── Typed helpers ────────────────────────────────────────────────────────────────
 
 /**
  * Send a message to the service worker and get a typed response back. The

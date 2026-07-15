@@ -11,12 +11,13 @@
 // in M-B3).
 
 import type { AuthPayload } from "./messages";
+import type { RunState } from "./state/types";
 
 export interface StorageSchema {
   /** Supabase session handed off from the web app; null when signed out. */
   auth: AuthPayload | null;
-  /** The in-flight run for the active tab; null when idle. Typed in M-B2. */
-  activeRun: unknown | null;
+  /** The in-flight run for the active tab; null when idle. */
+  activeRun: RunState | null;
   /** Per-tab page-load counters, keyed by tab id. Replaces the POC counter. */
   loadCounts: Record<number, number>;
 }
