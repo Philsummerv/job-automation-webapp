@@ -85,6 +85,12 @@ export function collectFormQuestions(): FormField[] {
     for (const label of labels) {
       let text = (label as HTMLElement).innerText?.trim();
       if (!text) continue;
+      // Skip our own injected UI — the extension's review gate renders real
+      // <label><input> controls, which we must NOT scrape as form questions
+      // (that produced phantom "EMC"/etc questions on re-scan). Marked with
+      // data-aaui-ignore; the Playwright scout never sets it, so this is a no-op
+      // there.
+      if (label.closest("[data-aaui-ignore]")) continue;
       if (!isVisible(label)) continue;
 
       const forId = label.getAttribute("for");
@@ -174,8 +180,9 @@ export function collectFormQuestions(): FormField[] {
     // that's expected; the widget still gets detected here.
     const widgets = document.querySelectorAll<HTMLElement>('[role="combobox"], [role="listbox"]');
     for (const w of widgets) {
-      // Skip global nav / non-form chrome and hidden (stale-page) widgets.
-      if (w.closest('nav, header, [role="navigation"]')) continue;
+      // Skip global nav / non-form chrome, our own injected UI, and hidden
+      // (stale-page) widgets.
+      if (w.closest('nav, header, [role="navigation"], [data-aaui-ignore]')) continue;
       if (!isVisible(w)) continue;
 
       const wText = idsToText(w.getAttribute("aria-labelledby"))

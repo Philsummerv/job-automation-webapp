@@ -89,6 +89,9 @@ function init() {
 
   const panel = document.createElement("div");
   panel.id = "aaui-poc-panel";
+  // Mark our whole UI so collectFormQuestions never scrapes our own review-gate
+  // controls as if they were form questions.
+  panel.setAttribute("data-aaui-ignore", "1");
   panel.style.cssText = [
     "position:fixed", "top:12px", "right:12px", "z-index:2147483647",
     "width:340px", "max-height:80vh", "overflow:auto",
