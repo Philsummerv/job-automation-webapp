@@ -467,9 +467,14 @@ function fillFieldDom(field: FormField, answer: string): { ok: boolean; detail: 
           ? document.querySelector<HTMLInputElement>(`input[name="${CSS.escape(field.inputName)}"][value="${CSS.escape(opt.value)}"]`)
           : null;
       if (!el) return { ok: false, detail: "option element not found" };
-      (el as HTMLElement).click();
-      const checked = (el as HTMLInputElement).checked;
-      return { ok: checked, detail: checked ? `selected "${opt.label}"` : `clicked "${opt.label}" but NOT checked` };
+      const cbEl = el as HTMLInputElement;
+      // Idempotency guard: only click to SELECT. Clicking an already-checked
+      // box would toggle it OFF, so re-running fill (or clicking Start twice)
+      // must not flip it. A native click also fires React's onChange, so we
+      // don't dispatch extra events (that would double-fire and revert).
+      if (!cbEl.checked) cbEl.click();
+      const checked = cbEl.checked;
+      return { ok: checked, detail: checked ? `selected "${opt.label}"` : `could not check "${opt.label}"` };
     }
 
     if (field.type === "select") {

@@ -22,6 +22,10 @@ export function collectFormQuestions(): FormField[] {
       inputId: string | null;
       inputName: string | null;
     }[] = [];
+    // Maps a radio/checkbox group's option-id signature to its question index,
+    // so multiple labels pointing at the same group (the question label plus one
+    // per option, e.g. "Yes"/"No") collapse into a single question.
+    const sigToIdx = new Map<string, number>();
     const labels = document.querySelectorAll("label");
 
     // Resolve the QUESTION text for a radio/checkbox group. Each option has its
@@ -125,6 +129,22 @@ export function collectFormQuestions(): FormField[] {
         continue;
       }
 
+      // Collapse a radio/checkbox group seen via multiple labels (the question
+      // label plus one per option). Signature = the group's sorted option ids
+      // (unique per group in the DOM, so it won't merge distinct questions).
+      // Only when every option has an id; otherwise fall back to the checks
+      // below. Keep the LONGEST text — the real question beats an option label.
+      const optSig = (type === "radio" || type === "checkbox") && options.length && options.every((o) => o.id)
+        ? type + "|" + options.map((o) => o.id).sort().join(",")
+        : "";
+      if (optSig) {
+        const existingIdx = sigToIdx.get(optSig);
+        if (existingIdx !== undefined) {
+          if (text.length > questions[existingIdx].text.length) questions[existingIdx].text = text;
+          continue;
+        }
+      }
+
       // Dedupe by inputId/inputName/text
       const dupe = questions.find((q) =>
         (q.inputId && q.inputId === inputId)
@@ -132,6 +152,8 @@ export function collectFormQuestions(): FormField[] {
         || (q.text === text)
       );
       if (dupe) continue;
+
+      if (optSig) sigToIdx.set(optSig, questions.length);
 
       questions.push({ text, type, options, inputId, inputName });
     }
