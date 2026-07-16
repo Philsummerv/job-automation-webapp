@@ -62,9 +62,18 @@ export function collectFormQuestions(): FormField[] {
       return "";
     };
 
+    // Rendered check. Indeed's SPA keeps PREVIOUS pages' form fields mounted but
+    // display:none, so a naive label sweep picks up stale questions from earlier
+    // steps. A display:none ancestor makes offsetParent null, so this skips them.
+    // (Custom checkboxes hide the raw <input>, so we test the LABEL/container,
+    // which stays laid out for a visible field.)
+    const isVisible = (el: Element | null): boolean =>
+      el instanceof HTMLElement && el.offsetParent !== null;
+
     for (const label of labels) {
       let text = (label as HTMLElement).innerText?.trim();
       if (!text) continue;
+      if (!isVisible(label)) continue;
 
       const forId = label.getAttribute("for");
       let input: Element | null = forId ? document.getElementById(forId) : null;
@@ -135,8 +144,9 @@ export function collectFormQuestions(): FormField[] {
     // that's expected; the widget still gets detected here.
     const widgets = document.querySelectorAll<HTMLElement>('[role="combobox"], [role="listbox"]');
     for (const w of widgets) {
-      // Skip global nav / non-form chrome.
+      // Skip global nav / non-form chrome and hidden (stale-page) widgets.
       if (w.closest('nav, header, [role="navigation"]')) continue;
+      if (!isVisible(w)) continue;
 
       const wText = idsToText(w.getAttribute("aria-labelledby"))
         || w.getAttribute("aria-label")?.trim()
