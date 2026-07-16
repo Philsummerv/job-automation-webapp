@@ -67,12 +67,20 @@ export function collectFormQuestions(): FormField[] {
     };
 
     // Rendered check. Indeed's SPA keeps PREVIOUS pages' form fields mounted but
-    // display:none, so a naive label sweep picks up stale questions from earlier
-    // steps. A display:none ancestor makes offsetParent null, so this skips them.
+    // hidden, so a naive label sweep picks up stale questions from earlier steps.
+    // Use checkVisibility() (Chrome 105+) which catches display:none,
+    // visibility:hidden, content-visibility AND opacity:0 — offsetParent alone
+    // misses visibility:hidden, which is how these prior steps are hidden.
     // (Custom checkboxes hide the raw <input>, so we test the LABEL/container,
     // which stays laid out for a visible field.)
-    const isVisible = (el: Element | null): boolean =>
-      el instanceof HTMLElement && el.offsetParent !== null;
+    const isVisible = (el: Element | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      const cv = (el as HTMLElement & { checkVisibility?: (o?: object) => boolean }).checkVisibility;
+      if (typeof cv === "function") {
+        return cv.call(el, { checkOpacity: true, checkVisibilityCSS: true });
+      }
+      return el.offsetParent !== null;
+    };
 
     for (const label of labels) {
       let text = (label as HTMLElement).innerText?.trim();
