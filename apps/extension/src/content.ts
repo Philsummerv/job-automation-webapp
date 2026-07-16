@@ -62,13 +62,11 @@ function init() {
       <button id="aaui-next"  style="flex:1;padding:6px;border:0;border-radius:6px;background:#d97706;color:#fff;cursor:pointer">Continue</button>
     </div>
     <div id="aaui-review"></div>
-    <div id="aaui-fields"></div>
     <div id="aaui-log" style="margin-top:8px;border-top:1px solid #334155;padding-top:6px;opacity:.85"></div>
   `;
   document.documentElement.appendChild(panel);
 
   const logEl = panel.querySelector("#aaui-log") as HTMLElement;
-  const fieldsEl = panel.querySelector("#aaui-fields") as HTMLElement;
   const reviewEl = panel.querySelector("#aaui-review") as HTMLElement;
   const log = (msg: string, ok?: boolean) => {
     const line = document.createElement("div");
@@ -91,49 +89,28 @@ function init() {
 
   // ─── Reusable executor actions (shared by manual buttons + worker commands) ──
 
-  /** Scan the page and render rows. Returns the questions found. */
+  /** Scan the page. Returns the questions found. */
   function scanPage(): FormField[] {
     questions = collectFormQuestions();
-    fieldsEl.innerHTML = "";
     log(`scanned: ${questions.length} question(s)`);
-
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      const auto = getAutoFillAnswer(q.text);
-      const row = document.createElement("div");
-      row.style.cssText = "margin:6px 0;padding:6px;background:#1e293b;border-radius:6px";
-      const answerHint = auto === "__SKIP__" ? "(auto-skip)" : auto || "";
-      row.innerHTML = `
-        <div style="font-weight:600">${escapeHtml(q.text.slice(0, 80))}</div>
-        <div style="opacity:.6">${q.type}${q.options.length ? ` · ${q.options.length} options` : ""}</div>
-        <input data-aaui-idx="${i}" value="${escapeHtml(answerHint)}"
-               placeholder="answer (# for option, blank = skip)"
-               style="width:100%;margin-top:4px;padding:4px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0"/>
-      `;
-      fieldsEl.appendChild(row);
-
-      const el = q.inputId
-        ? document.getElementById(q.inputId)
-        : q.inputName
-          ? document.querySelector(`[name="${CSS.escape(q.inputName)}"]`)
-          : null;
-      if (el) (el as HTMLElement).style.outline = "2px dashed #2563eb";
-    }
     return questions;
   }
 
-  /** Fill every scanned field from its (auto-filled or edited) answer. */
+  /**
+   * Best-effort fill: for each question, compute an answer from the (stand-in)
+   * template and apply it to the real form. The review gate then shows the
+   * result and lets the user correct anything. Answers are derived here, not
+   * from any panel UI — the review gate is the only question UI now.
+   */
   async function fillPage(): Promise<void> {
-    const inputs = fieldsEl.querySelectorAll<HTMLInputElement>("input[data-aaui-idx]");
-    for (const inp of inputs) {
-      const q = questions[Number(inp.dataset.aauiIdx)];
-      const answer = inp.value.trim();
-      if (!answer || answer === "__SKIP__" || answer === "(auto-skip)") continue;
-      const result = fillFieldDom(q, answer);
+    for (const q of questions) {
+      const auto = getAutoFillAnswer(q.text);
+      if (!auto || auto === "__SKIP__") continue;
+      const result = fillFieldDom(q, auto);
       log(`${q.text.slice(0, 40)} → ${result.detail}`, result.ok);
-      await sleep(250);
+      await sleep(200);
     }
-    log("fill pass done — check whether values STUCK (React can revert them)");
+    log("fill pass done");
   }
 
   /** Click the visible Continue/Submit button. Returns whether one was found. */
@@ -154,42 +131,42 @@ function init() {
   // control writes straight back to the real Indeed form. The user approves the
   // whole page at once, pauses to edit the page by hand, or stops the run.
 
-  function renderReviewGate(runId: string): void {
+  // The gate has two modes over the SAME editable cards:
+  //   review — the assist just filled; approve, pause, or stop.
+  //   paused — the assist is hands-off; edit here or on the page, then resume.
+  // The cards stay live (edits apply to the form) in both modes.
+  function renderReviewGate(runId: string, mode: "review" | "paused" = "review"): void {
     reviewEl.innerHTML = "";
-    reviewEl.appendChild(hHeader("Does this look right?", "Edit anything below — changes apply to the form."));
+    reviewEl.appendChild(
+      mode === "paused"
+        ? hHeader("Paused — your turn", "Assist is hands-off. Edit below or on the page, then resume.")
+        : hHeader("Does this look right?", "Edit anything below — changes apply to the form."),
+    );
 
     for (const q of questions) reviewEl.appendChild(renderQuestionCard(q));
 
     const footer = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:8px");
-    footer.appendChild(mkBtn("Looks right → Continue", "#059669", () => {
-      reviewEl.innerHTML = "";
-      sendToWorker({ type: "review-decision", runId, decision: "approved" });
-    }));
+    if (mode === "paused") {
+      footer.appendChild(mkBtn("Resume assist", "#7c3aed", () => sendToWorker({ type: "resume-run", runId })));
+    } else {
+      footer.appendChild(mkBtn("Looks right → Continue", "#059669", () => {
+        reviewEl.innerHTML = "";
+        sendToWorker({ type: "review-decision", runId, decision: "approved" });
+      }));
+    }
     const row = mkEl("div", "display:flex;gap:6px");
-    row.appendChild(mkBtn("Pause — I'll do it myself", "#475569", () => {
-      sendToWorker({ type: "pause-run", runId });
-      renderPausedView(runId);
-    }));
+    if (mode !== "paused") {
+      row.appendChild(mkBtn("Pause — I'll do it myself", "#475569", () => {
+        sendToWorker({ type: "pause-run", runId });
+        renderReviewGate(runId, "paused");
+      }));
+    }
     row.appendChild(mkBtn("Stop", "#b91c1c", () => {
       reviewEl.innerHTML = "";
       sendToWorker({ type: "review-decision", runId, decision: "rejected" });
     }));
     footer.appendChild(row);
     reviewEl.appendChild(footer);
-  }
-
-  function renderPausedView(runId: string): void {
-    reviewEl.innerHTML = "";
-    const box = mkEl("div", "margin:4px 0 8px;padding:8px;background:#1e293b;border:1px solid #475569;border-radius:6px");
-    box.appendChild(mkEl("div", "margin-bottom:6px", "Paused — edit the form yourself, then resume."));
-    const row = mkEl("div", "display:flex;gap:6px");
-    row.appendChild(mkBtn("Resume assist", "#7c3aed", () => sendToWorker({ type: "resume-run", runId })));
-    row.appendChild(mkBtn("Stop", "#b91c1c", () => {
-      reviewEl.innerHTML = "";
-      sendToWorker({ type: "review-decision", runId, decision: "rejected" });
-    }));
-    box.appendChild(row);
-    reviewEl.appendChild(box);
   }
 
   /** One question card, rendering the control that matches the field type. */
@@ -519,10 +496,4 @@ function findAdvanceDom(): HTMLElement | null {
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
-}
-
-function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
-  );
 }
