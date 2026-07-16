@@ -21,8 +21,57 @@ import { collectFormQuestions } from "@applyassistui/automation/forms";
 import { makeAutoFillAnswer } from "@applyassistui/automation/autofill";
 import { DEFAULT_CONFIG } from "@applyassistui/automation/config";
 import type { FormField } from "@applyassistui/automation/types";
-import { sendToWorker } from "./messages";
-import type { ContentBoundMsg } from "./messages";
+import { sendToWorker as rawSendToWorker } from "./messages";
+import type { ContentBoundMsg, ResponseMap, WorkerBoundMsg } from "./messages";
+
+// ─── Extension-context safety ──────────────────────────────────────────────────
+// After the extension is reloaded/updated, THIS content script keeps running in
+// the already-open tab but its chrome.runtime connection is dead. Any message
+// then throws "Extension context invalidated". Guard every worker message: if
+// the context is gone, no-op and show a one-time "reload this page" notice
+// instead of letting an uncaught error escape.
+
+let extDead = false;
+
+function extAlive(): boolean {
+  try {
+    return !!chrome.runtime?.id;
+  } catch {
+    return false;
+  }
+}
+
+function markExtDead(): void {
+  if (extDead) return;
+  extDead = true;
+  try {
+    const p = document.getElementById("aaui-poc-panel");
+    if (p) {
+      const n = document.createElement("div");
+      n.textContent = "⚠ Extension was updated — reload this page to reconnect.";
+      n.style.cssText = "margin:6px 0;padding:6px;background:#7f1d1d;border-radius:6px;color:#fff";
+      p.prepend(n);
+    }
+  } catch {
+    /* nothing we can do */
+  }
+}
+
+/** Guarded worker send: resolves to null (never throws) if the context is dead. */
+function sendToWorker<M extends WorkerBoundMsg>(msg: M): Promise<ResponseMap[M["type"]] | null> {
+  if (extDead || !extAlive()) {
+    markExtDead();
+    return Promise.resolve(null);
+  }
+  return rawSendToWorker(msg).catch((e: unknown) => {
+    const m = e instanceof Error ? e.message : String(e);
+    if (m.includes("context invalidated") || m.includes("Receiving end does not exist")) {
+      markExtDead();
+    }
+    // Never let a send rejection escape as an uncaught error in the page.
+    return null;
+  });
+}
 
 // Only mount where it makes sense: the top frame, or any child frame that
 // actually contains a form (Indeed sometimes iframes the apply flow).
@@ -83,8 +132,8 @@ function init() {
     type: "page-ready",
     frame: { url: location.href, isTopFrame: isTop, hasForm },
   }).then((res) => {
-    if (res.loadCount) log(`page loads this tab: ${res.loadCount}`);
-    if (res.runActive) log("a run is active on this tab");
+    if (res?.loadCount) log(`page loads this tab: ${res.loadCount}`);
+    if (res?.runActive) log("a run is active on this tab");
   });
 
   // ─── Reusable executor actions (shared by manual buttons + worker commands) ──
@@ -271,7 +320,7 @@ function init() {
   // ─── Manual buttons (debug) ──────────────────────────────────────────────────
 
   panel.querySelector("#aaui-start")!.addEventListener("click", () => {
-    sendToWorker({ type: "start-run" }).then((res) => log(`start-run → ${res.ok ? "ok" : "failed"}`, res.ok));
+    sendToWorker({ type: "start-run" }).then((res) => log(`start-run → ${res?.ok ? "ok" : "failed"}`, res?.ok));
   });
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
