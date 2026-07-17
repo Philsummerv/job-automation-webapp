@@ -20,9 +20,12 @@
 import { collectFormQuestions } from "@applyassistui/automation/forms";
 import { makeAutoFillAnswer } from "@applyassistui/automation/autofill";
 import { DEFAULT_CONFIG } from "@applyassistui/automation/config";
+import type { ScoutConfig } from "@applyassistui/automation/config";
 import type { FormField } from "@applyassistui/automation/types";
 import { sendToWorker as rawSendToWorker } from "./messages";
 import type { ContentBoundMsg, ResponseMap, WorkerBoundMsg } from "./messages";
+import { getItem, setItem } from "./storage";
+import type { AnswerTemplate, CustomRule } from "./storage";
 
 // ─── Extension-context safety ──────────────────────────────────────────────────
 // After the extension is reloaded/updated, THIS content script keeps running in
@@ -80,10 +83,31 @@ const hasForm = !!document.querySelector("form, fieldset, [class*='application']
 if (isTop || hasForm) init();
 
 function init() {
-  const getAutoFillAnswer = makeAutoFillAnswer(DEFAULT_CONFIG);
+  let template: AnswerTemplate | null = null;
+  let getAutoFillAnswer = makeAutoFillAnswer(DEFAULT_CONFIG);
   let questions: FormField[] = [];
   // The run this frame is currently serving; learned from the first command.
   let currentRunId: string | null = null;
+
+  // Load the saved local template (Option A) and rebuild the ruleset resolver.
+  async function loadTemplate(): Promise<void> {
+    template = await getItem("template");
+    getAutoFillAnswer = makeAutoFillAnswer(mergedConfig(template));
+  }
+  loadTemplate();
+
+  // Resolve an answer for a question: the user's CUSTOM RULES win (first
+  // substring match), then the built-in ruleset over the merged config.
+  function getAnswer(questionText: string): string | null {
+    if (template?.rules?.length) {
+      const q = questionText.toLowerCase();
+      for (const r of template.rules) {
+        const m = r.match.trim().toLowerCase();
+        if (m && q.includes(m)) return r.answer;
+      }
+    }
+    return getAutoFillAnswer(questionText);
+  }
 
   // ─── Panel ────────────────────────────────────────────────────────────────
 
@@ -102,7 +126,10 @@ function init() {
   panel.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
       <strong style="font-size:13px">ApplyAssistUI</strong>
-      <span style="opacity:.6">${isTop ? "top frame" : "iframe"}</span>
+      <span style="display:flex;gap:8px;align-items:center">
+        <button id="aaui-template" title="Edit answer template" style="border:0;background:transparent;color:#e2e8f0;cursor:pointer;font-size:14px;padding:0">⚙ Template</button>
+        <span style="opacity:.6">${isTop ? "top frame" : "iframe"}</span>
+      </span>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button id="aaui-start" style="flex:1;padding:6px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Start run</button>
@@ -156,7 +183,7 @@ function init() {
    */
   async function fillPage(): Promise<void> {
     for (const q of questions) {
-      const auto = getAutoFillAnswer(q.text);
+      const auto = getAnswer(q.text);
       if (!auto || auto === "__SKIP__") continue;
       const result = await fillFieldDom(q, auto);
       log(`${q.text.slice(0, 40)} → ${result.detail}`, result.ok);
@@ -320,7 +347,88 @@ function init() {
     return input;
   }
 
+  // ─── Template editor ──────────────────────────────────────────────────────────
+  // Local answer template (Option A): standard fields + custom question rules.
+  // Saved to chrome.storage.local; drives the fill. Later synced from the web app.
+
+  function renderTemplateEditor(): void {
+    reviewEl.innerHTML = "";
+    reviewEl.appendChild(hHeader("Answer template", "Your saved answers drive the autofill. Blank = sensible default."));
+
+    const cfg = template?.config ?? {};
+    const fieldInputs: Record<string, HTMLInputElement | HTMLSelectElement> = {};
+    for (const f of TEMPLATE_FIELDS) {
+      const card = mkEl("div", "margin:5px 0");
+      card.appendChild(mkEl("div", "font-size:11px;opacity:.8;margin-bottom:2px", f.label));
+      let inp: HTMLInputElement | HTMLSelectElement;
+      if (f.type === "yesno") {
+        const sel = document.createElement("select");
+        sel.style.cssText = INPUT_CSS;
+        for (const o of ["", "Yes", "No"]) {
+          const opt = document.createElement("option");
+          opt.value = o; opt.textContent = o || "(default)";
+          sel.appendChild(opt);
+        }
+        sel.value = cfg[f.key] ?? "";
+        inp = sel;
+      } else {
+        const t = document.createElement("input");
+        t.style.cssText = INPUT_CSS;
+        t.value = cfg[f.key] ?? "";
+        if (f.placeholder) t.placeholder = f.placeholder;
+        inp = t;
+      }
+      fieldInputs[f.key] = inp;
+      card.appendChild(inp);
+      reviewEl.appendChild(card);
+    }
+
+    reviewEl.appendChild(mkEl("div", "font-weight:700;margin:12px 0 2px", "Custom question rules"));
+    reviewEl.appendChild(mkEl("div", "font-size:11px;opacity:.6;margin-bottom:4px", "If a question contains … answer …  (these win over the built-in rules)"));
+    const rulesWrap = mkEl("div", "");
+    reviewEl.appendChild(rulesWrap);
+    const addRuleRow = (rule?: CustomRule) => {
+      const row = mkEl("div", "display:flex;gap:4px;margin:3px 0");
+      const m = document.createElement("input");
+      m.placeholder = "contains…"; m.style.cssText = INPUT_CSS + ";flex:1"; m.value = rule?.match ?? "";
+      const a = document.createElement("input");
+      a.placeholder = "answer"; a.style.cssText = INPUT_CSS + ";flex:1"; a.value = rule?.answer ?? "";
+      const del = mkBtn("×", "#b91c1c", () => row.remove());
+      del.style.flex = "0 0 26px";
+      row.append(m, a, del);
+      rulesWrap.appendChild(row);
+    };
+    (template?.rules ?? []).forEach((r) => addRuleRow(r));
+    const add = mkBtn("+ Add rule", "#334155", () => addRuleRow());
+    add.style.marginTop = "4px";
+    reviewEl.appendChild(add);
+
+    const footer = mkEl("div", "display:flex;gap:6px;margin-top:12px");
+    footer.appendChild(mkBtn("Save template", "#059669", async () => {
+      const config: Record<string, string> = {};
+      for (const f of TEMPLATE_FIELDS) {
+        const v = fieldInputs[f.key].value.trim();
+        if (v) config[f.key] = v;
+      }
+      const rules: CustomRule[] = [];
+      for (const row of Array.from(rulesWrap.children)) {
+        const ins = row.querySelectorAll("input");
+        const match = ins[0]?.value.trim() ?? "";
+        const answer = ins[1]?.value.trim() ?? "";
+        if (match && answer) rules.push({ match, answer });
+      }
+      await setItem("template", { config, rules });
+      await loadTemplate();
+      reviewEl.innerHTML = "";
+      log(`template saved (${Object.keys(config).length} fields, ${rules.length} rules)`, true);
+    }));
+    footer.appendChild(mkBtn("Cancel", "#475569", () => { reviewEl.innerHTML = ""; }));
+    reviewEl.appendChild(footer);
+  }
+
   // ─── Manual buttons (debug) ──────────────────────────────────────────────────
+
+  panel.querySelector("#aaui-template")!.addEventListener("click", () => renderTemplateEditor());
 
   panel.querySelector("#aaui-start")!.addEventListener("click", () => {
     sendToWorker({ type: "start-run" }).then((res) => log(`start-run → ${res?.ok ? "ok" : "failed"}`, res?.ok));
@@ -392,6 +500,41 @@ function setNativeValue(el: HTMLElement, value: string) {
   setter?.call(el, value);
   el.dispatchEvent(new Event("input", { bubbles: true }));
   el.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+// ─── Template helpers ──────────────────────────────────────────────────────────
+
+const INPUT_CSS = "width:100%;padding:4px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;font:inherit;box-sizing:border-box";
+
+/** Standard template fields exposed in the editor (curated subset of ScoutConfig). */
+const TEMPLATE_FIELDS: { key: string; label: string; type?: "yesno"; placeholder?: string }[] = [
+  { key: "firstName", label: "First name" },
+  { key: "lastName", label: "Last name" },
+  { key: "phone", label: "Phone" },
+  { key: "zipCode", label: "ZIP code" },
+  { key: "city", label: "City" },
+  { key: "educationLevel", label: "Education", placeholder: "keywords to match the option, e.g. Bachelor" },
+  { key: "salary", label: "Desired salary" },
+  { key: "yearsExperience", label: "Years of experience" },
+  { key: "willingToRelocate", label: "Willing to relocate", type: "yesno" },
+  { key: "authorizedToWork", label: "Authorized to work in the US", type: "yesno" },
+  { key: "needsSponsorship", label: "Need visa sponsorship", type: "yesno" },
+  { key: "usCitizen", label: "US citizen", type: "yesno" },
+  { key: "is18OrOlder", label: "18 or older", type: "yesno" },
+  { key: "hasDiploma", label: "Have HS diploma / GED", type: "yesno" },
+  { key: "drivingLicense", label: "Have driver's license", type: "yesno" },
+  { key: "veteranStatus", label: "Veteran status answer" },
+  { key: "disabilityStatus", label: "Disability status answer" },
+  { key: "linkedin", label: "LinkedIn URL" },
+];
+
+/** Merge the user's template overrides onto DEFAULT_CONFIG (blanks ignored). */
+function mergedConfig(template: AnswerTemplate | null): ScoutConfig {
+  const cfg = { ...DEFAULT_CONFIG } as Record<string, unknown>;
+  for (const [k, v] of Object.entries(template?.config ?? {})) {
+    if (v != null && String(v).trim() !== "") cfg[k] = v;
+  }
+  return cfg as unknown as ScoutConfig;
 }
 
 // ─── Review-gate helpers ──────────────────────────────────────────────────────
@@ -545,6 +688,8 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
       } else {
         const idx = parseInt(answer, 10);
         if (!isNaN(idx) && idx >= 1 && idx <= field.options.length) opt = field.options[idx - 1];
+        // Plain answer (e.g. a custom-rule "No") — match against option labels.
+        else opt = field.options.find((o) => o.label.toLowerCase().includes(answer.toLowerCase()));
       }
       if (!opt) return { ok: false, detail: "no matching option" };
       const el = opt.id

@@ -13,6 +13,25 @@
 import type { AuthPayload } from "./messages";
 import type { RunState } from "./state/types";
 
+/** A user-defined "if the question contains X, answer Y" rule. */
+export interface CustomRule {
+  /** Case-insensitive substring matched against the question text. */
+  match: string;
+  /** The answer to apply (plain text, or a Yes/No/option label). */
+  answer: string;
+}
+
+/**
+ * The user's local answer template (Option A — extension-local, pre-web-app).
+ * `config` overrides fields on DEFAULT_CONFIG; `rules` are custom question
+ * matches that take priority over the built-in ruleset. Same shape the web-app
+ * template will later sync into.
+ */
+export interface AnswerTemplate {
+  config: Record<string, string>;
+  rules: CustomRule[];
+}
+
 export interface StorageSchema {
   /** Supabase session handed off from the web app; null when signed out. */
   auth: AuthPayload | null;
@@ -20,12 +39,15 @@ export interface StorageSchema {
   activeRun: RunState | null;
   /** Per-tab page-load counters, keyed by tab id. Replaces the POC counter. */
   loadCounts: Record<number, number>;
+  /** The user's local answer template; null until they save one. */
+  template: AnswerTemplate | null;
 }
 
 const DEFAULTS: StorageSchema = {
   auth: null,
   activeRun: null,
   loadCounts: {},
+  template: null,
 };
 
 /** Read a key, falling back to its schema default when unset. */
