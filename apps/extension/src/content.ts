@@ -361,15 +361,19 @@ function init() {
       const card = mkEl("div", "margin:5px 0");
       card.appendChild(mkEl("div", "font-size:11px;opacity:.8;margin-bottom:2px", f.label));
       let inp: HTMLInputElement | HTMLSelectElement;
-      if (f.type === "yesno") {
+      if (f.type === "yesno" || f.type === "select") {
         const sel = document.createElement("select");
         sel.style.cssText = INPUT_CSS;
-        for (const o of ["", "Yes", "No"]) {
+        const choices = f.type === "yesno"
+          ? [{ label: "(default)", value: "" }, { label: "Yes", value: "Yes" }, { label: "No", value: "No" }]
+          : [{ label: "(default)", value: "" }, ...(f.options ?? [])];
+        for (const c of choices) {
           const opt = document.createElement("option");
-          opt.value = o; opt.textContent = o || "(default)";
+          opt.value = c.value; opt.textContent = c.label;
           sel.appendChild(opt);
         }
-        sel.value = cfg[f.key] ?? "";
+        // Pre-select the saved value; unknown/legacy values fall back to default.
+        sel.value = choices.some((c) => c.value === cfg[f.key]) ? (cfg[f.key] ?? "") : "";
         inp = sel;
       } else {
         const t = document.createElement("input");
@@ -507,7 +511,17 @@ function setNativeValue(el: HTMLElement, value: string) {
 const INPUT_CSS = "width:100%;padding:4px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;font:inherit;box-sizing:border-box";
 
 /** Standard template fields exposed in the editor (curated subset of ScoutConfig). */
-const TEMPLATE_FIELDS: { key: string; label: string; type?: "yesno"; placeholder?: string }[] = [
+type TemplateField = {
+  key: string;
+  label: string;
+  type?: "yesno" | "select";
+  placeholder?: string;
+  /** For type "select": the choices. `value` is the keyword string used to
+   * match the real form's option label (via the __RADIO: mechanism). */
+  options?: { label: string; value: string }[];
+};
+
+const TEMPLATE_FIELDS: TemplateField[] = [
   { key: "firstName", label: "First name" },
   { key: "lastName", label: "Last name" },
   { key: "phone", label: "Phone" },
@@ -523,8 +537,26 @@ const TEMPLATE_FIELDS: { key: string; label: string; type?: "yesno"; placeholder
   { key: "is18OrOlder", label: "18 or older", type: "yesno" },
   { key: "hasDiploma", label: "Have HS diploma / GED", type: "yesno" },
   { key: "drivingLicense", label: "Have driver's license", type: "yesno" },
-  { key: "veteranStatus", label: "Veteran status answer" },
-  { key: "disabilityStatus", label: "Disability status answer" },
+  {
+    key: "veteranStatus",
+    label: "Veteran status",
+    type: "select",
+    options: [
+      { label: "Not a protected veteran", value: "not a protected veteran,i am not a protected veteran,i am not,no" },
+      { label: "I am a protected veteran", value: "i identify as one or more,i am a protected veteran,protected veteran" },
+      { label: "Prefer not to answer", value: "decline,prefer not,do not wish,don't wish to answer,not to answer,choose not" },
+    ],
+  },
+  {
+    key: "disabilityStatus",
+    label: "Disability status",
+    type: "select",
+    options: [
+      { label: "No, I don't have a disability", value: "no i don't have a disability,do not have a disability,no i don't,no i do not" },
+      { label: "Yes, I have a disability", value: "yes i have a disability,i have a disability,or previously had,yes" },
+      { label: "Prefer not to answer", value: "decline,prefer not,do not wish,don't wish to answer,not to self-identify,not to answer,choose not" },
+    ],
+  },
   { key: "linkedin", label: "LinkedIn URL" },
 ];
 
