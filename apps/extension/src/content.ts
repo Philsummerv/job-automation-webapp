@@ -158,7 +158,7 @@ function init() {
     for (const q of questions) {
       const auto = getAutoFillAnswer(q.text);
       if (!auto || auto === "__SKIP__") continue;
-      const result = fillFieldDom(q, auto);
+      const result = await fillFieldDom(q, auto);
       log(`${q.text.slice(0, 40)} → ${result.detail}`, result.ok);
       await sleep(200);
     }
@@ -448,8 +448,91 @@ function realComboboxEl(q: FormField): HTMLElement | null {
   return q.inputId ? document.getElementById(q.inputId) : null;
 }
 
-function fillFieldDom(field: FormField, answer: string): { ok: boolean; detail: string } {
+/** Poll until `fn` returns something truthy, or give up after `timeoutMs`. */
+async function waitFor<T>(fn: () => T | null | undefined, timeoutMs: number, stepMs = 60): Promise<T | null> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const v = fn();
+    if (v) return v;
+    if (Date.now() >= deadline) return null;
+    await sleep(stepMs);
+  }
+}
+
+/**
+ * Fill an Indeed "mosaic" combobox — a <div role="combobox"> whose options live
+ * in an on-demand popup dialog (a search box + one checkbox per option). Open
+ * it, match an option by keyword against its label, click it, close. Best-effort:
+ * the review gate's "Choose on page" button stays as a manual fallback if this
+ * can't resolve a match.
+ */
+async function fillComboboxDom(field: FormField, answer: string): Promise<{ ok: boolean; detail: string }> {
+  const combo = field.inputId ? document.getElementById(field.inputId) : null;
+  if (!combo) return { ok: false, detail: "combobox not found" };
+
+  const keywords = (answer.startsWith("__RADIO:") ? answer.slice(8) : answer)
+    .split(",").map((k) => k.trim().toLowerCase()).filter(Boolean);
+  if (!keywords.length) return { ok: false, detail: "no answer to match" };
+
+  const popupId = combo.getAttribute("aria-controls");
+  if (combo.getAttribute("aria-expanded") !== "true") combo.click();
+
+  // Wait for the popup (with option inputs) to render.
+  const popup = await waitFor(() => {
+    const p = popupId ? document.getElementById(popupId) : null;
+    const scope = p || document.querySelector('[role="dialog"], [role="listbox"]');
+    return scope && scope.querySelector('input[type="checkbox"], input[type="radio"], [role="option"]')
+      ? (scope as HTMLElement)
+      : null;
+  }, 1500);
+  if (!popup) return { ok: false, detail: "options popup did not open" };
+
+  // Match an option by keyword against its label text (first keyword wins).
+  const optionEls = Array.from(popup.querySelectorAll<HTMLElement>('label, [role="option"]'));
+  let picked: HTMLElement | null = null;
+  let pickedLabel = "";
+  for (const kw of keywords) {
+    picked = optionEls.find((el) => (el.innerText || "").trim().toLowerCase().includes(kw)) ?? null;
+    if (picked) { pickedLabel = (picked.innerText || "").trim(); break; }
+  }
+  if (!picked) {
+    closeCombo(combo);
+    return { ok: false, detail: `no dropdown option matched "${keywords[0]}"` };
+  }
+
+  const control = picked.querySelector<HTMLInputElement>('input[type="checkbox"], input[type="radio"]');
+  if (control) {
+    if (!control.checked) control.click();
+  } else {
+    picked.click();
+  }
+
+  closeCombo(combo);
+  await sleep(150);
+
+  const display = (combo.innerText || "").trim();
+  const stuck = (control ? control.checked : true)
+    || /selected/i.test(display)
+    || (display.length > 0 && !/select an option/i.test(display));
+  return {
+    ok: stuck,
+    detail: stuck ? `selected "${pickedLabel.slice(0, 40)}"` : `clicked "${pickedLabel.slice(0, 40)}" — may not have stuck`,
+  };
+}
+
+/** Close an open ARIA dialog/listbox combobox (Escape is the reliable path). */
+function closeCombo(combo: HTMLElement): void {
+  const esc = () => new KeyboardEvent("keydown", { key: "Escape", code: "Escape", bubbles: true });
+  (document.activeElement || combo).dispatchEvent(esc());
+  combo.dispatchEvent(esc());
+}
+
+async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boolean; detail: string }> {
   try {
+    if (field.type === "combobox") {
+      return await fillComboboxDom(field, answer);
+    }
+
     if (field.type === "radio" || field.type === "checkbox") {
       let opt = null;
       if (answer.startsWith("__RADIO:")) {
