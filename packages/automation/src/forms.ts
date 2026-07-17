@@ -82,6 +82,20 @@ export function collectFormQuestions(): FormField[] {
       return el.offsetParent !== null;
     };
 
+    // Some sites render custom radios/checkboxes with no id AND no name, so an
+    // option can't be relocated later to fill it or read its checked state
+    // (the review gate then shows "needs you" for already-selected options and
+    // fill logs "option element not found"). Give any such option a stable
+    // synthetic id. Idempotent (only assigns when missing) and collision-checked.
+    let synthCounter = 0;
+    const ensureId = (el: HTMLInputElement): string => {
+      if (el.id) return el.id;
+      let id: string;
+      do { id = "aaui-opt-" + synthCounter++; } while (document.getElementById(id));
+      el.id = id;
+      return id;
+    };
+
     for (const label of labels) {
       let text = (label as HTMLElement).innerText?.trim();
       if (!text) continue;
@@ -115,7 +129,7 @@ export function collectFormQuestions(): FormField[] {
           const radioLabel = (r.labels?.[0] as HTMLElement | undefined)?.innerText?.trim()
             || (r.closest("label") as HTMLElement | null)?.innerText?.trim()
             || r.value;
-          return { label: radioLabel, value: r.value, id: r.id };
+          return { label: radioLabel, value: r.value, id: ensureId(r) };
         });
       } else if (checkboxes.length > 0) {
         type = "checkbox";
@@ -126,7 +140,7 @@ export function collectFormQuestions(): FormField[] {
           const cbLabel = (c.labels?.[0] as HTMLElement | undefined)?.innerText?.trim()
             || (c.closest("label") as HTMLElement | null)?.innerText?.trim()
             || c.value;
-          return { label: cbLabel, value: c.value, id: c.id };
+          return { label: cbLabel, value: c.value, id: ensureId(c) };
         });
       } else if (input) {
         if (input.tagName.toLowerCase() === "select") {
