@@ -537,26 +537,8 @@ const TEMPLATE_FIELDS: TemplateField[] = [
   { key: "is18OrOlder", label: "18 or older", type: "yesno" },
   { key: "hasDiploma", label: "Have HS diploma / GED", type: "yesno" },
   { key: "drivingLicense", label: "Have driver's license", type: "yesno" },
-  {
-    key: "veteranStatus",
-    label: "Veteran status",
-    type: "select",
-    options: [
-      { label: "Not a protected veteran", value: "not a protected veteran,i am not a protected veteran,i am not,no" },
-      { label: "I am a protected veteran", value: "i identify as one or more,i am a protected veteran,protected veteran" },
-      { label: "Prefer not to answer", value: "decline,prefer not,do not wish,don't wish to answer,not to answer,choose not" },
-    ],
-  },
-  {
-    key: "disabilityStatus",
-    label: "Disability status",
-    type: "select",
-    options: [
-      { label: "No, I don't have a disability", value: "no i don't have a disability,do not have a disability,no i don't,no i do not" },
-      { label: "Yes, I have a disability", value: "yes i have a disability,i have a disability,or previously had,yes" },
-      { label: "Prefer not to answer", value: "decline,prefer not,do not wish,don't wish to answer,not to self-identify,not to answer,choose not" },
-    ],
-  },
+  { key: "veteranStatus", label: "Veteran status", placeholder: "e.g. none / not a veteran / prefer not to answer" },
+  { key: "disabilityStatus", label: "Disability status", placeholder: "e.g. none / no / prefer not to answer" },
   { key: "linkedin", label: "LinkedIn URL" },
 ];
 
@@ -623,6 +605,65 @@ function realComboboxEl(q: FormField): HTMLElement | null {
   return q.inputId ? document.getElementById(q.inputId) : null;
 }
 
+// ─── Option matching ────────────────────────────────────────────────────────
+// Score how well an option label answers a given answer word. Combines direct
+// text overlap with light INTENT awareness so plain answers like "none",
+// "prefer not to answer", or "yes" pick the right option even when the option's
+// wording doesn't literally contain the answer (common on veteran/disability
+// self-ID and Yes/No screeners). Used by every option-type field.
+
+function scoreOption(label: string, answer: string): number {
+  const o = label.toLowerCase().trim();
+  const a = answer.toLowerCase().trim();
+  if (!o || !a) return 0;
+  if (o === a) return 100;
+  if (o.includes(a) || a.includes(o)) return 80;
+
+  const oTokens = new Set(o.split(/[^a-z0-9]+/).filter(Boolean));
+  let overlap = 0;
+  for (const t of a.split(/[^a-z0-9]+/)) if (t.length > 2 && oTokens.has(t)) overlap++;
+  let score = overlap * 15;
+
+  // Intent buckets (decline > negative > affirmative). Self-ID decline options
+  // are worded many ways ("prefer not to answer", "I don't wish to answer",
+  // "I do not want to answer", "choose not to self-identify"), so match on the
+  // stable "wish/want to answer" / "prefer not" / "decline" / "choose not" cues.
+  const declineAns = /\b(decline|prefer not|no answer|choose not|skip|n\/?a|not to answer|wish to answer|want to answer)\b/.test(a);
+  const declineOpt = /\b(decline|prefer not|choose not|not to answer|no response|wish to answer|want to answer|not to self.?identify)\b/.test(o);
+  const negAns = /\b(none|no|not|nope|never)\b/.test(a);
+  const negOpt = /\b(no|not|am not|without|none|do not)\b/.test(o);
+  const posAns = /\b(yes|i am|i have|identify|affirm|yeah|yep)\b/.test(a);
+  const posOpt = /\b(yes|i am|i have|identify)\b/.test(o);
+
+  if (declineAns && declineOpt) score += 60;
+  else if (negAns && negOpt && !declineOpt) score += 40;
+  else if (posAns && posOpt && !declineOpt) score += 40;
+  return score;
+}
+
+/**
+ * Resolve an answer (a numeric index, a __RADIO: keyword list, or plain text)
+ * to an option index, using scoreOption. Returns -1 if nothing scores.
+ */
+function resolveOptionIndex(options: { label: string }[], answer: string): number {
+  const trimmed = answer.trim();
+  if (!answer.startsWith("__RADIO:") && /^\d+$/.test(trimmed)) {
+    const i = parseInt(trimmed, 10);
+    if (i >= 1 && i <= options.length) return i - 1;
+  }
+  const raw = answer.startsWith("__RADIO:") ? answer.slice(8) : answer;
+  const keywords = raw.split(",").map((k) => k.trim()).filter(Boolean);
+  let bestIdx = -1;
+  let bestScore = 0;
+  for (const kw of keywords) {
+    for (let i = 0; i < options.length; i++) {
+      const s = scoreOption(options[i].label, kw);
+      if (s > bestScore) { bestScore = s; bestIdx = i; }
+    }
+  }
+  return bestScore > 0 ? bestIdx : -1;
+}
+
 /** Poll until `fn` returns something truthy, or give up after `timeoutMs`. */
 async function waitFor<T>(fn: () => T | null | undefined, timeoutMs: number, stepMs = 60): Promise<T | null> {
   const deadline = Date.now() + timeoutMs;
@@ -662,15 +703,19 @@ async function fillComboboxDom(field: FormField, answer: string): Promise<{ ok: 
   }, 1500);
   if (!popup) return { ok: false, detail: "options popup did not open" };
 
-  // Match an option by keyword against its label text (first keyword wins).
+  // Best-match an option against the live popup labels using the shared scorer.
   const optionEls = Array.from(popup.querySelectorAll<HTMLElement>('label, [role="option"]'));
   let picked: HTMLElement | null = null;
   let pickedLabel = "";
-  for (const kw of keywords) {
-    picked = optionEls.find((el) => (el.innerText || "").trim().toLowerCase().includes(kw)) ?? null;
-    if (picked) { pickedLabel = (picked.innerText || "").trim(); break; }
+  let bestScore = 0;
+  for (const el of optionEls) {
+    const txt = (el.innerText || "").trim();
+    if (!txt) continue;
+    let s = 0;
+    for (const kw of keywords) s = Math.max(s, scoreOption(txt, kw));
+    if (s > bestScore) { bestScore = s; picked = el; pickedLabel = txt; }
   }
-  if (!picked) {
+  if (!picked || bestScore === 0) {
     closeCombo(combo);
     return { ok: false, detail: `no dropdown option matched "${keywords[0]}"` };
   }
@@ -709,21 +754,9 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
     }
 
     if (field.type === "radio" || field.type === "checkbox") {
-      let opt = null;
-      if (answer.startsWith("__RADIO:")) {
-        const keywords = answer.slice(8).split(",").map((k) => k.trim().toLowerCase());
-        for (const kw of keywords) {
-          opt = field.options.find((o) => o.label.toLowerCase().includes(kw));
-          if (opt) break;
-        }
-        if (!opt) opt = field.options.find((o) => o.label.toLowerCase().trim() === answer.slice(8).split(",")[0].toLowerCase());
-      } else {
-        const idx = parseInt(answer, 10);
-        if (!isNaN(idx) && idx >= 1 && idx <= field.options.length) opt = field.options[idx - 1];
-        // Plain answer (e.g. a custom-rule "No") — match against option labels.
-        else opt = field.options.find((o) => o.label.toLowerCase().includes(answer.toLowerCase()));
-      }
-      if (!opt) return { ok: false, detail: "no matching option" };
+      const oi = resolveOptionIndex(field.options, answer);
+      if (oi < 0) return { ok: false, detail: "no matching option" };
+      const opt = field.options[oi];
       const el = opt.id
         ? document.getElementById(opt.id)
         : field.inputName
@@ -741,19 +774,8 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
     }
 
     if (field.type === "select") {
-      let match = null;
-      if (answer.startsWith("__RADIO:")) {
-        const keywords = answer.slice(8).split(",").map((k) => k.trim().toLowerCase());
-        for (const kw of keywords) {
-          match = field.options.find((o) => o.label.toLowerCase().includes(kw));
-          if (match) break;
-        }
-      } else {
-        const idx = parseInt(answer, 10);
-        match = !isNaN(idx) && idx >= 1 && idx <= field.options.length
-          ? field.options[idx - 1]
-          : field.options.find((o) => o.label.toLowerCase().includes(answer.toLowerCase()));
-      }
+      const oi = resolveOptionIndex(field.options, answer);
+      const match = oi >= 0 ? field.options[oi] : null;
       if (!match || !field.inputId) return { ok: false, detail: "no matching option" };
       const el = document.getElementById(field.inputId) as HTMLSelectElement | null;
       if (!el) return { ok: false, detail: "select not found" };
