@@ -50,10 +50,6 @@ export interface RunState {
   formFrameId: number | null;
   /** Questions scanned on the current page. */
   questions: FormField[];
-  /** question-key → answer for the current page (populated by the template in M-B4). */
-  answers: Record<string, string>;
-  /** The user's answer template, snapshotted once per run (typed in M-B4). */
-  templateSnapshot: unknown | null;
   /** The review-gate verdict for the current page, or null until decided. */
   reviewDecision: ReviewDecision | null;
   /** Job identity captured during the run (first non-null wins); for the log. */

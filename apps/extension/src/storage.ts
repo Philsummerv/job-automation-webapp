@@ -1,16 +1,7 @@
-// Typed wrapper over chrome.storage.local.
-//
-// The POC used chrome.storage.session, which lives only in the running
-// execution context and is WIPED when the MV3 service worker is killed (~30s
-// idle) — exactly the run state we must not lose. chrome.storage.local persists
-// to disk and survives both worker death and page navigation, so all durable
-// extension state lives here.
-//
-// The schema is intentionally small for M-B1; later milestones extend
-// StorageSchema (activeRun gets a real RunState type in M-B2, auth is populated
-// in M-B3).
+// Typed wrapper over chrome.storage.local — all durable extension state lives
+// here. chrome.storage.local persists to disk and survives both service-worker
+// death (MV3 kills the worker after ~30s idle) and page navigation.
 
-import type { AuthPayload } from "./messages";
 import type { RunState } from "./state/types";
 
 /** A user-defined "if the question contains X, answer Y" rule. */
@@ -51,12 +42,8 @@ export interface Entitlement {
 }
 
 export interface StorageSchema {
-  /** Supabase session handed off from the web app; null when signed out. */
-  auth: AuthPayload | null;
   /** The in-flight run for the active tab; null when idle. */
   activeRun: RunState | null;
-  /** Per-tab page-load counters, keyed by tab id. Replaces the POC counter. */
-  loadCounts: Record<number, number>;
   /** The user's local answer template (offline fallback); null until they save one. */
   template: AnswerTemplate | null;
   /** The account template synced from the web app; preferred over `template`. */
@@ -68,9 +55,7 @@ export interface StorageSchema {
 }
 
 const DEFAULTS: StorageSchema = {
-  auth: null,
   activeRun: null,
-  loadCounts: {},
   template: null,
   syncedTemplate: null,
   entitlement: null,

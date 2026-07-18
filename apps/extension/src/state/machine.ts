@@ -59,8 +59,6 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
         pageIndex: 0,
         formFrameId: null,
         questions: [],
-        answers: {},
-        templateSnapshot: null,
         reviewDecision: null,
         job: null,
         events: [{ at: action.at, status: "starting", note: "run created" }],
@@ -101,8 +99,6 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
         action.at,
         { formFrameId: action.frameId, questions: action.questions, job },
       );
-      // NOTE(M-B4): answers are empty until template mapping lands; the fill
-      // command still fires to exercise the channel end-to-end.
       return {
         state: filling,
         effects: [
@@ -201,7 +197,6 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
         pageIndex: state.pageIndex + 1,
         formFrameId: null,
         questions: [],
-        answers: {},
         reviewDecision: null,
       });
       return {

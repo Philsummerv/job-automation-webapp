@@ -1,21 +1,15 @@
-// Content script. As of M-B2 it plays two roles:
-//   1. A worker-driven EXECUTOR — it receives typed commands (scan/fill/review/
-//      advance) from the run controller and reports results back, closing the
-//      state-machine loop. This is the path that will ship.
-//   2. The POC panel — manual Scan/Fill/Continue buttons plus a live log, kept
-//      as a debugging affordance. M-B5 replaces this with the real review gate.
+// Content script — the on-page assistant. It is driven by the service-worker
+// run controller (scan/fill/review/advance commands), renders the floating
+// panel (Start run, the per-page review gate, the answer-template editor, and
+// the post-submit log confirmation), and reports results back to advance the
+// run's state machine.
 //
-// Reuses the ported automation cores directly (the code-sharing proof):
-//   collectFormQuestions — the same DOM scraper Playwright injects
-//   makeAutoFillAnswer   — the ordered auto-fill rule engine
+// Reuses the ported automation cores directly (one implementation, two runtimes):
+//   collectFormQuestions — the same DOM scraper the Playwright scout injects
+//   makeAutoFillAnswer   — the ordered auto-fill rule engine over the template
 //
-// Stage-B-specific here (productionized further in M-B4/M-B5):
-//   fillFieldDom  — DOM-native fill using React-safe native value setters
-//   findAdvanceDom — visible-first Continue/Submit finder
-//
-// NOTE(M-B4): fills still use DEFAULT_CONFIG; the user's answer template
-// replaces it in M-B4. NOTE(M-B5): the review command shows a placeholder
-// approve/reject bar, not the real per-page review gate.
+// Fills use the user's answer template (synced from the web app; local editor is
+// the offline fallback), with intent-aware matching for options (scoreOption).
 
 import { collectFormQuestions } from "@applyassistui/automation/forms";
 import { makeAutoFillAnswer } from "@applyassistui/automation/autofill";
@@ -49,7 +43,7 @@ function markExtDead(): void {
   if (extDead) return;
   extDead = true;
   try {
-    const p = document.getElementById("aaui-poc-panel");
+    const p = document.getElementById("aaui-panel");
     if (p) {
       const n = document.createElement("div");
       n.textContent = "⚠ Extension was updated — reload this page to reconnect.";
@@ -88,8 +82,6 @@ function init() {
   let usingSynced = false;
   let getAutoFillAnswer = makeAutoFillAnswer(DEFAULT_CONFIG);
   let questions: FormField[] = [];
-  // The run this frame is currently serving; learned from the first command.
-  let currentRunId: string | null = null;
 
   // Load the template and rebuild the ruleset resolver. The account template
   // synced from the web app wins; the local editor is an offline fallback.
@@ -117,7 +109,7 @@ function init() {
   // ─── Panel ────────────────────────────────────────────────────────────────
 
   const panel = document.createElement("div");
-  panel.id = "aaui-poc-panel";
+  panel.id = "aaui-panel";
   // Mark our whole UI so collectFormQuestions never scrapes our own review-gate
   // controls as if they were form questions.
   panel.setAttribute("data-aaui-ignore", "1");
@@ -136,14 +128,9 @@ function init() {
         <span style="opacity:.6">${isTop ? "top frame" : "iframe"}</span>
       </span>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:6px">
+    <div style="display:flex;gap:6px;margin-bottom:8px">
       <button id="aaui-start" style="flex:1;padding:6px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Start run</button>
       <button id="aaui-cancel" style="flex:1;padding:6px;border:0;border-radius:6px;background:#475569;color:#fff;cursor:pointer">Cancel</button>
-    </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button id="aaui-scan"  style="flex:1;padding:6px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">Scan</button>
-      <button id="aaui-fill"  style="flex:1;padding:6px;border:0;border-radius:6px;background:#059669;color:#fff;cursor:pointer">Fill</button>
-      <button id="aaui-next"  style="flex:1;padding:6px;border:0;border-radius:6px;background:#d97706;color:#fff;cursor:pointer">Continue</button>
     </div>
     <div id="aaui-review"></div>
     <div id="aaui-log" style="margin-top:8px;border-top:1px solid #334155;padding-top:6px;opacity:.85"></div>
@@ -160,18 +147,7 @@ function init() {
     logEl.prepend(line);
   };
 
-  // Announce readiness over the typed protocol. The persisted per-tab load
-  // count (chrome.storage.local — survives worker death) seeds the Stage B
-  // "state survives navigation" pattern.
-  sendToWorker({
-    type: "page-ready",
-    frame: { url: location.href, isTopFrame: isTop, hasForm },
-  }).then((res) => {
-    if (res?.loadCount) log(`page loads this tab: ${res.loadCount}`);
-    if (res?.runActive) log("a run is active on this tab");
-  });
-
-  // ─── Reusable executor actions (shared by manual buttons + worker commands) ──
+  // ─── Executor actions (driven by worker commands) ────────────────────────────
 
   /** Scan the page. Returns the questions found. */
   function scanPage(): FormField[] {
@@ -352,9 +328,9 @@ function init() {
     return input;
   }
 
-  // ─── Template editor ──────────────────────────────────────────────────────────
-  // Local answer template (Option A): standard fields + custom question rules.
-  // Saved to chrome.storage.local; drives the fill. Later synced from the web app.
+  // ─── Template editor (offline fallback) ───────────────────────────────────────
+  // The account template synced from the web app is the source of truth; this
+  // local editor (saved to chrome.storage.local) is used only when signed out.
 
   function renderTemplateEditor(): void {
     reviewEl.innerHTML = "";
@@ -489,7 +465,7 @@ function init() {
     reviewEl.appendChild(card);
   }
 
-  // ─── Manual buttons (debug) ──────────────────────────────────────────────────
+  // ─── Panel buttons ────────────────────────────────────────────────────────────
 
   panel.querySelector("#aaui-template")!.addEventListener("click", () => renderTemplateEditor());
 
@@ -508,9 +484,6 @@ function init() {
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
   });
-  panel.querySelector("#aaui-scan")!.addEventListener("click", () => scanPage());
-  panel.querySelector("#aaui-fill")!.addEventListener("click", () => fillPage());
-  panel.querySelector("#aaui-next")!.addEventListener("click", () => advancePage());
 
   // ─── Worker command loop ─────────────────────────────────────────────────────
   // The controller (background.ts) drives the run by sending CommandMsg to this
@@ -523,7 +496,6 @@ function init() {
       return false;
     }
     if (msg?.type !== "command") return false;
-    currentRunId = msg.runId;
 
     switch (msg.command) {
       case "scan": {
@@ -557,11 +529,9 @@ function init() {
       }
     }
   });
-
-  void currentRunId; // reserved for M-B5 (review edits reference the live run)
 }
 
-// ─── DOM fill (POC version of fillFormField) ──────────────────────────────────
+// ─── DOM fill ─────────────────────────────────────────────────────────────────
 // The critical difference from the desktop force-set path: React-controlled
 // inputs ignore plain `el.value = x`. You must call the NATIVE value setter
 // (bypassing React's instrumented property) and then dispatch `input` so
@@ -921,7 +891,7 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
   }
 }
 
-// ─── Advance-button finder (POC version) ──────────────────────────────────────
+// ─── Advance-button finder ─────────────────────────────────────────────────────
 
 const POSITIVE_RE = /\b(review|continue|submit|next|apply|proceed|advance|finish|send)\b/i;
 const NEGATIVE_RE = /\b(back|cancel|withdraw|close|skip|dismiss|report|feedback|help|sign in|sign out|log in|log out|delete|remove|edit|undo)\b/i;

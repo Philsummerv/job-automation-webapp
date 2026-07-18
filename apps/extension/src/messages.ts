@@ -1,48 +1,20 @@
 // Typed message protocol for the extension. Every cross-context message is a
-// member of a discriminated union keyed on `type`, replacing the POC's ad-hoc
-// `{ type: "hello" }`. Three transports carry these messages:
+// member of a discriminated union keyed on `type`. Two transports carry these:
 //
 //   • content script ⇄ service worker : chrome.runtime.sendMessage / onMessage
 //                                        (content→worker) and tabs.sendMessage
 //                                        (worker→a specific frame)
-//   • web page       → service worker : chrome.runtime.sendMessage(extId, …)
-//                                        via externally_connectable (auth handoff)
+//   • web-app bridge → service worker  : plain runtime messages from the bridge
+//                                        content script running on the web origin
 //
-// This file is transport-agnostic — it only describes wire shapes plus typed
-// send helpers. Run-state shapes and the reducer live in src/state; this file
-// borrows only the small ContentCommand / ReviewDecision unions from there.
-// Wire messages carry NO timestamps — the controller stamps `at` when it turns
-// a message into a reducer Action, so the clock stays out of the protocol.
+// Wire messages carry NO timestamps — the controller stamps `at` when it turns a
+// message into a reducer Action, so the clock stays out of the protocol.
 
 import type { FormField } from "@applyassistui/automation/types";
 import type { ContentCommand, JobMeta, ReviewDecision } from "./state/types";
 import type { AnswerTemplate, PendingActivity } from "./storage";
 
-// ── Shared value shapes ───────────────────────────────────────────────────────
-
-/** Where a content script instance is running. */
-export interface FrameInfo {
-  url: string;
-  isTopFrame: boolean;
-  /** The frame actually contains a form/fieldset (Indeed iframes the flow). */
-  hasForm: boolean;
-}
-
-/** Supabase session handed off from a signed-in web tab (M-B3). */
-export interface AuthPayload {
-  accessToken: string;
-  refreshToken: string;
-  /** Epoch milliseconds at which `accessToken` expires. */
-  expiresAt: number;
-}
-
 // ── content script → service worker ───────────────────────────────────────────
-
-/** Content script announced itself on (re)load. Replaces `{type:"hello"}`. */
-export interface PageReadyMsg {
-  type: "page-ready";
-  frame: FrameInfo;
-}
 
 /** User asked to start a guided run on the sender's tab. */
 export interface StartRunMsg {
@@ -74,20 +46,6 @@ export interface ReviewDecisionMsg {
   type: "review-decision";
   runId: string;
   decision: ReviewDecision;
-}
-
-/** The web-app bridge reports the current sign-in / entitlement status. */
-export interface AuthStatusMsg {
-  type: "auth-status";
-  signedIn: boolean;
-  entitled: boolean;
-  email: string | null;
-}
-
-/** The web-app bridge relays the user's saved template (null when none/signed out). */
-export interface TemplateSyncMsg {
-  type: "template-sync";
-  template: AnswerTemplate | null;
 }
 
 /** User paused the assist to take manual control. */
@@ -128,17 +86,18 @@ export interface ActivitiesFlushedMsg {
   ids: string[];
 }
 
-// ── web page → service worker (externally_connectable) ─────────────────────────
-
-/** Signed-in web tab hands its Supabase session to the extension. */
-export interface AuthHandoffMsg {
-  type: "auth-handoff";
-  auth: AuthPayload;
+/** The web-app bridge reports the current sign-in / entitlement status. */
+export interface AuthStatusMsg {
+  type: "auth-status";
+  signedIn: boolean;
+  entitled: boolean;
+  email: string | null;
 }
 
-/** Web page probes whether the extension is installed (feature detection). */
-export interface PingMsg {
-  type: "ping";
+/** The web-app bridge relays the user's saved template (null when none/signed out). */
+export interface TemplateSyncMsg {
+  type: "template-sync";
+  template: AnswerTemplate | null;
 }
 
 // ── service worker → content script (via tabs.sendMessage) ─────────────────────
@@ -158,9 +117,8 @@ export interface CommandMsg {
 
 // ── Unions ─────────────────────────────────────────────────────────────────────
 
-/** Messages the service worker receives (runtime + external transports). */
+/** Messages the service worker receives. */
 export type WorkerBoundMsg =
-  | PageReadyMsg
   | StartRunMsg
   | CancelRunMsg
   | ScanResultMsg
@@ -173,9 +131,7 @@ export type WorkerBoundMsg =
   | PendingActivitiesMsg
   | ActivitiesFlushedMsg
   | AuthStatusMsg
-  | TemplateSyncMsg
-  | AuthHandoffMsg
-  | PingMsg;
+  | TemplateSyncMsg;
 
 /** Messages a content script receives from the worker. */
 export type ContentBoundMsg = CommandMsg | ConfirmLogMsg;
@@ -184,25 +140,9 @@ export type ContentBoundMsg = CommandMsg | ConfirmLogMsg;
 export type ExtMessage = WorkerBoundMsg | ContentBoundMsg;
 
 // ── Request → response typing ──────────────────────────────────────────────────
-// A message type maps to the response the worker sends back for it. Keeping this
-// map here makes `sendToWorker` fully typed at the call site. Fire-and-forget
-// messages resolve to a simple ack.
-
-export interface PageReadyResponse {
-  /** True if a run is active for this tab; content script may await commands. */
-  runActive: boolean;
-  /** Monotonic page-load count for this tab (persisted; survives worker death). */
-  loadCount: number;
-}
-
-export interface AuthHandoffResponse {
-  ok: boolean;
-}
-
-export interface PingResponse {
-  installed: true;
-  version: string;
-}
+// A message type maps to the response the worker sends back for it, so
+// `sendToWorker` is fully typed at the call site. Fire-and-forget messages
+// resolve to a simple ack.
 
 export interface Ack {
   ok: boolean;
@@ -220,7 +160,6 @@ export interface PendingActivitiesResponse {
 }
 
 export interface ResponseMap {
-  "page-ready": PageReadyResponse;
   "start-run": StartRunResponse;
   "cancel-run": Ack;
   "scan-result": Ack;
@@ -234,11 +173,9 @@ export interface ResponseMap {
   "activities-flushed": Ack;
   "auth-status": Ack;
   "template-sync": Ack;
-  "auth-handoff": AuthHandoffResponse;
-  ping: PingResponse;
 }
 
-// ── Typed helpers ────────────────────────────────────────────────────────────────
+// ── Typed helper ────────────────────────────────────────────────────────────────
 
 /**
  * Send a message to the service worker and get a typed response back. The

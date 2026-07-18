@@ -12,15 +12,7 @@
 // Dispatches are serialized through a promise chain so the read-modify-write
 // around storage never interleaves.
 
-import type {
-  AuthHandoffMsg,
-  AuthHandoffResponse,
-  CommandMsg,
-  ConfirmLogMsg,
-  PageReadyResponse,
-  PingResponse,
-  WorkerBoundMsg,
-} from "./messages";
+import type { CommandMsg, ConfirmLogMsg, WorkerBoundMsg } from "./messages";
 import { getItem, removeItem, setItem, updateItem } from "./storage";
 import type { PendingActivity } from "./storage";
 import { reduce } from "./state/machine";
@@ -121,14 +113,6 @@ function armNoFormTimeout(_tabId: number, forRunId: string): void {
 
 chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse) => {
   switch (msg?.type) {
-    case "page-ready":
-      handlePageReady(sender.tab?.id).then(sendResponse);
-      return true;
-
-    case "ping":
-      sendResponse({ installed: true, version: VERSION } satisfies PingResponse);
-      return false;
-
     // Run-control messages → reducer actions. Each stamps `at` and, where the
     // sender identifies the frame, threads sender.frameId through.
     case "start-run": {
@@ -237,25 +221,8 @@ function todayISO(): string {
   return `${d.getFullYear()}-${m}-${day}`;
 }
 
-async function handlePageReady(tabId: number | undefined): Promise<PageReadyResponse> {
-  let loadCount = 0;
-  if (tabId != null) {
-    const counts = await updateItem("loadCounts", (c) => ({ ...c, [tabId]: (c[tabId] ?? 0) + 1 }));
-    loadCount = counts[tabId];
-  }
-  const run = await getItem("activeRun");
-  return { runActive: run != null && run.tabId === tabId, loadCount };
-}
-
-// Clean up per-tab state when a tab closes.
+// End the active run if the tab that owned it is closed (serialized via dispatch).
 chrome.tabs.onRemoved.addListener((tabId) => {
-  updateItem("loadCounts", (c) => {
-    if (!(tabId in c)) return c;
-    const next = { ...c };
-    delete next[tabId];
-    return next;
-  });
-  // End the active run only if the closed tab owned it (serialized via dispatch).
   dispatch((state) => (state != null && state.tabId === tabId ? { type: "cancel-run", at: Date.now() } : null));
 });
 
@@ -271,24 +238,3 @@ function onNav(details: { tabId: number; frameId: number }): void {
 
 chrome.webNavigation.onCompleted.addListener(onNav);
 chrome.webNavigation.onHistoryStateUpdated.addListener(onNav);
-
-// ── web page → worker (externally_connectable, M-B3 auth handoff) ───────────────
-
-chrome.runtime.onMessageExternal.addListener(
-  (msg: AuthHandoffMsg | { type: "ping" }, _sender, sendResponse) => {
-    switch (msg?.type) {
-      case "auth-handoff":
-        setItem("auth", msg.auth)
-          .then(() => sendResponse({ ok: true } satisfies AuthHandoffResponse))
-          .catch(() => sendResponse({ ok: false } satisfies AuthHandoffResponse));
-        return true;
-
-      case "ping":
-        sendResponse({ installed: true, version: VERSION } satisfies PingResponse);
-        return false;
-
-      default:
-        return false;
-    }
-  },
-);
