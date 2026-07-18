@@ -25,6 +25,13 @@ export type RunStatus =
 /** A user's verdict at the per-page review gate. */
 export type ReviewDecision = "approved" | "edited" | "rejected";
 
+/** Job identity captured during a run, for the compliance activity log. */
+export interface JobMeta {
+  title: string | null;
+  company: string | null;
+  url: string | null;
+}
+
 /** Append-only breadcrumb for debugging a run (capped in the reducer). */
 export interface RunEvent {
   /** Millisecond timestamp; supplied by the controller (machine stays pure). */
@@ -49,6 +56,8 @@ export interface RunState {
   templateSnapshot: unknown | null;
   /** The review-gate verdict for the current page, or null until decided. */
   reviewDecision: ReviewDecision | null;
+  /** Job identity captured during the run (first non-null wins); for the log. */
+  job: JobMeta | null;
   events: RunEvent[];
   /** Set when status is "error". */
   error?: string;
@@ -63,7 +72,7 @@ export interface RunState {
 export type Action =
   | { type: "start-run"; tabId: number; runId: string; at: number }
   | { type: "cancel-run"; at: number }
-  | { type: "scan-result"; runId: string; frameId: number; questions: FormField[]; at: number }
+  | { type: "scan-result"; runId: string; frameId: number; questions: FormField[]; job: JobMeta | null; at: number }
   | { type: "fill-result"; runId: string; at: number }
   | { type: "review-decision"; runId: string; decision: ReviewDecision; at: number }
   | { type: "pause-run"; runId: string; at: number }
@@ -91,7 +100,9 @@ export type Effect =
       runId: string;
     }
   | { kind: "clear-run" }
-  | { kind: "arm-no-form-timeout"; tabId: number; runId: string };
+  | { kind: "arm-no-form-timeout"; tabId: number; runId: string }
+  /** Flow completed (submitted): ask the content script to confirm logging it. */
+  | { kind: "confirm-log"; tabId: number; job: JobMeta };
 
 export interface ReduceResult {
   state: RunState | null;

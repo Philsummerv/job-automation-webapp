@@ -29,6 +29,18 @@ function withStatus(state: RunState, status: RunStatus, note: string, at: number
   };
 }
 
+// Effects when a run finishes by reaching a formless page (i.e. the submission
+// confirmation): clear the run, and — if we captured the job — ask the content
+// script to confirm logging it to the compliance activity log. The reject path
+// does NOT go through here, so a user-aborted run is never logged.
+function completionEffects(done: RunState): Effect[] {
+  const effects: Effect[] = [{ kind: "clear-run" }];
+  if (done.job && (done.job.title || done.job.company)) {
+    effects.push({ kind: "confirm-log", tabId: done.tabId, job: done.job });
+  }
+  return effects;
+}
+
 function noChange(state: RunState | null): ReduceResult {
   return { state, effects: [] };
 }
@@ -50,6 +62,7 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
         answers: {},
         templateSnapshot: null,
         reviewDecision: null,
+        job: null,
         events: [{ at: action.at, status: "starting", note: "run created" }],
       };
       const scanning = withStatus(fresh, "scanning", "broadcast scan", action.at);
@@ -73,9 +86,12 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
       if (!isForActiveRun(state, action.runId)) return noChange(state);
       if (state.status !== "scanning") return noChange(state);
 
+      // Capture the job identity the first time content reports it.
+      const job = state.job ?? action.job;
+
       if (action.questions.length === 0) {
-        const done = withStatus(state, "done", "no questions — flow complete", action.at);
-        return { state: done, effects: [{ kind: "clear-run" }] };
+        const done = withStatus(state, "done", "no questions — flow complete", action.at, { job });
+        return { state: done, effects: completionEffects(done) };
       }
 
       const filling = withStatus(
@@ -83,7 +99,7 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
         "filling",
         `scanned ${action.questions.length} question(s)`,
         action.at,
-        { formFrameId: action.frameId, questions: action.questions },
+        { formFrameId: action.frameId, questions: action.questions, job },
       );
       // NOTE(M-B4): answers are empty until template mapping lands; the fill
       // command still fires to exercise the channel end-to-end.
@@ -204,7 +220,7 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
       if (!isForActiveRun(state, action.runId)) return noChange(state);
       if (state.status !== "scanning") return noChange(state);
       const done = withStatus(state, "done", "no form frame responded — flow complete", action.at);
-      return { state: done, effects: [{ kind: "clear-run" }] };
+      return { state: done, effects: completionEffects(done) };
     }
 
     // ── Error ─────────────────────────────────────────────────────────────────

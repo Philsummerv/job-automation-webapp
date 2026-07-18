@@ -26,6 +26,7 @@ import { sendToWorker as rawSendToWorker } from "./messages";
 import type { ContentBoundMsg, ResponseMap, WorkerBoundMsg } from "./messages";
 import { getItem, setItem } from "./storage";
 import type { AnswerTemplate, CustomRule } from "./storage";
+import type { JobMeta } from "./state/types";
 
 // ─── Extension-context safety ──────────────────────────────────────────────────
 // After the extension is reloaded/updated, THIS content script keeps running in
@@ -443,6 +444,51 @@ function init() {
     reviewEl.appendChild(footer);
   }
 
+  // ─── Compliance log confirmation ──────────────────────────────────────────────
+  // Shown after a guided application completes. The user confirms (and can edit)
+  // before anything is written to their activity log — nothing is logged silently.
+
+  function renderLogConfirm(job: JobMeta): void {
+    reviewEl.innerHTML = "";
+    reviewEl.appendChild(hHeader("Application submitted 🎉", "Log this to your activity record? You confirm every entry."));
+
+    const card = mkEl("div", "margin:6px 0;padding:8px;background:#1e293b;border-radius:6px;display:flex;flex-direction:column;gap:6px");
+    const empWrap = mkEl("div", "");
+    empWrap.appendChild(mkEl("div", "font-size:11px;opacity:.8;margin-bottom:2px", "Employer"));
+    const emp = document.createElement("input");
+    emp.style.cssText = INPUT_CSS;
+    emp.value = job.company ?? "";
+    emp.placeholder = "Employer name";
+    empWrap.appendChild(emp);
+
+    const titleWrap = mkEl("div", "");
+    titleWrap.appendChild(mkEl("div", "font-size:11px;opacity:.8;margin-bottom:2px", "Job title"));
+    const title = document.createElement("input");
+    title.style.cssText = INPUT_CSS;
+    title.value = job.title ?? "";
+    title.placeholder = "Job title";
+    titleWrap.appendChild(title);
+
+    card.append(empWrap, titleWrap);
+
+    const row = mkEl("div", "display:flex;gap:6px;margin-top:4px");
+    row.appendChild(mkBtn("Log it", "#059669", () => {
+      const employer = emp.value.trim();
+      if (!employer) { log("employer is required to log", false); return; }
+      sendToWorker({
+        type: "log-activity",
+        employer_name: employer,
+        job_title: title.value.trim() || null,
+        url: job.url,
+      });
+      reviewEl.innerHTML = "";
+      log("logged — syncs to your activity record next time you open the web app", true);
+    }));
+    row.appendChild(mkBtn("Skip", "#475569", () => { reviewEl.innerHTML = ""; }));
+    card.appendChild(row);
+    reviewEl.appendChild(card);
+  }
+
   // ─── Manual buttons (debug) ──────────────────────────────────────────────────
 
   panel.querySelector("#aaui-template")!.addEventListener("click", () => renderTemplateEditor());
@@ -471,6 +517,11 @@ function init() {
   // frame. We execute and report back so the state machine can advance.
 
   chrome.runtime.onMessage.addListener((msg: ContentBoundMsg, _sender, sendResponse) => {
+    if (msg?.type === "confirm-log") {
+      renderLogConfirm(msg.job);
+      sendResponse({ ok: true });
+      return false;
+    }
     if (msg?.type !== "command") return false;
     currentRunId = msg.runId;
 
@@ -481,7 +532,7 @@ function init() {
         // controller's no-form timeout — decides. An empty reply would be read
         // as "flow complete".
         if (found.length > 0) {
-          sendToWorker({ type: "scan-result", runId: msg.runId, questions: found });
+          sendToWorker({ type: "scan-result", runId: msg.runId, questions: found, job: captureJobMeta() });
         }
         sendResponse({ ok: true });
         return false;
@@ -589,6 +640,33 @@ function mergedConfig(template: AnswerTemplate | null): ScoutConfig {
     if (v != null && String(v).trim() !== "") cfg[k] = v;
   }
   return cfg as unknown as ScoutConfig;
+}
+
+// ─── Job-identity capture (compliance log) ────────────────────────────────────
+// Best-effort extraction of the job's title/company/url from the current page.
+// Site markup varies, so these only PREFILL the confirmation card — the user
+// edits and confirms before anything is logged.
+
+function captureJobMeta(): JobMeta {
+  const pick = (sel: string): string | null => {
+    const el = document.querySelector<HTMLElement>(sel);
+    const t = el?.innerText?.trim();
+    return t && t.length > 0 && t.length < 200 ? t : null;
+  };
+  const title =
+    pick('[data-testid*="jobTitle" i]') ||
+    pick('[data-testid*="job-title" i]') ||
+    pick('[class*="jobTitle" i]') ||
+    null;
+  const company =
+    pick('[data-testid*="companyName" i]') ||
+    pick('[data-testid*="company-name" i]') ||
+    pick('[data-testid*="employerName" i]') ||
+    pick('[class*="companyName" i]') ||
+    null;
+  const jobLink = document.querySelector<HTMLAnchorElement>('a[href*="/viewjob"], a[href*="/rc/clk"]');
+  const url = jobLink?.href || location.href;
+  return { title, company, url };
 }
 
 // ─── Review-gate helpers ──────────────────────────────────────────────────────

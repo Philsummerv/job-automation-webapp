@@ -15,8 +15,8 @@
 // a message into a reducer Action, so the clock stays out of the protocol.
 
 import type { FormField } from "@applyassistui/automation/types";
-import type { ContentCommand, ReviewDecision } from "./state/types";
-import type { AnswerTemplate } from "./storage";
+import type { ContentCommand, JobMeta, ReviewDecision } from "./state/types";
+import type { AnswerTemplate, PendingActivity } from "./storage";
 
 // ── Shared value shapes ───────────────────────────────────────────────────────
 
@@ -59,6 +59,8 @@ export interface ScanResultMsg {
   type: "scan-result";
   runId: string;
   questions: FormField[];
+  /** Job identity extracted from this page (null if none found). */
+  job: JobMeta | null;
 }
 
 /** A form frame reports that its fill pass completed. */
@@ -107,6 +109,25 @@ export interface RunErrorMsg {
   reason: string;
 }
 
+/** User confirmed logging a completed guided application → queue it. */
+export interface LogActivityMsg {
+  type: "log-activity";
+  employer_name: string;
+  job_title: string | null;
+  url: string | null;
+}
+
+/** The web-app bridge asks for the pending activity queue to flush. */
+export interface PendingActivitiesMsg {
+  type: "pending-activities";
+}
+
+/** The web-app bridge reports which pending activities it successfully flushed. */
+export interface ActivitiesFlushedMsg {
+  type: "activities-flushed";
+  ids: string[];
+}
+
 // ── web page → service worker (externally_connectable) ─────────────────────────
 
 /** Signed-in web tab hands its Supabase session to the extension. */
@@ -121,6 +142,12 @@ export interface PingMsg {
 }
 
 // ── service worker → content script (via tabs.sendMessage) ─────────────────────
+
+/** Flow completed — ask the content script to confirm logging the application. */
+export interface ConfirmLogMsg {
+  type: "confirm-log";
+  job: JobMeta;
+}
 
 /** A command directed at a specific content-script frame. */
 export interface CommandMsg {
@@ -142,13 +169,16 @@ export type WorkerBoundMsg =
   | PauseRunMsg
   | ResumeRunMsg
   | RunErrorMsg
+  | LogActivityMsg
+  | PendingActivitiesMsg
+  | ActivitiesFlushedMsg
   | AuthStatusMsg
   | TemplateSyncMsg
   | AuthHandoffMsg
   | PingMsg;
 
 /** Messages a content script receives from the worker. */
-export type ContentBoundMsg = CommandMsg;
+export type ContentBoundMsg = CommandMsg | ConfirmLogMsg;
 
 /** Every message shape known to the protocol. */
 export type ExtMessage = WorkerBoundMsg | ContentBoundMsg;
@@ -185,6 +215,10 @@ export interface StartRunResponse {
   reason?: "not-signed-in" | "not-entitled" | "no-tab";
 }
 
+export interface PendingActivitiesResponse {
+  activities: PendingActivity[];
+}
+
 export interface ResponseMap {
   "page-ready": PageReadyResponse;
   "start-run": StartRunResponse;
@@ -195,6 +229,9 @@ export interface ResponseMap {
   "pause-run": Ack;
   "resume-run": Ack;
   "run-error": Ack;
+  "log-activity": Ack;
+  "pending-activities": PendingActivitiesResponse;
+  "activities-flushed": Ack;
   "auth-status": Ack;
   "template-sync": Ack;
   "auth-handoff": AuthHandoffResponse;

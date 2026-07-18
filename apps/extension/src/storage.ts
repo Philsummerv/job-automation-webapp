@@ -32,6 +32,15 @@ export interface AnswerTemplate {
   rules: CustomRule[];
 }
 
+/** A user-confirmed guided application awaiting flush to the web-app log. */
+export interface PendingActivity {
+  id: string;
+  employer_name: string;
+  job_title: string | null;
+  url: string | null;
+  date: string; // YYYY-MM-DD
+}
+
 /** Cached result of the web-app entitlement probe (M-B3). */
 export interface Entitlement {
   signedIn: boolean;
@@ -54,6 +63,8 @@ export interface StorageSchema {
   syncedTemplate: AnswerTemplate | null;
   /** Last entitlement seen from the signed-in web app; null until first check. */
   entitlement: Entitlement | null;
+  /** Confirmed guided applications awaiting flush to the web-app activity log. */
+  pendingActivities: PendingActivity[];
 }
 
 const DEFAULTS: StorageSchema = {
@@ -63,6 +74,7 @@ const DEFAULTS: StorageSchema = {
   template: null,
   syncedTemplate: null,
   entitlement: null,
+  pendingActivities: [],
 };
 
 /** Read a key, falling back to its schema default when unset. */

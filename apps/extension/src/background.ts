@@ -16,11 +16,13 @@ import type {
   AuthHandoffMsg,
   AuthHandoffResponse,
   CommandMsg,
+  ConfirmLogMsg,
   PageReadyResponse,
   PingResponse,
   WorkerBoundMsg,
 } from "./messages";
 import { getItem, removeItem, setItem, updateItem } from "./storage";
+import type { PendingActivity } from "./storage";
 import { reduce } from "./state/machine";
 import type { Action, Effect, RunState } from "./state/types";
 
@@ -85,6 +87,16 @@ async function runEffect(effect: Effect): Promise<void> {
     case "arm-no-form-timeout":
       armNoFormTimeout(effect.tabId, effect.runId);
       return;
+    case "confirm-log": {
+      // Ask the tab's top frame to show the "log this application?" card.
+      const msg: ConfirmLogMsg = { type: "confirm-log", job: effect.job };
+      try {
+        await chrome.tabs.sendMessage(effect.tabId, msg, { frameId: 0 });
+      } catch {
+        // Tab gone / no content script — non-fatal.
+      }
+      return;
+    }
   }
 }
 
@@ -159,7 +171,8 @@ chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse)
     case "scan-result": {
       const frameId = sender.frameId ?? 0;
       const questions = msg.questions;
-      dispatch(() => ({ type: "scan-result", runId: msg.runId, frameId, questions, at: Date.now() }))
+      const job = msg.job;
+      dispatch(() => ({ type: "scan-result", runId: msg.runId, frameId, questions, job, at: Date.now() }))
         .then(() => sendResponse({ ok: true }));
       return true;
     }
@@ -189,10 +202,40 @@ chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse)
         .then(() => sendResponse({ ok: true }));
       return true;
 
+    // ── Compliance activity log queue ─────────────────────────────────────────
+    case "log-activity": {
+      const activity: PendingActivity = {
+        id: crypto.randomUUID(),
+        employer_name: msg.employer_name,
+        job_title: msg.job_title,
+        url: msg.url,
+        date: todayISO(),
+      };
+      updateItem("pendingActivities", (q) => [...q, activity]).then(() => sendResponse({ ok: true }));
+      return true;
+    }
+
+    case "pending-activities":
+      getItem("pendingActivities").then((activities) => sendResponse({ activities }));
+      return true;
+
+    case "activities-flushed":
+      updateItem("pendingActivities", (q) => q.filter((a) => !msg.ids.includes(a.id)))
+        .then(() => sendResponse({ ok: true }));
+      return true;
+
     default:
       return false;
   }
 });
+
+/** Local calendar date as YYYY-MM-DD (the activity's date). */
+function todayISO(): string {
+  const d = new Date();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${d.getFullYear()}-${m}-${day}`;
+}
 
 async function handlePageReady(tabId: number | undefined): Promise<PageReadyResponse> {
   let loadCount = 0;

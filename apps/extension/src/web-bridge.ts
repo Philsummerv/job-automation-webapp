@@ -47,9 +47,40 @@ async function syncTemplate(): Promise<void> {
   }
 }
 
+async function flushActivities(): Promise<void> {
+  try {
+    const res = await sendToWorker({ type: "pending-activities" });
+    const activities = res?.activities ?? [];
+    if (!activities.length) return;
+    const flushed: string[] = [];
+    for (const a of activities) {
+      try {
+        const r = await fetch("/api/extension/activity", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json", accept: "application/json" },
+          body: JSON.stringify({
+            employer_name: a.employer_name,
+            job_title: a.job_title,
+            url: a.url,
+            date: a.date,
+          }),
+        });
+        if (r.ok) flushed.push(a.id);
+      } catch {
+        // Leave it queued; retried on the next visit/focus.
+      }
+    }
+    if (flushed.length) await sendToWorker({ type: "activities-flushed", ids: flushed });
+  } catch {
+    // Non-fatal.
+  }
+}
+
 function refresh(): void {
   reportAuth();
   syncTemplate();
+  flushActivities();
 }
 
 // Report on load, and whenever the tab regains focus (catches a sign-in/out or
