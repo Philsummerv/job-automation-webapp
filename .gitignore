@@ -23,3 +23,6 @@ apps/*/.env.local
 # Automation driver — personal details + run screenshots (never commit)
 packages/automation/driver.config.json
 packages/automation/artifacts/
+
+# Captured page HTML dumps used for debugging the extension scraper
+indeed_html/

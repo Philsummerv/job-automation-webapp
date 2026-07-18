@@ -22,11 +22,90 @@ export function collectFormQuestions(): FormField[] {
       inputId: string | null;
       inputName: string | null;
     }[] = [];
+    // Maps a radio/checkbox group's option-id signature to its question index,
+    // so multiple labels pointing at the same group (the question label plus one
+    // per option, e.g. "Yes"/"No") collapse into a single question.
+    const sigToIdx = new Map<string, number>();
     const labels = document.querySelectorAll("label");
 
+    // Resolve the QUESTION text for a radio/checkbox group. Each option has its
+    // own <label> (e.g. "EMC", "Yes"), so the option label is NOT the question —
+    // the question is the group's legend/heading. Walk up from an option input
+    // looking for a fieldset <legend>, a role=group/radiogroup with aria-label,
+    // or any ancestor carrying aria-labelledby. Returns "" if none is found, in
+    // which case the caller keeps the (imperfect) option-label fallback.
+    const idsToText = (idAttr: string | null): string => {
+      if (!idAttr) return "";
+      return idAttr
+        .split(/\s+/)
+        .map((id) => (document.getElementById(id) as HTMLElement | null)?.innerText?.trim() || "")
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+    };
+    const groupQuestionText = (startEl: Element | null): string => {
+      let node: Element | null = startEl;
+      for (let depth = 0; depth < 6 && node; depth++) {
+        if (node.tagName === "FIELDSET") {
+          const legend = node.querySelector(":scope > legend") as HTMLElement | null;
+          const t = legend?.innerText?.trim();
+          if (t) return t;
+        }
+        const role = node.getAttribute("role");
+        const ariaLabel = node.getAttribute("aria-label");
+        if ((role === "group" || role === "radiogroup") && ariaLabel && ariaLabel.trim()) {
+          return ariaLabel.trim();
+        }
+        const labelledby = node.getAttribute("aria-labelledby");
+        if (labelledby) {
+          const t = idsToText(labelledby);
+          if (t) return t;
+        }
+        node = node.parentElement;
+      }
+      return "";
+    };
+
+    // Rendered check. Indeed's SPA keeps PREVIOUS pages' form fields mounted but
+    // hidden, so a naive label sweep picks up stale questions from earlier steps.
+    // Use checkVisibility() (Chrome 105+) which catches display:none,
+    // visibility:hidden, content-visibility AND opacity:0 — offsetParent alone
+    // misses visibility:hidden, which is how these prior steps are hidden.
+    // (Custom checkboxes hide the raw <input>, so we test the LABEL/container,
+    // which stays laid out for a visible field.)
+    const isVisible = (el: Element | null): boolean => {
+      if (!(el instanceof HTMLElement)) return false;
+      const cv = (el as HTMLElement & { checkVisibility?: (o?: object) => boolean }).checkVisibility;
+      if (typeof cv === "function") {
+        return cv.call(el, { checkOpacity: true, checkVisibilityCSS: true });
+      }
+      return el.offsetParent !== null;
+    };
+
+    // Some sites render custom radios/checkboxes with no id AND no name, so an
+    // option can't be relocated later to fill it or read its checked state
+    // (the review gate then shows "needs you" for already-selected options and
+    // fill logs "option element not found"). Give any such option a stable
+    // synthetic id. Idempotent (only assigns when missing) and collision-checked.
+    let synthCounter = 0;
+    const ensureId = (el: HTMLInputElement): string => {
+      if (el.id) return el.id;
+      let id: string;
+      do { id = "aaui-opt-" + synthCounter++; } while (document.getElementById(id));
+      el.id = id;
+      return id;
+    };
+
     for (const label of labels) {
-      const text = (label as HTMLElement).innerText?.trim();
+      let text = (label as HTMLElement).innerText?.trim();
       if (!text) continue;
+      // Skip our own injected UI — the extension's review gate renders real
+      // <label><input> controls, which we must NOT scrape as form questions
+      // (that produced phantom "EMC"/etc questions on re-scan). Marked with
+      // data-aaui-ignore; the Playwright scout never sets it, so this is a no-op
+      // there.
+      if (label.closest("[data-aaui-ignore]")) continue;
+      if (!isVisible(label)) continue;
 
       const forId = label.getAttribute("for");
       let input: Element | null = forId ? document.getElementById(forId) : null;
@@ -44,20 +123,24 @@ export function collectFormQuestions(): FormField[] {
       if (radios.length > 0) {
         type = "radio";
         inputName = radios[0].name;
+        const gt = groupQuestionText(radios[0]);
+        if (gt) text = gt;
         options = Array.from(radios).map((r) => {
           const radioLabel = (r.labels?.[0] as HTMLElement | undefined)?.innerText?.trim()
             || (r.closest("label") as HTMLElement | null)?.innerText?.trim()
             || r.value;
-          return { label: radioLabel, value: r.value, id: r.id };
+          return { label: radioLabel, value: r.value, id: ensureId(r) };
         });
       } else if (checkboxes.length > 0) {
         type = "checkbox";
         inputName = checkboxes[0].name;
+        const gt = groupQuestionText(checkboxes[0]);
+        if (gt) text = gt;
         options = Array.from(checkboxes).map((c) => {
           const cbLabel = (c.labels?.[0] as HTMLElement | undefined)?.innerText?.trim()
             || (c.closest("label") as HTMLElement | null)?.innerText?.trim()
             || c.value;
-          return { label: cbLabel, value: c.value, id: c.id };
+          return { label: cbLabel, value: c.value, id: ensureId(c) };
         });
       } else if (input) {
         if (input.tagName.toLowerCase() === "select") {
@@ -74,6 +157,22 @@ export function collectFormQuestions(): FormField[] {
         continue;
       }
 
+      // Collapse a radio/checkbox group seen via multiple labels (the question
+      // label plus one per option). Signature = the group's sorted option ids
+      // (unique per group in the DOM, so it won't merge distinct questions).
+      // Only when every option has an id; otherwise fall back to the checks
+      // below. Keep the LONGEST text — the real question beats an option label.
+      const optSig = (type === "radio" || type === "checkbox") && options.length && options.every((o) => o.id)
+        ? type + "|" + options.map((o) => o.id).sort().join(",")
+        : "";
+      if (optSig) {
+        const existingIdx = sigToIdx.get(optSig);
+        if (existingIdx !== undefined) {
+          if (text.length > questions[existingIdx].text.length) questions[existingIdx].text = text;
+          continue;
+        }
+      }
+
       // Dedupe by inputId/inputName/text
       const dupe = questions.find((q) =>
         (q.inputId && q.inputId === inputId)
@@ -82,8 +181,78 @@ export function collectFormQuestions(): FormField[] {
       );
       if (dupe) continue;
 
+      if (optSig) sigToIdx.set(optSig, questions.length);
+
       questions.push({ text, type, options, inputId, inputName });
     }
+
+    // Second pass: ARIA custom widgets (e.g. Indeed's mosaic multi-select renders
+    // a <div role="combobox"> with no <label for> and no native <select>, so the
+    // label loop above misses it entirely). Its question text lives in an
+    // aria-labelledby element; its options live in a popup dialog that isn't in
+    // the DOM until the widget is opened, so options may be empty at scan time —
+    // that's expected; the widget still gets detected here.
+    const widgets = document.querySelectorAll<HTMLElement>('[role="combobox"], [role="listbox"]');
+    for (const w of widgets) {
+      // Skip global nav / non-form chrome, our own injected UI, and hidden
+      // (stale-page) widgets.
+      if (w.closest('nav, header, [role="navigation"], [data-aaui-ignore]')) continue;
+      if (!isVisible(w)) continue;
+
+      const wText = idsToText(w.getAttribute("aria-labelledby"))
+        || w.getAttribute("aria-label")?.trim()
+        || "";
+      if (!wText) continue;
+
+      const inputId = w.id || null;
+
+      // Already captured by the label loop (e.g. a role=combobox <input> that
+      // also had a <label for>)? Skip.
+      const dupe = questions.find((q) =>
+        (q.inputId && q.inputId === inputId) || q.text === wText
+      );
+      if (dupe) continue;
+
+      // Options: read the controlled popup if it happens to be rendered.
+      let options: { label: string; value: string; id?: string }[] = [];
+      const popupId = w.getAttribute("aria-controls");
+      const popup = popupId ? document.getElementById(popupId) : null;
+      if (popup) {
+        options = Array.from(
+          popup.querySelectorAll<HTMLElement>('[role="option"], input[type="checkbox"], input[type="radio"]'),
+        )
+          .map((o) => {
+            const label = ((o as HTMLInputElement).labels?.[0] as HTMLElement | undefined)?.innerText?.trim()
+              || (o.closest("label") as HTMLElement | null)?.innerText?.trim()
+              || o.innerText?.trim()
+              || o.getAttribute("aria-label")?.trim()
+              || "";
+            return { label, value: (o as HTMLInputElement).value || label, id: o.id || undefined };
+          })
+          .filter((o) => o.label);
+      }
+
+      questions.push({ text: wText, type: "combobox", options, inputId, inputName: null });
+    }
+
+    // Order questions by their position in the page. The label loop and the
+    // combobox pass run separately, so without this a combobox detected second
+    // would list after fields that visually precede it.
+    const anchorOf = (q: { inputId: string | null; inputName: string | null; options: { id?: string }[] }): Element | null => {
+      if (q.inputId) return document.getElementById(q.inputId);
+      if (q.inputName) return document.querySelector(`[name="${CSS.escape(q.inputName)}"]`);
+      if (q.options[0]?.id) return document.getElementById(q.options[0].id);
+      return null;
+    };
+    questions.sort((a, b) => {
+      const ea = anchorOf(a);
+      const eb = anchorOf(b);
+      if (!ea || !eb) return 0;
+      const pos = ea.compareDocumentPosition(eb);
+      if (pos & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+      if (pos & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+      return 0;
+    });
 
     return questions;
   }

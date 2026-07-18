@@ -32,6 +32,9 @@ export default async function AppLayout({
               <Link href="/log/new" className="text-slate-600 hover:text-slate-900">
                 Add Activity
               </Link>
+              <Link href="/template" className="text-slate-600 hover:text-slate-900">
+                Answer Template
+              </Link>
               <Link href="/settings" className="text-slate-600 hover:text-slate-900">
                 Settings
               </Link>

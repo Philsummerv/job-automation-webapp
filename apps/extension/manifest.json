@@ -1,15 +1,34 @@
 {
   "manifest_version": 3,
-  "name": "ApplyAssistUI POC",
+  "name": "ApplyAssistUI",
   "version": "0.0.1",
-  "description": "POC: can a content script scan and fill Indeed's apply form with synthetic (isTrusted:false) events?",
+  "description": "Guided autofill for job-application forms, driven by your saved answer template.",
   "background": { "service_worker": "background.js" },
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs", "webNavigation"],
+  "host_permissions": [
+    "https://xzptcvgpmshbjvxwgmzi.supabase.co/*",
+    "https://job-automation-webapp-web.vercel.app/*",
+    "http://localhost:3000/*"
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://job-automation-webapp-web.vercel.app/*",
+      "http://localhost:3000/*"
+    ]
+  },
   "content_scripts": [
     {
       "matches": ["https://*.indeed.com/*"],
       "js": ["content.js"],
       "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://job-automation-webapp-web.vercel.app/*",
+        "http://localhost:3000/*"
+      ],
+      "js": ["web-bridge.js"],
       "run_at": "document_idle"
     }
   ]
