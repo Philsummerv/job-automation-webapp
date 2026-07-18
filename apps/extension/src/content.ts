@@ -435,7 +435,16 @@ function init() {
   panel.querySelector("#aaui-template")!.addEventListener("click", () => renderTemplateEditor());
 
   panel.querySelector("#aaui-start")!.addEventListener("click", () => {
-    sendToWorker({ type: "start-run" }).then((res) => log(`start-run → ${res?.ok ? "ok" : "failed"}`, res?.ok));
+    sendToWorker({ type: "start-run" }).then((res) => {
+      if (res?.ok) { log("run started", true); return; }
+      if (res?.reason === "not-signed-in") {
+        log("Sign in at applyassistui (job-automation-webapp-web.vercel.app) to use the assist", false);
+      } else if (res?.reason === "not-entitled") {
+        log("Account not active — start your trial / subscribe on the web app, then reload here", false);
+      } else {
+        log("couldn't start run", false);
+      }
+    });
   });
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));

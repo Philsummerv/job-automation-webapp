@@ -73,6 +73,14 @@ export interface ReviewDecisionMsg {
   decision: ReviewDecision;
 }
 
+/** The web-app bridge reports the current sign-in / entitlement status. */
+export interface AuthStatusMsg {
+  type: "auth-status";
+  signedIn: boolean;
+  entitled: boolean;
+  email: string | null;
+}
+
 /** User paused the assist to take manual control. */
 export interface PauseRunMsg {
   type: "pause-run";
@@ -127,6 +135,7 @@ export type WorkerBoundMsg =
   | PauseRunMsg
   | ResumeRunMsg
   | RunErrorMsg
+  | AuthStatusMsg
   | AuthHandoffMsg
   | PingMsg;
 
@@ -161,9 +170,16 @@ export interface Ack {
   ok: boolean;
 }
 
+/** start-run may be refused (e.g. not signed in / not entitled). */
+export interface StartRunResponse {
+  ok: boolean;
+  /** Why the run was refused, when ok is false. */
+  reason?: "not-signed-in" | "not-entitled" | "no-tab";
+}
+
 export interface ResponseMap {
   "page-ready": PageReadyResponse;
-  "start-run": Ack;
+  "start-run": StartRunResponse;
   "cancel-run": Ack;
   "scan-result": Ack;
   "fill-result": Ack;
@@ -171,6 +187,7 @@ export interface ResponseMap {
   "pause-run": Ack;
   "resume-run": Ack;
   "run-error": Ack;
+  "auth-status": Ack;
   "auth-handoff": AuthHandoffResponse;
   ping: PingResponse;
 }

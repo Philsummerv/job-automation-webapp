@@ -7,16 +7,28 @@
   "permissions": ["storage", "tabs", "webNavigation"],
   "host_permissions": [
     "https://xzptcvgpmshbjvxwgmzi.supabase.co/*",
+    "https://job-automation-webapp-web.vercel.app/*",
     "http://localhost:3000/*"
   ],
   "externally_connectable": {
-    "matches": ["http://localhost:3000/*"]
+    "matches": [
+      "https://job-automation-webapp-web.vercel.app/*",
+      "http://localhost:3000/*"
+    ]
   },
   "content_scripts": [
     {
       "matches": ["https://*.indeed.com/*"],
       "js": ["content.js"],
       "all_frames": true,
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://job-automation-webapp-web.vercel.app/*",
+        "http://localhost:3000/*"
+      ],
+      "js": ["web-bridge.js"],
       "run_at": "document_idle"
     }
   ]

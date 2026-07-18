@@ -18,7 +18,7 @@ try {
 mkdirSync("dist", { recursive: true });
 
 await build({
-  entryPoints: ["src/content.ts", "src/background.ts"],
+  entryPoints: ["src/content.ts", "src/background.ts", "src/web-bridge.ts"],
   bundle: true,
   format: "iife",
   target: "chrome120",

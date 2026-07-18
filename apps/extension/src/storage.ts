@@ -32,6 +32,15 @@ export interface AnswerTemplate {
   rules: CustomRule[];
 }
 
+/** Cached result of the web-app entitlement probe (M-B3). */
+export interface Entitlement {
+  signedIn: boolean;
+  entitled: boolean;
+  email: string | null;
+  /** Epoch ms when the web bridge last reported this. */
+  checkedAt: number;
+}
+
 export interface StorageSchema {
   /** Supabase session handed off from the web app; null when signed out. */
   auth: AuthPayload | null;
@@ -41,6 +50,8 @@ export interface StorageSchema {
   loadCounts: Record<number, number>;
   /** The user's local answer template; null until they save one. */
   template: AnswerTemplate | null;
+  /** Last entitlement seen from the signed-in web app; null until first check. */
+  entitlement: Entitlement | null;
 }
 
 const DEFAULTS: StorageSchema = {
@@ -48,6 +59,7 @@ const DEFAULTS: StorageSchema = {
   activeRun: null,
   loadCounts: {},
   template: null,
+  entitlement: null,
 };
 
 /** Read a key, falling back to its schema default when unset. */

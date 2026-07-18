@@ -122,14 +122,29 @@ chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse)
     case "start-run": {
       const tabId = sender.tab?.id;
       if (tabId == null) {
-        sendResponse({ ok: false });
+        sendResponse({ ok: false, reason: "no-tab" });
         return false;
       }
-      const id = `run-${tabId}-${Date.now()}-${runSeq++}`;
-      dispatch(() => ({ type: "start-run", tabId, runId: id, at: Date.now() }))
-        .then(() => sendResponse({ ok: true }));
+      // Gate on entitlement cached from the web-app bridge (M-B3).
+      (async () => {
+        const ent = await getItem("entitlement");
+        if (!ent?.signedIn) return sendResponse({ ok: false, reason: "not-signed-in" });
+        if (!ent.entitled) return sendResponse({ ok: false, reason: "not-entitled" });
+        const id = `run-${tabId}-${Date.now()}-${runSeq++}`;
+        await dispatch(() => ({ type: "start-run", tabId, runId: id, at: Date.now() }));
+        sendResponse({ ok: true });
+      })();
       return true;
     }
+
+    case "auth-status":
+      setItem("entitlement", {
+        signedIn: msg.signedIn,
+        entitled: msg.entitled,
+        email: msg.email,
+        checkedAt: Date.now(),
+      }).then(() => sendResponse({ ok: true }));
+      return true;
 
     // The reducer guards each of these on runId + status, so the controller can
     // forward them directly — no stale-run filtering needed here.
