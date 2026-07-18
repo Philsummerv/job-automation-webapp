@@ -84,6 +84,7 @@ if (isTop || hasForm) init();
 
 function init() {
   let template: AnswerTemplate | null = null;
+  let usingSynced = false;
   let getAutoFillAnswer = makeAutoFillAnswer(DEFAULT_CONFIG);
   let questions: FormField[] = [];
   // The run this frame is currently serving; learned from the first command.
@@ -93,6 +94,7 @@ function init() {
   // synced from the web app wins; the local editor is an offline fallback.
   async function loadTemplate(): Promise<void> {
     const synced = await getItem("syncedTemplate");
+    usingSynced = synced != null;
     template = synced ?? (await getItem("template"));
     getAutoFillAnswer = makeAutoFillAnswer(mergedConfig(template));
   }
@@ -356,6 +358,15 @@ function init() {
   function renderTemplateEditor(): void {
     reviewEl.innerHTML = "";
     reviewEl.appendChild(hHeader("Answer template", "Your saved answers drive the autofill. Blank = sensible default."));
+
+    if (usingSynced) {
+      const note = mkEl(
+        "div",
+        "margin:4px 0 8px;padding:6px;background:#1e293b;border:1px solid #2563eb;border-radius:6px;font-size:11px;line-height:1.4",
+        "Showing your web-app template. Edit it at job-automation-webapp-web.vercel.app → Answer Template. Saving here only sets a local fallback used when signed out.",
+      );
+      reviewEl.appendChild(note);
+    }
 
     const cfg = template?.config ?? {};
     const fieldInputs: Record<string, HTMLInputElement | HTMLSelectElement> = {};
