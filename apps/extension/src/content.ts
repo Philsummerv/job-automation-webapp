@@ -537,8 +537,26 @@ const TEMPLATE_FIELDS: TemplateField[] = [
   { key: "is18OrOlder", label: "18 or older", type: "yesno" },
   { key: "hasDiploma", label: "Have HS diploma / GED", type: "yesno" },
   { key: "drivingLicense", label: "Have driver's license", type: "yesno" },
-  { key: "veteranStatus", label: "Veteran status", placeholder: "e.g. none / not a veteran / prefer not to answer" },
-  { key: "disabilityStatus", label: "Disability status", placeholder: "e.g. none / no / prefer not to answer" },
+  {
+    key: "veteranStatus",
+    label: "Veteran status",
+    type: "select",
+    options: [
+      { label: "Not a protected veteran", value: "not a protected veteran" },
+      { label: "I am a protected veteran", value: "i identify as a protected veteran" },
+      { label: "Prefer not to answer", value: "prefer not to answer" },
+    ],
+  },
+  {
+    key: "disabilityStatus",
+    label: "Disability status",
+    type: "select",
+    options: [
+      { label: "No, I don't have a disability", value: "no i do not have a disability" },
+      { label: "Yes, I have a disability", value: "yes i have a disability" },
+      { label: "Prefer not to answer", value: "prefer not to answer" },
+    ],
+  },
   { key: "linkedin", label: "LinkedIn URL" },
 ];
 
@@ -612,32 +630,35 @@ function realComboboxEl(q: FormField): HTMLElement | null {
 // wording doesn't literally contain the answer (common on veteran/disability
 // self-ID and Yes/No screeners). Used by every option-type field.
 
+/** Classify a label/answer's yes-no-ish intent (decline > negative > affirmative). */
+function classifyIntent(text: string): "decline" | "negative" | "affirmative" | "neutral" {
+  const s = text.toLowerCase();
+  if (/\b(decline|prefer not|choose not|no answer|not to answer|no response|wish to answer|want to answer|not to self.?identify|skip|n\/?a)\b/.test(s)) return "decline";
+  if (/\b(none|no|not|nope|never|am not|do not|without)\b/.test(s)) return "negative";
+  if (/\b(yes|i am|i have|identify|affirm|yeah|yep)\b/.test(s)) return "affirmative";
+  return "neutral";
+}
+
 function scoreOption(label: string, answer: string): number {
   const o = label.toLowerCase().trim();
   const a = answer.toLowerCase().trim();
   if (!o || !a) return 0;
-  if (o === a) return 100;
-  if (o.includes(a) || a.includes(o)) return 80;
+  if (o === a) return 1000;
 
+  // Text overlap (shared tokens + phrase containment) as the base signal.
   const oTokens = new Set(o.split(/[^a-z0-9]+/).filter(Boolean));
-  let overlap = 0;
-  for (const t of a.split(/[^a-z0-9]+/)) if (t.length > 2 && oTokens.has(t)) overlap++;
-  let score = overlap * 15;
+  let score = 0;
+  for (const t of a.split(/[^a-z0-9]+/)) if (t.length > 2 && oTokens.has(t)) score += 10;
+  if (o.length >= 4 && a.includes(o)) score += 20;
+  if (a.length >= 4 && o.includes(a)) score += 20;
 
-  // Intent buckets (decline > negative > affirmative). Self-ID decline options
-  // are worded many ways ("prefer not to answer", "I don't wish to answer",
-  // "I do not want to answer", "choose not to self-identify"), so match on the
-  // stable "wish/want to answer" / "prefer not" / "decline" / "choose not" cues.
-  const declineAns = /\b(decline|prefer not|no answer|choose not|skip|n\/?a|not to answer|wish to answer|want to answer)\b/.test(a);
-  const declineOpt = /\b(decline|prefer not|choose not|not to answer|no response|wish to answer|want to answer|not to self.?identify)\b/.test(o);
-  const negAns = /\b(none|no|not|nope|never)\b/.test(a);
-  const negOpt = /\b(no|not|am not|without|none|do not)\b/.test(o);
-  const posAns = /\b(yes|i am|i have|identify|affirm|yeah|yep)\b/.test(a);
-  const posOpt = /\b(yes|i am|i have|identify)\b/.test(o);
-
-  if (declineAns && declineOpt) score += 60;
-  else if (negAns && negOpt && !declineOpt) score += 40;
-  else if (posAns && posOpt && !declineOpt) score += 40;
+  // Intent alignment DOMINATES: a negative answer must not match an affirmative
+  // option just because it's a substring ("protected veteran" ⊂ "not a protected
+  // veteran"), and "prefer not to answer" must beat a bare "No". Mismatched
+  // intents are penalised so a correctly-aligned option wins.
+  const ai = classifyIntent(a);
+  const oi = classifyIntent(o);
+  if (ai !== "neutral" && oi !== "neutral") score += ai === oi ? 100 : -100;
   return score;
 }
 
@@ -715,7 +736,7 @@ async function fillComboboxDom(field: FormField, answer: string): Promise<{ ok: 
     for (const kw of keywords) s = Math.max(s, scoreOption(txt, kw));
     if (s > bestScore) { bestScore = s; picked = el; pickedLabel = txt; }
   }
-  if (!picked || bestScore === 0) {
+  if (!picked || bestScore <= 0) {
     closeCombo(combo);
     return { ok: false, detail: `no dropdown option matched "${keywords[0]}"` };
   }
