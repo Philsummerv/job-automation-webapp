@@ -82,8 +82,78 @@ export interface Profile {
   subscription_status: SubscriptionStatus;
   trial_ends_at: string | null;
   current_period_end: string | null;
+  answer_template: AnswerTemplate | null;
   created_at: string;
 }
+
+// ─── Answer template (Guided extension autofill) ─────────────────────────────
+// The user's saved autofill answers. `config` overrides fields on the
+// extension's DEFAULT_CONFIG; `rules` are custom "if the question contains X,
+// answer Y" matches that take priority over the built-in ruleset. Edited in the
+// web app, read by the extension. Stored as JSONB on profiles.answer_template.
+
+export interface CustomRule {
+  /** Case-insensitive substring matched against the question text. */
+  match: string;
+  /** The answer to apply (plain text, or a Yes/No/option label). */
+  answer: string;
+}
+
+export interface AnswerTemplate {
+  config: Record<string, string>;
+  rules: CustomRule[];
+}
+
+/** A field shown in the template editor (both the web app and the extension). */
+export interface TemplateField {
+  key: string;
+  label: string;
+  type?: "yesno" | "select";
+  placeholder?: string;
+  /** For type "select": the choices. `value` is the phrase the extension
+   * matches against a form's live option labels at fill time. */
+  options?: { label: string; value: string }[];
+}
+
+/** The curated standard fields exposed in the template editor. */
+export const TEMPLATE_FIELDS: TemplateField[] = [
+  { key: "firstName", label: "First name" },
+  { key: "lastName", label: "Last name" },
+  { key: "phone", label: "Phone" },
+  { key: "zipCode", label: "ZIP code" },
+  { key: "city", label: "City" },
+  { key: "educationLevel", label: "Education", placeholder: "keywords to match the option, e.g. Bachelor" },
+  { key: "salary", label: "Desired salary" },
+  { key: "yearsExperience", label: "Years of experience" },
+  { key: "willingToRelocate", label: "Willing to relocate", type: "yesno" },
+  { key: "authorizedToWork", label: "Authorized to work in the US", type: "yesno" },
+  { key: "needsSponsorship", label: "Need visa sponsorship", type: "yesno" },
+  { key: "usCitizen", label: "US citizen", type: "yesno" },
+  { key: "is18OrOlder", label: "18 or older", type: "yesno" },
+  { key: "hasDiploma", label: "Have HS diploma / GED", type: "yesno" },
+  { key: "drivingLicense", label: "Have driver's license", type: "yesno" },
+  {
+    key: "veteranStatus",
+    label: "Veteran status",
+    type: "select",
+    options: [
+      { label: "Not a protected veteran", value: "not a protected veteran" },
+      { label: "I am a protected veteran", value: "i identify as a protected veteran" },
+      { label: "Prefer not to answer", value: "prefer not to answer" },
+    ],
+  },
+  {
+    key: "disabilityStatus",
+    label: "Disability status",
+    type: "select",
+    options: [
+      { label: "No, I don't have a disability", value: "no i do not have a disability" },
+      { label: "Yes, I have a disability", value: "yes i have a disability" },
+      { label: "Prefer not to answer", value: "prefer not to answer" },
+    ],
+  },
+  { key: "linkedin", label: "LinkedIn URL" },
+];
 
 export interface ActivityLogEntry {
   id: string;

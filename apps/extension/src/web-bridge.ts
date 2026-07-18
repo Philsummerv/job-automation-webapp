@@ -5,6 +5,7 @@
 // Indeed runs on it.
 
 import { sendToWorker } from "./messages";
+import type { AnswerTemplate } from "./storage";
 
 async function reportAuth(): Promise<void> {
   try {
@@ -31,9 +32,29 @@ async function reportAuth(): Promise<void> {
   }
 }
 
-// Report on load, and whenever the tab regains focus (catches a sign-in/out
-// that happened while this tab was backgrounded).
-reportAuth();
+async function syncTemplate(): Promise<void> {
+  try {
+    const res = await fetch("/api/extension/template", {
+      credentials: "same-origin",
+      headers: { accept: "application/json" },
+      cache: "no-store",
+    });
+    if (!res.ok) return;
+    const data = (await res.json()) as { template?: AnswerTemplate | null };
+    await sendToWorker({ type: "template-sync", template: data.template ?? null });
+  } catch {
+    // Non-fatal; retried on the next visit/focus.
+  }
+}
+
+function refresh(): void {
+  reportAuth();
+  syncTemplate();
+}
+
+// Report on load, and whenever the tab regains focus (catches a sign-in/out or
+// template edit that happened while this tab was backgrounded).
+refresh();
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") reportAuth();
+  if (document.visibilityState === "visible") refresh();
 });

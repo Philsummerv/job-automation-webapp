@@ -48,8 +48,10 @@ export interface StorageSchema {
   activeRun: RunState | null;
   /** Per-tab page-load counters, keyed by tab id. Replaces the POC counter. */
   loadCounts: Record<number, number>;
-  /** The user's local answer template; null until they save one. */
+  /** The user's local answer template (offline fallback); null until they save one. */
   template: AnswerTemplate | null;
+  /** The account template synced from the web app; preferred over `template`. */
+  syncedTemplate: AnswerTemplate | null;
   /** Last entitlement seen from the signed-in web app; null until first check. */
   entitlement: Entitlement | null;
 }
@@ -59,6 +61,7 @@ const DEFAULTS: StorageSchema = {
   activeRun: null,
   loadCounts: {},
   template: null,
+  syncedTemplate: null,
   entitlement: null,
 };
 

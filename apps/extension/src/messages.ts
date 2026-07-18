@@ -16,6 +16,7 @@
 
 import type { FormField } from "@applyassistui/automation/types";
 import type { ContentCommand, ReviewDecision } from "./state/types";
+import type { AnswerTemplate } from "./storage";
 
 // ── Shared value shapes ───────────────────────────────────────────────────────
 
@@ -81,6 +82,12 @@ export interface AuthStatusMsg {
   email: string | null;
 }
 
+/** The web-app bridge relays the user's saved template (null when none/signed out). */
+export interface TemplateSyncMsg {
+  type: "template-sync";
+  template: AnswerTemplate | null;
+}
+
 /** User paused the assist to take manual control. */
 export interface PauseRunMsg {
   type: "pause-run";
@@ -136,6 +143,7 @@ export type WorkerBoundMsg =
   | ResumeRunMsg
   | RunErrorMsg
   | AuthStatusMsg
+  | TemplateSyncMsg
   | AuthHandoffMsg
   | PingMsg;
 
@@ -188,6 +196,7 @@ export interface ResponseMap {
   "resume-run": Ack;
   "run-error": Ack;
   "auth-status": Ack;
+  "template-sync": Ack;
   "auth-handoff": AuthHandoffResponse;
   ping: PingResponse;
 }

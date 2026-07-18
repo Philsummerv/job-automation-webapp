@@ -146,6 +146,10 @@ chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse)
       }).then(() => sendResponse({ ok: true }));
       return true;
 
+    case "template-sync":
+      setItem("syncedTemplate", msg.template).then(() => sendResponse({ ok: true }));
+      return true;
+
     // The reducer guards each of these on runId + status, so the controller can
     // forward them directly — no stale-run filtering needed here.
     case "cancel-run":

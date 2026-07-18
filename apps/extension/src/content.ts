@@ -89,9 +89,11 @@ function init() {
   // The run this frame is currently serving; learned from the first command.
   let currentRunId: string | null = null;
 
-  // Load the saved local template (Option A) and rebuild the ruleset resolver.
+  // Load the template and rebuild the ruleset resolver. The account template
+  // synced from the web app wins; the local editor is an offline fallback.
   async function loadTemplate(): Promise<void> {
-    template = await getItem("template");
+    const synced = await getItem("syncedTemplate");
+    template = synced ?? (await getItem("template"));
     getAutoFillAnswer = makeAutoFillAnswer(mergedConfig(template));
   }
   loadTemplate();
