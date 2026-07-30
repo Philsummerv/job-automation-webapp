@@ -57,7 +57,12 @@ export function makeAutoFillAnswer(config: ScoutConfig) {
 
     if (lower.includes("salary") || lower.includes("pay expectation") || lower.includes("desired pay") || lower.includes("compensation") || lower.includes("expected pay")) return config.salary;
 
-    if (lower.includes("laboratory") && (lower.includes("experience") || lower.includes("years"))) return config.yearsExperience;
+    // Years-of-experience questions → a number. Only fire when the question
+    // asks for a COUNT ("how many years…" / "…years experience"). A phrasing
+    // like "Do you have experience with X?" is a Yes/No — feeding it a number
+    // never matches an option (it reports "no matching option"), so it's
+    // excluded here and left to the user's custom rules / manual review.
+    // (Removed a job-specific `"laboratory"` catch-all that ignored this.)
     if (lower.includes("how many years") || (lower.includes("years") && lower.includes("experience") && !lower.includes("do you have"))) return config.yearsExperience;
 
     if (lower.includes("time zone") || lower.includes("timezone")) return config.timeZone;

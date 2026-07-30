@@ -203,13 +203,45 @@ function init() {
         : hHeader("Does this look right?", "Edit anything below — changes apply to the form."),
     );
 
-    for (const q of questions) reviewEl.appendChild(renderQuestionCard(q));
+    const cards = questions.map((q) => {
+      const card = renderQuestionCard(q);
+      reviewEl.appendChild(card);
+      return { q, card };
+    });
+
+    // Single, reused red banner for the required-field guard below.
+    const notice = (text: string) => {
+      let n = reviewEl.querySelector<HTMLElement>("#aaui-gate-notice");
+      if (!n) {
+        n = mkEl("div", "margin:6px 0;padding:6px 8px;background:#7f1d1d;border-radius:6px;color:#fff;font-size:11px");
+        n.id = "aaui-gate-notice";
+        reviewEl.insertBefore(n, reviewEl.firstChild);
+      }
+      n.textContent = text;
+    };
 
     const footer = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:8px");
     if (mode === "paused") {
       footer.appendChild(mkBtn("Resume assist", "#7c3aed", () => sendToWorker({ type: "resume-run", runId })));
     } else {
       footer.appendChild(mkBtn("Looks right → Continue", "#059669", () => {
+        // Guard: don't advance while a REQUIRED question is still unanswered —
+        // Indeed just rejects the page ("Choose an option to continue.") and the
+        // run stalls. Point the user at the exact cards (still editable inline),
+        // or they can use "Pause" to answer on the page.
+        const missing = cards.filter(({ q }) => isFieldRequired(q) && !isFieldAnswered(q));
+        if (missing.length) {
+          for (const { card } of cards) card.style.outline = "";
+          for (const { card } of missing) card.style.outline = "2px solid #f87171";
+          const plural = missing.length > 1;
+          notice(
+            `${missing.length} required question${plural ? "s" : ""} still ` +
+              `need${plural ? "" : "s"} an answer — fill the highlighted card${plural ? "s" : ""} ` +
+              `below (or use “Pause” to answer on the page), then Continue.`,
+          );
+          missing[0].card.scrollIntoView({ block: "nearest" });
+          return;
+        }
         reviewEl.innerHTML = "";
         sendToWorker({ type: "review-decision", runId, decision: "approved" });
       }));
@@ -469,8 +501,20 @@ function init() {
 
   panel.querySelector("#aaui-template")!.addEventListener("click", () => renderTemplateEditor());
 
-  panel.querySelector("#aaui-start")!.addEventListener("click", () => {
-    sendToWorker({ type: "start-run" }).then((res) => {
+  let startPending = false;
+  panel.querySelector("#aaui-start")!.addEventListener("click", async () => {
+    // Guard against stacked runs: ignore re-clicks while a start is in flight or
+    // a run is already active for this tab (re-clicking used to spawn overlapping
+    // scans, producing the inconsistent scanned-count noise in the log).
+    if (startPending) return;
+    startPending = true;
+    try {
+      const active = await getItem("activeRun");
+      if (active && active.status !== "done" && active.status !== "error") {
+        log("a run is already active — press Cancel to stop it before restarting", false);
+        return;
+      }
+      const res = await sendToWorker({ type: "start-run" });
       if (res?.ok) { log("run started", true); return; }
       if (res?.reason === "not-signed-in") {
         log("Sign in at applyassistui (job-automation-webapp-web.vercel.app) to use the assist", false);
@@ -479,7 +523,9 @@ function init() {
       } else {
         log("couldn't start run", false);
       }
-    });
+    } finally {
+      startPending = false;
+    }
   });
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
@@ -691,6 +737,41 @@ function realSelectEl(q: FormField): HTMLSelectElement | null {
 
 function realComboboxEl(q: FormField): HTMLElement | null {
   return q.inputId ? document.getElementById(q.inputId) : null;
+}
+
+/** Does the live form mark this question as required? Indeed appends a trailing
+ * "*" to the label; native `required` / `aria-required` are the stronger signal
+ * when present. Best-effort — a false negative just restores today's behaviour. */
+function isFieldRequired(q: FormField): boolean {
+  if (q.text.trim().endsWith("*")) return true;
+  const els: (Element | null)[] =
+    q.type === "radio" || q.type === "checkbox"
+      ? q.options.map((o) => realOptionEl(q, o))
+      : q.type === "select"
+        ? [realSelectEl(q)]
+        : q.type === "combobox"
+          ? [realComboboxEl(q)]
+          : [realTextEl(q)];
+  return els.some(
+    (el) => !!el && ((el as HTMLInputElement).required === true || el.getAttribute("aria-required") === "true"),
+  );
+}
+
+/** Is this question currently answered on the real form? */
+function isFieldAnswered(q: FormField): boolean {
+  switch (q.type) {
+    case "radio":
+    case "checkbox":
+      return q.options.some((o) => realOptionEl(q, o)?.checked);
+    case "select":
+      return !!realSelectEl(q)?.value;
+    case "combobox": {
+      const t = (realComboboxEl(q)?.innerText || "").trim();
+      return !!t && !/select an option/i.test(t);
+    }
+    default:
+      return !!realTextEl(q)?.value?.trim();
+  }
 }
 
 // ─── Option matching ────────────────────────────────────────────────────────
