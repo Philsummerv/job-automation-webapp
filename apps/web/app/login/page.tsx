@@ -18,9 +18,16 @@ export default function LoginPage() {
       </Suspense>
 
       <p className="mt-8 text-xs text-slate-500">
-        By signing in you agree to our documentation-tool terms. ApplyAssistUI is a
-        user-directed job-search documentation tool; you initiate and confirm
-        every action.
+        By signing in you agree to our{" "}
+        <Link href="/terms" className="underline hover:text-slate-900">
+          Terms of Service
+        </Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline hover:text-slate-900">
+          Privacy Policy
+        </Link>
+        . ApplyAssistUI is a user-directed job-search documentation tool; you
+        initiate and confirm every action.
       </p>
     </main>
   );

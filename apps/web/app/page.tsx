@@ -115,7 +115,10 @@ export default function LandingPage() {
               <li>✓ Weekly compliance tracking</li>
               <li>✓ PDF &amp; CSV exports</li>
               <li>✓ Evidence storage</li>
-              <li>✓ Guided browser assist</li>
+              <li>
+                ✓ Guided browser assist{" "}
+                <span className="text-slate-400">(early access — coming to the Chrome Web Store)</span>
+              </li>
             </ul>
             <Link
               href="/login"
@@ -129,9 +132,19 @@ export default function LandingPage() {
 
       <footer className="border-t border-slate-100">
         <div className="mx-auto max-w-5xl px-6 py-8 text-center text-xs text-slate-500">
-          ApplyAssistUI is a user-directed job-search documentation tool. It does not
-          provide legal advice; requirements vary by state. You are responsible
-          for the accuracy of your records and for meeting your state&apos;s rules.
+          <p>
+            ApplyAssistUI is a user-directed job-search documentation tool. It does not
+            provide legal advice; requirements vary by state. You are responsible
+            for the accuracy of your records and for meeting your state&apos;s rules.
+          </p>
+          <div className="mt-4 flex items-center justify-center gap-6">
+            <Link href="/terms" className="hover:text-slate-900">
+              Terms of Service
+            </Link>
+            <Link href="/privacy" className="hover:text-slate-900">
+              Privacy Policy
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

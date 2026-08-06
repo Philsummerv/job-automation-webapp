@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 export default function LoginForm() {
   const params = useSearchParams();
   const redirect = params.get("redirect") || "/dashboard";
+  const linkFailed = params.get("error") === "auth";
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
     "idle",
@@ -44,6 +45,12 @@ export default function LoginForm() {
 
   return (
     <form onSubmit={sendMagicLink} className="mt-6 space-y-4">
+      {linkFailed && status === "idle" && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          That sign-in link has expired or was already used. Enter your email
+          below and we&apos;ll send you a fresh one.
+        </div>
+      )}
       <div>
         <label htmlFor="email" className="block text-sm font-medium">
           Email
