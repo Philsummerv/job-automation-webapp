@@ -16,7 +16,7 @@ export default function NotFound() {
         href="/"
         className="mt-6 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-dark"
       >
-        Back to ApplyAssistUI
+        Back to JobAssistUI
       </Link>
     </main>
   );

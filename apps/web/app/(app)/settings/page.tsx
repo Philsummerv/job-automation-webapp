@@ -126,10 +126,10 @@ export default async function SettingsPage({
               className="mt-0.5"
             />
             <span className="text-slate-700">
-              I understand ApplyAssistUI is a{" "}
+              I understand JobAssistUI is a{" "}
               <strong>user-directed job-search documentation tool</strong>. I am
               responsible for the accuracy of my log and for meeting my state&apos;s
-              requirements. ApplyAssistUI never submits anything without me present,
+              requirements. JobAssistUI never submits anything without me present,
               and I initiate and confirm every action.
             </span>
           </label>

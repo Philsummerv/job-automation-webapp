@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy — ApplyAssistUI",
+  title: "Privacy Policy — JobAssistUI",
 };
 
 const SUPPORT_EMAIL = "psommerville3@gmail.com";
@@ -11,7 +11,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy" updated="August 6, 2026">
       <p>
-        This policy explains what information ApplyAssistUI collects, why, and
+        This policy explains what information JobAssistUI collects, why, and
         what your choices are. The short version: we store the job-search
         records you create so we can show them back to you and export them,
         we use a payment processor for billing, and we do not sell your data.
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
       <p>
         The optional Guided assist feature reads the job-application page you
         are working on in order to suggest form values. It uses your
-        ApplyAssistUI account only to fetch your answer template, check your
+        JobAssistUI account only to fetch your answer template, check your
         subscription, and record an activity-log entry when you confirm an
         application. It never submits an application without you present and
         confirming.

@@ -2,7 +2,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site";
 
-const title = "ApplyAssistUI — Job Search Log for Unemployment Compliance";
+const title = "JobAssistUI — Job Search Log for Unemployment Compliance";
 const description =
   "Document your weekly job-search activities and export a DOL-ready report. A user-directed job-search documentation tool.";
 
@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     title,
     description,
     url: SITE_URL,
-    siteName: "ApplyAssistUI",
+    siteName: "JobAssistUI",
     type: "website",
   },
   twitter: {

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — ApplyAssistUI",
+  title: "Terms of Service — JobAssistUI",
 };
 
 const SUPPORT_EMAIL = "psommerville3@gmail.com";
@@ -12,21 +12,21 @@ export default function TermsPage() {
     <LegalPage title="Terms of Service" updated="August 6, 2026">
       <p>
         These Terms of Service (&quot;Terms&quot;) govern your use of
-        ApplyAssistUI (the &quot;Service&quot;), a user-directed job-search
+        JobAssistUI (the &quot;Service&quot;), a user-directed job-search
         documentation tool. By creating an account or using the Service, you
         agree to these Terms. If you do not agree, do not use the Service.
       </p>
 
       <h2>1. What the Service is</h2>
       <p>
-        ApplyAssistUI helps you record your job-search activities, track them
+        JobAssistUI helps you record your job-search activities, track them
         against a weekly target you configure, and export your records as PDF
         or CSV documents. An optional feature (&quot;Guided assist&quot;) can
         help you fill out online job applications and record completed
         applications to your log.
       </p>
       <p>
-        ApplyAssistUI is a documentation tool, not a legal or benefits
+        JobAssistUI is a documentation tool, not a legal or benefits
         advisor. It does not provide legal advice, does not guarantee that
         your records will satisfy any government agency&apos;s requirements,
         and does not guarantee approval or continuation of unemployment
@@ -50,7 +50,7 @@ export default function TermsPage() {
       <p>
         You sign in with a one-time email link. You are responsible for
         maintaining control of your email account and for all activity that
-        occurs under your ApplyAssistUI account. You must provide accurate
+        occurs under your JobAssistUI account. You must provide accurate
         information and be at least 18 years old to use the Service.
       </p>
 
