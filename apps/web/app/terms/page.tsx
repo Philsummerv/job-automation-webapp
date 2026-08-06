@@ -21,9 +21,9 @@ export default function TermsPage() {
       <p>
         ApplyAssistUI helps you record your job-search activities, track them
         against a weekly target you configure, and export your records as PDF
-        or CSV documents. An optional browser extension (&quot;Guided
-        assist&quot;) can help you fill out online job applications and record
-        completed applications to your log.
+        or CSV documents. An optional feature (&quot;Guided assist&quot;) can
+        help you fill out online job applications and record completed
+        applications to your log.
       </p>
       <p>
         ApplyAssistUI is a documentation tool, not a legal or benefits

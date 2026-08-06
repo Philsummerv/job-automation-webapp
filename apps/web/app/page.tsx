@@ -82,12 +82,12 @@ export default function LandingPage() {
           </div>
           <div className="mx-auto mt-10 max-w-2xl rounded-xl border border-slate-200 bg-white p-6 text-center">
             <h3 className="font-semibold text-slate-900">
-              Optional: Guided assist
+              Coming soon: Guided assist
             </h3>
             <p className="mt-2 text-sm text-slate-600">
-              When you&apos;re applying online, Guided mode streamlines the form and
-              captures your confirmation as evidence automatically — but{" "}
-              <strong>you stay in control and confirm every submission.</strong>{" "}
+              When you&apos;re applying online, Guided mode will streamline the
+              form and capture your confirmation as evidence automatically —
+              but <strong>you stay in control and confirm every submission.</strong>{" "}
               ApplyAssistUI never applies to anything without you present.
             </p>
           </div>
@@ -116,8 +116,8 @@ export default function LandingPage() {
               <li>✓ PDF &amp; CSV exports</li>
               <li>✓ Evidence storage</li>
               <li>
-                ✓ Guided browser assist{" "}
-                <span className="text-slate-400">(early access — coming to the Chrome Web Store)</span>
+                ✓ Guided application assist{" "}
+                <span className="text-slate-400">(coming soon)</span>
               </li>
             </ul>
             <Link

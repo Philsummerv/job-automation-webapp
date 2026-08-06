@@ -44,15 +44,14 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
-      <h2>2. The browser extension</h2>
+      <h2>2. Guided assist</h2>
       <p>
-        The optional Guided assist extension runs in your browser. It reads
-        the job-application page you are on in order to suggest form values,
-        and that page content is processed locally in your browser — it is
-        not sent to our servers. The extension communicates with your
+        The optional Guided assist feature reads the job-application page you
+        are working on in order to suggest form values. It uses your
         ApplyAssistUI account only to fetch your answer template, check your
         subscription, and record an activity-log entry when you confirm an
-        application.
+        application. It never submits an application without you present and
+        confirming.
       </p>
 
       <h2>3. How we use information</h2>
