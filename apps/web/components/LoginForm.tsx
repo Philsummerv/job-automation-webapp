@@ -37,8 +37,9 @@ export default function LoginForm() {
   if (status === "sent") {
     return (
       <div className="mt-6 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-        Check <strong>{email}</strong> for your sign-in link. You can close this
-        tab.
+        Check <strong>{email}</strong> for your sign-in link — if it&apos;s not
+        in your inbox within a minute, check your spam folder. You can close
+        this tab.
       </div>
     );
   }
