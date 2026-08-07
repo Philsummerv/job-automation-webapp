@@ -68,7 +68,7 @@ export default function LoginForm() {
         </div>
         <form onSubmit={verifyCode} className="space-y-3">
           <label htmlFor="otp-code" className="block text-sm font-medium">
-            Enter the 6-digit code from the email
+            Enter the code from the email
           </label>
           <input
             id="otp-code"
@@ -78,7 +78,7 @@ export default function LoginForm() {
             required
             value={code}
             onChange={(e) => setCode(e.target.value)}
-            placeholder="123456"
+            placeholder="12345678"
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-center text-lg tracking-widest focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
           {error && <p className="text-sm text-red-600">{error}</p>}
