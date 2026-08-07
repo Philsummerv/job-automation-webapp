@@ -2,6 +2,7 @@ import Link from "next/link";
 import { isEntitled, type Profile } from "@applyassistui/shared";
 import { isCompedEmail, requireOnboarded } from "@/lib/auth";
 import { syncFromCustomer } from "@/lib/billing";
+import SubmitButton from "@/components/SubmitButton";
 import { openBillingPortal, startCheckout } from "./actions";
 
 function formatDate(iso: string | null) {
@@ -58,7 +59,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      {comped && !isEntitled(status) && (
+      {comped && (
         <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-8">
           <h2 className="text-lg font-semibold text-emerald-900">
             Complimentary access
@@ -87,17 +88,17 @@ export default async function BillingPage({
             ))}
           </ul>
           <form action={startCheckout} className="mt-6">
-            <button
-              type="submit"
+            <SubmitButton
+              pendingLabel="Opening checkout…"
               className="w-full rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white hover:bg-brand-dark"
             >
               Start free trial
-            </button>
+            </SubmitButton>
           </form>
         </div>
       )}
 
-      {status === "trialing" && (
+      {!comped && status === "trialing" && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">Trial active</h2>
           <p className="mt-2 text-sm text-slate-600">
@@ -112,7 +113,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      {status === "active" && (
+      {!comped && status === "active" && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">Subscription active</h2>
           <p className="mt-2 text-sm text-slate-600">
@@ -125,7 +126,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      {status === "past_due" && (
+      {!comped && status === "past_due" && (
         <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-8">
           <h2 className="text-lg font-semibold text-red-800">Payment failed</h2>
           <p className="mt-2 text-sm text-red-700">
@@ -139,7 +140,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      {status === "canceled" && (
+      {!comped && status === "canceled" && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">Your subscription has ended</h2>
           <p className="mt-2 text-sm text-slate-600">
@@ -147,12 +148,12 @@ export default async function BillingPage({
             existing entries are safe.
           </p>
           <form action={startCheckout} className="mt-6">
-            <button
-              type="submit"
+            <SubmitButton
+              pendingLabel="Opening checkout…"
               className="w-full rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white hover:bg-brand-dark"
             >
               Resubscribe
-            </button>
+            </SubmitButton>
           </form>
         </div>
       )}
@@ -174,12 +175,12 @@ function StartApplyingButton() {
 function ManageBillingButton({ label = "Manage billing" }: { label?: string }) {
   return (
     <form action={openBillingPortal}>
-      <button
-        type="submit"
+      <SubmitButton
+        pendingLabel="Opening portal…"
         className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
       >
         {label}
-      </button>
+      </SubmitButton>
     </form>
   );
 }

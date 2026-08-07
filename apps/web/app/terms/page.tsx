@@ -48,7 +48,7 @@ export default function TermsPage() {
 
       <h2>3. Accounts</h2>
       <p>
-        You sign in with a one-time email link. You are responsible for
+        You sign in with a one-time email link or code. You are responsible for
         maintaining control of your email account and for all activity that
         occurs under your JobAssistUI account. You must provide accurate
         information and be at least 18 years old to use the Service.

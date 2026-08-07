@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { getProfileContext } from "@/lib/auth";
+import { getProfileContext, isCompedEmail } from "@/lib/auth";
 import {
   US_STATES,
   DAYS_OF_WEEK,
   type SubscriptionStatus,
 } from "@applyassistui/shared";
+import SubmitButton from "@/components/SubmitButton";
 import { saveSettings } from "./actions";
 
 const SUBSCRIPTION_LABELS: Record<SubscriptionStatus, string> = {
@@ -21,7 +22,8 @@ export default async function SettingsPage({
 }: {
   searchParams: Promise<{ onboarding?: string; saved?: string }>;
 }) {
-  const { profile } = await getProfileContext();
+  const { profile, user } = await getProfileContext();
+  const comped = isCompedEmail(user.email);
   const sp = await searchParams;
   const onboarding = sp.onboarding === "1" || !profile.disclaimer_accepted_at;
   const saved = sp.saved === "1";
@@ -135,12 +137,12 @@ export default async function SettingsPage({
           </label>
         )}
 
-        <button
-          type="submit"
+        <SubmitButton
+          pendingLabel={onboarding ? "Setting up…" : "Saving…"}
           className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
         >
           {onboarding ? "Get started" : "Save settings"}
-        </button>
+        </SubmitButton>
       </form>
 
       {!onboarding && (
@@ -150,17 +152,21 @@ export default async function SettingsPage({
             <div className="flex justify-between">
               <dt>Status</dt>
               <dd className="font-medium text-slate-900">
-                {SUBSCRIPTION_LABELS[profile.subscription_status]}
+                {comped
+                  ? "Complimentary access"
+                  : SUBSCRIPTION_LABELS[profile.subscription_status]}
               </dd>
             </div>
-            {profile.subscription_status === "trialing" &&
+            {!comped &&
+              profile.subscription_status === "trialing" &&
               profile.trial_ends_at && (
                 <div className="flex justify-between">
                   <dt>Trial ends</dt>
                   <dd>{new Date(profile.trial_ends_at).toLocaleDateString()}</dd>
                 </div>
               )}
-            {profile.subscription_status === "active" &&
+            {!comped &&
+              profile.subscription_status === "active" &&
               profile.current_period_end && (
                 <div className="flex justify-between">
                   <dt>Renews</dt>

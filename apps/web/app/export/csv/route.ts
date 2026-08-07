@@ -10,7 +10,8 @@ export async function GET(request: NextRequest) {
   }
 
   const entries = await getPeriodEntries(supabase, period);
-  const csv = toCsv(entries);
+  // BOM so Excel on Windows decodes accents/dashes as UTF-8 instead of ANSI.
+  const csv = "﻿" + toCsv(entries);
 
   return new NextResponse(csv, {
     headers: {

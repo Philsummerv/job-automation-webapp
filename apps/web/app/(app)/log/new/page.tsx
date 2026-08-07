@@ -5,6 +5,7 @@ import {
   ACTIVITY_RESULTS,
   toISODate,
 } from "@applyassistui/shared";
+import SubmitButton from "@/components/SubmitButton";
 import { createEntry } from "./actions";
 
 export default async function NewEntryPage() {
@@ -121,12 +122,11 @@ export default async function NewEntryPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            type="submit"
+          <SubmitButton
             className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
           >
             Save activity
-          </button>
+          </SubmitButton>
           <Link
             href="/dashboard"
             className="text-sm text-slate-500 hover:text-slate-700"
