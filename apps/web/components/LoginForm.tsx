@@ -41,11 +41,17 @@ export default function LoginForm() {
     setVerifying(true);
     setError("");
     const supabase = createClient();
-    const { error } = await supabase.auth.verifyOtp({
-      email,
-      token: code.trim(),
-      type: "email",
-    });
+    const token = code.trim();
+    // A first-time email goes through Supabase's "Confirm signup" flow rather
+    // than "Magic Link"; retry as a signup token so new users aren't stranded.
+    let { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    if (error) {
+      ({ error } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "signup",
+      }));
+    }
     if (error) {
       setError(
         error.message.toLowerCase().includes("expired") ||
@@ -122,7 +128,7 @@ export default function LoginForm() {
         disabled={status === "sending"}
         className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60"
       >
-        {status === "sending" ? "Sending…" : "Email me a sign-in link"}
+        {status === "sending" ? "Sending…" : "Email me a sign-in code"}
       </button>
     </form>
   );
