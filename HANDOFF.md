@@ -164,11 +164,36 @@ All users were deleted 2026-08-08, so both of these are fresh.
 
 ## Pick up here
 
+**First, the user wants to explore the site's features and functionality on
+their own** — hands-on, unassisted, to form their own view of the product
+before deciding what to change. Don't drive the browser or run a scripted
+test pass over the top of this; let them look, then work from what they
+report back.
+
+**Then a full working-order check.** Not a formal QA pass — the goal is
+confidence that everything works "somewhat okay" end to end before real
+users arrive. Sweep every feature: onboarding, add/edit/delete activity,
+the weekly badge math, settings changes propagating, answer template, CSV
+and PDF export, billing/paywall states. Fold in the three surfaces still
+never tested: the site on a real phone, evidence screenshot upload, and an
+export for a state other than New York.
+
+**Then LinkedIn — the user's next feature request (2026-08-08).** Scope was
+not specified, so clarify before building. The plausible readings are very
+different in size: (a) LinkedIn as a logging source / activity type
+alongside Indeed in the manual Self-Directed log, which is small; (b)
+LinkedIn as a second job board for the future web-native Guided path, which
+means a `packages/automation` platform adapter mirroring `indeed.ts` and
+inherits all the cloud-browser economics still unresolved; or (c) LinkedIn
+sign-in as an auth provider. Ask which before estimating. Note the existing
+scout code is Indeed-only and its selectors deliberately live in
+`packages/automation/src/indeed.ts` for exactly this kind of extension.
+
+Also outstanding from before:
+
 1. Re-run the paid funnel on `psommerville3+test`: onboarding → log a
    couple of activities → paywall → real-card trial → portal cancel. A lot
    has changed since launch night; this re-proves it on current code.
 2. Retest deliverability with a fresh Yahoo address now that DMARC is live
    (the Gmail send after propagation landed in the inbox).
-3. Still untested: the site on a real phone, evidence screenshot upload,
-   and an export for a state other than New York.
-4. Then marketing / first users — see Next steps below.
+3. Then marketing / first users — see Next steps below.
