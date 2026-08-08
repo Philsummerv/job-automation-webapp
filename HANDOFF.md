@@ -41,8 +41,8 @@ trial start. Full paywall on everything; `COMPED_EMAILS` env var bypasses it
 |---|---|
 | Domain | `jobassistui.com` bought via Vercel; apex 308s → **www.jobassistui.com** (canonical) |
 | Hosting | Vercel, deploys automatically on push to `main` |
-| Email | Resend custom SMTP in Supabase; sender `login@jobassistui.com`; domain verified. First sends landed in Gmail spam (new domain) — DMARC TXT record (`_dmarc` → `v=DMARC1; p=none;`) was recommended in Vercel DNS; **verify it was actually added** |
-| Auth | Supabase magic link **plus typed email code** (OTP). Code length set to 6 in Supabase. Email template customized to include `{{ .Token }}` and a `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email` link (works cross-browser) |
+| Email | Resend custom SMTP in Supabase; sender `login@jobassistui.com`. Fully authenticated as of 2026-08-08: SPF (`send.jobassistui.com` → amazonses.com), DKIM (`resend._domainkey`, aligned to the root From: domain), and DMARC (`_dmarc` → `v=DMARC1; p=none; rua=mailto:psommerville3@gmail.com`) all verified live via DNS. First post-DMARC send landed in the Gmail **inbox** |
+| Auth | **Typed email code only — no sign-in links anywhere.** Code length 6. Both the "Confirm signup" AND "Magic Link" templates in Supabase hold identical code-only bodies containing `{{ .Token }}` and no `{{ .ConfirmationURL }}` |
 | Stripe | LIVE mode: product JobAssistUI $12/mo, webhook `https://www.jobassistui.com/api/stripe/webhook` (4 events: checkout.session.completed + customer.subscription.created/updated/deleted), portal config saved. Secret key is a named key `vercel-production` (the original was expired after a copy mix-up) |
 | Vercel env (Production) | `STRIPE_SECRET_KEY` (sk_live), `STRIPE_PRICE_ID` (price_), `STRIPE_WEBHOOK_SECRET` (whsec_), `NEXT_PUBLIC_SITE_URL=https://www.jobassistui.com`, `COMPED_EMAILS=psommerville3@gmail.com`, plus the three Supabase vars |
 | Supabase | Site URL + redirect allowlist include the www domain; rate limits raised for email |
@@ -61,6 +61,42 @@ trial start. Full paywall on everything; `COMPED_EMAILS` env var bypasses it
 - **CSV BOM:** `apps/web/app/export/csv/route.ts` contains a *literal
   invisible U+FEFF* inside the quoted string — deliberate (Excel UTF-8).
   Don't let a formatter or "cleanup" strip it.
+
+## 2026-08-08 session: the new-user signup path was broken
+
+Testing with a fresh Yahoo address surfaced two problems that launch-night
+testing structurally could not have caught, because every account tested
+that night already existed.
+
+**1. Every brand-new signup got a link-only email while the page asked for
+a code.** Supabase picks its email template by account state: an email with
+no existing user runs the signup path and gets the **"Confirm signup"**
+template; only existing users get **"Magic Link"**. Launch night customized
+only Magic Link. `{{ .Token }}` has to be added to each template
+separately, and the presence of `{{ .ConfirmationURL }}` is what makes
+Supabase send a link at all. Both templates now carry identical code-only
+bodies — every user, new or returning, gets a typed code and no link.
+
+**2. The DMARC record had never actually been added**, which is why Yahoo
+spam-filed the mail. Now live and verified. Reputation builds from send
+history from here; revisit moving `p=none` → `p=quarantine` around Sept
+2026. Not yet done: Google Postmaster Tools, a mail-tester.com score.
+
+Commits: `e65ec1a` (verifyOtp retries `type:"signup"` after `type:"email"`
+so first-time signups aren't stranded), `6ee8006` (login copy).
+
+**Google sign-in was built and then reverted** at the user's request —
+abandoned partway through Google Cloud Console setup as too much
+configuration. It was never pushed. Don't re-propose it.
+
+**All Supabase users were deleted** for a clean new-user test. The owner
+account re-signs-up normally (comped access keys off email, not any row).
+Two consequences: the plan to test the lapsed-subscription state around
+Aug 20 is dead with that old account, and note that deleting a `profiles`
+row alone does NOT remove the auth user — the cascade only runs
+auth.users → profiles/activity_log, and `on_auth_user_created` fires only
+on INSERT, so a table-only delete strands an auth user with no profile.
+Always delete from Authentication → Users.
 
 ## Commit history of the launch push (all on `main`, pushed)
 
@@ -117,7 +153,22 @@ harmless (comped wins), optional SQL cleanup someday.
 
 ## Test accounts
 
-- `psommerville3@gmail.com` — owner, comped (shows "Complimentary access")
-- `psommerville3+test@gmail.com` — real live-mode account: started a trial
-  with a real card, then canceled via portal. Entitled until ~Aug 20, then
-  becomes `canceled` (useful for testing the lapsed state after that date).
+All users were deleted 2026-08-08, so both of these are fresh.
+
+- `psommerville3@gmail.com` — owner, comped via `COMPED_EMAILS` (shows
+  "Complimentary access"). Just re-signup; comp is keyed on the email.
+- `psommerville3+test@gmail.com` — recreated 2026-08-08, **not comped**, so
+  it walks the real paying-customer funnel. A fresh trial will work:
+  eligibility keys off `trial_ends_at` on a brand-new profile row, and the
+  surviving `used_card_fingerprints` rows are record-only.
+
+## Pick up here
+
+1. Re-run the paid funnel on `psommerville3+test`: onboarding → log a
+   couple of activities → paywall → real-card trial → portal cancel. A lot
+   has changed since launch night; this re-proves it on current code.
+2. Retest deliverability with a fresh Yahoo address now that DMARC is live
+   (the Gmail send after propagation landed in the inbox).
+3. Still untested: the site on a real phone, evidence screenshot upload,
+   and an export for a state other than New York.
+4. Then marketing / first users — see Next steps below.
