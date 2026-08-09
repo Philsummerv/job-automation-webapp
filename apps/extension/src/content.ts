@@ -316,7 +316,16 @@ function init() {
 
     if (!/^\/jobs\b/.test(location.pathname)) {
       if (!query) {
-        log("add “Search: job title” to your template first", false);
+        // A reinstall clears chrome.storage, so the account template is simply
+        // absent until the bridge re-syncs it — which needs a jobassistui.com
+        // tab open. Telling the user to go fill in a template they already
+        // filled in sends them the wrong way entirely.
+        log(
+          template
+            ? "add “Search: job title” to your template first"
+            : "open jobassistui.com in a tab (or reload it) to sync your template",
+          false,
+        );
         return;
       }
       // Flag the hand-off so the results page browses itself on arrival —
