@@ -10,6 +10,8 @@ export interface ScrapedJob {
   title: string;
   company: string;
   location: string;
+  /** Pay as Indeed printed it ("From $20 an hour"), or null when not shown. */
+  pay: string | null;
   snippet: string;
   link: string;
   isIndeedApply: boolean;
@@ -34,18 +36,27 @@ export function collectIndeedJobs(): ScrapedJob[] {
   return Array.from(document.querySelectorAll('[class*="job_seen_beacon"]')).map((card) => {
     const title =
       (card.querySelector('[class*="jobTitle"] a, [class*="jobTitle"] span') as HTMLElement | null)?.innerText?.trim() || "N/A";
+    // `[class*="company"]` matched the whole header wrapper and swallowed the
+    // location and transit line with it, so the company name is now read from
+    // the specific testid / companyName class only.
     const company =
-      (card.querySelector('[data-testid="company-name"], [class*="company"]') as HTMLElement | null)?.innerText?.trim() || "N/A";
+      (card.querySelector('[data-testid="company-name"], [class*="companyName"]') as HTMLElement | null)?.innerText?.trim() || "N/A";
     const location =
       (card.querySelector('[data-testid="text-location"], [class*="companyLocation"]') as HTMLElement | null)?.innerText?.trim() || "N/A";
     const snippet =
       (card.querySelector('[class*="snippet"], .job-snippet') as HTMLElement | null)?.innerText?.trim() || "N/A";
+    // Pay lives in a differently-named pill on every layout revision, so match
+    // the text rather than chase selectors.
+    const payMatch = (card as HTMLElement).innerText.match(
+      /(?:from\s+)?\$[\d,]+(?:\.\d{2})?(?:\s*(?:-|–|to)\s*\$?[\d,]+(?:\.\d{2})?)?(?:\s*(?:an?|per)\s+(?:hour|year|month|week)|\s*(?:hourly|annually|yearly))?/i,
+    );
+    const pay = payMatch ? payMatch[0].trim() : null;
     const linkEl = card.querySelector('[class*="jobTitle"] a');
     const href = linkEl?.getAttribute("href") ?? null;
     const link = href ? new URL(href, "https://www.indeed.com").href : "N/A";
     const cardText = (card as HTMLElement).innerText.toLowerCase();
     const isIndeedApply =
       cardText.includes("easily apply") || cardText.includes("indeed apply");
-    return { title, company, location, snippet, link, isIndeedApply };
+    return { title, company, location, pay, snippet, link, isIndeedApply };
   });
 }

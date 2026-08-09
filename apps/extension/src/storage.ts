@@ -52,6 +52,7 @@ export interface QueuedJob {
   title: string;
   company: string;
   location: string;
+  pay: string | null;
   snippet: string;
   link: string;
   isIndeedApply: boolean;
@@ -66,6 +67,8 @@ export interface JobQueue {
   query: string;
   location: string;
   cursor: number;
+  /** Indeed's `&start=` offset for the results page these came from. */
+  start: number;
   jobs: QueuedJob[];
 }
 

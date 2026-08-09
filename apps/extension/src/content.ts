@@ -254,15 +254,26 @@ function init() {
     }
 
     const jobs = scrapeFilteredJobs();
-    const queue: JobQueue = { query, location: loc, cursor: 0, jobs };
+    const queue: JobQueue = { query, location: loc, cursor: 0, start: currentStart(), jobs };
     await setItem("jobQueue", queue);
     renderJobBrowser(queue);
   }
 
-  /** Scrape this results page, drop skipped titles, easy-apply first, apply the cap. */
+  /** Indeed's paging offset for the results page we're on. */
+  function currentStart(): number {
+    return parseInt(new URLSearchParams(location.search).get("start") ?? "0", 10) || 0;
+  }
+
+  /**
+   * Scrape this results page and drop skipped titles, easy-apply first.
+   * Deliberately NOT limited by "max applications per session": that caps how
+   * many jobs you APPLY to, not how many you're allowed to look at. Slicing the
+   * browse list by it meant a cap of 1 showed exactly one job.
+   */
   function scrapeFilteredJobs(): QueuedJob[] {
     const cfg = template?.config ?? {};
     let jobs: QueuedJob[] = collectIndeedJobs().filter((j) => j.link !== "N/A");
+    const scraped = jobs.length;
 
     const pattern = (cfg.exclusionTitleRegex ?? "").trim();
     if (pattern) {
@@ -275,8 +286,9 @@ function init() {
     }
     jobs.sort((a, b) => Number(b.isIndeedApply) - Number(a.isIndeedApply));
 
-    const cap = parseInt(cfg.maxApplications ?? "", 10);
-    return cap > 0 ? jobs.slice(0, cap) : jobs;
+    const dropped = scraped - jobs.length;
+    log(`found ${scraped} listing(s)${dropped > 0 ? `, skipped ${dropped} by title` : ""}`);
+    return jobs;
   }
 
   /** Show ONE job at a time: a short summary, then Apply or Next. */
@@ -291,16 +303,20 @@ function init() {
       return;
     }
 
+    // Walking off the end of a page continues into Indeed's next 10 results
+    // rather than dead-ending.
+    const goNextPage = async () => {
+      await setItem("jobQueue", null);
+      window.location.assign(buildIndeedSearchUrl(queue.query, queue.location, queue.start + 10));
+    };
+
     const job = queue.jobs[queue.cursor];
     if (!job) {
       reviewEl.appendChild(hHeader(
-        "That's all of them",
-        `You've been through all ${queue.jobs.length}. Go to the next page of Indeed's results and press Find jobs again.`,
+        "That's all on this page",
+        `You've been through all ${queue.jobs.length}.`,
       ));
-      reviewEl.appendChild(makePrimary(mkBtn("Start over", "#475569", async () => {
-        await setItem("jobQueue", { ...queue, cursor: 0 });
-        renderJobBrowser({ ...queue, cursor: 0 });
-      })));
+      reviewEl.appendChild(makePrimary(mkBtn("Next page of results →", "#2563eb", goNextPage)));
       return;
     }
 
@@ -311,12 +327,16 @@ function init() {
         : "This one applies on the employer's own site.",
     ));
 
-    const card = mkEl("div", "margin:6px 0;padding:10px;background:#1e293b;border-radius:6px;display:flex;flex-direction:column;gap:5px");
-    card.appendChild(mkEl("div", "font-weight:700;font-size:13px;line-height:1.3", job.title));
-    card.appendChild(mkEl("div", "font-size:12px;opacity:.85", `${job.company} · ${job.location}`));
+    const card = mkEl("div", "margin:6px 0;padding:12px;background:#1e293b;border-radius:6px;display:flex;flex-direction:column;gap:6px");
+    card.appendChild(mkEl("div", "font-weight:700;font-size:16px;line-height:1.3", job.title));
+    card.appendChild(mkEl("div", "font-size:14px;opacity:.9", job.company));
+    card.appendChild(mkEl("div", "font-size:13px;opacity:.8", job.location));
+    if (job.pay) {
+      card.appendChild(mkEl("div", "font-size:16px;font-weight:800;color:#4ade80", job.pay));
+    }
     if (job.snippet && job.snippet !== "N/A") {
-      const brief = job.snippet.length > 200 ? `${job.snippet.slice(0, 200)}…` : job.snippet;
-      card.appendChild(mkEl("div", "font-size:11px;opacity:.75;line-height:1.45", brief));
+      const brief = job.snippet.length > 220 ? `${job.snippet.slice(0, 220)}…` : job.snippet;
+      card.appendChild(mkEl("div", "font-size:13px;opacity:.8;line-height:1.5", brief));
     }
     reviewEl.appendChild(card);
 
@@ -328,14 +348,17 @@ function init() {
       return next;
     };
 
+    const isLast = queue.cursor >= queue.jobs.length - 1;
     const row = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:6px");
     row.appendChild(makePrimary(mkBtn("Apply to this job", "#059669", async () => {
       await advance();
       window.location.assign(job.link);
     })));
-    row.appendChild(makePrimary(mkBtn("Next job →", "#475569", async () => {
-      renderJobBrowser(await advance());
-    })));
+    row.appendChild(makePrimary(
+      isLast
+        ? mkBtn("Next page of results →", "#2563eb", goNextPage)
+        : mkBtn("Next job →", "#475569", async () => renderJobBrowser(await advance())),
+    ));
     reviewEl.appendChild(row);
   }
 
