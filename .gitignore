@@ -26,3 +26,6 @@ packages/automation/artifacts/
 
 # Captured page HTML dumps used for debugging the extension scraper
 indeed_html/
+
+# Saved page dumps for debugging — contain session/tracking tokens
+*-html.txt
