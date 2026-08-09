@@ -972,11 +972,16 @@ function init() {
       if (stamp) await setItem("autoApply", null);
       return;
     }
-    // The intent belongs to ONE listing. Without this, closing the tab mid-apply
-    // and opening a fresh Indeed page had that page pick the intent up and start
-    // "Opening the application…" on something the user never chose.
-    if (!isApplyContext() && jobKeyOf(location.href) !== jobKeyOf(stamp.link)) {
+    // The intent belongs to ONE listing, so an unrelated Indeed page must not
+    // adopt it (closing the tab mid-apply used to leave a fresh page sitting on
+    // "Opening the application…"). Match on the job key appearing ANYWHERE in
+    // the URL: Indeed rewrites /rc/clk → /viewjob → /?vjk= as it goes, so
+    // comparing one specific query param dropped the intent on the normal path.
+    const wantKey = jobKeyOf(stamp.link);
+    if (!isApplyContext() && wantKey && !location.href.includes(wantKey)) {
       await setItem("autoApply", null);
+      // Never bail silently — an invisible drop looks exactly like a hang.
+      log("this isn't the job you picked — apply intent dropped");
       return;
     }
 
