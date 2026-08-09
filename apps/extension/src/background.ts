@@ -161,6 +161,11 @@ chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse)
       return true;
     }
 
+    case "job-meta":
+      dispatch(() => ({ type: "job-meta", runId: msg.runId, job: msg.job, at: Date.now() }))
+        .then(() => sendResponse({ ok: true }));
+      return true;
+
     case "fill-result":
       dispatch(() => ({ type: "fill-result", runId: msg.runId, at: Date.now() }))
         .then(() => sendResponse({ ok: true }));

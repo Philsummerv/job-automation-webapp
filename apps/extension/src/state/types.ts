@@ -69,6 +69,7 @@ export type Action =
   | { type: "start-run"; tabId: number; runId: string; at: number }
   | { type: "cancel-run"; at: number }
   | { type: "scan-result"; runId: string; frameId: number; questions: FormField[]; job: JobMeta | null; at: number }
+  | { type: "job-meta"; runId: string; job: JobMeta; at: number }
   | { type: "fill-result"; runId: string; at: number }
   | { type: "review-decision"; runId: string; decision: ReviewDecision; at: number }
   | { type: "pause-run"; runId: string; at: number }

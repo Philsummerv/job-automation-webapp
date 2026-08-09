@@ -6,6 +6,7 @@
 import type {
   Action,
   Effect,
+  JobMeta,
   ReduceResult,
   RunEvent,
   RunState,
@@ -45,6 +46,22 @@ function noChange(state: RunState | null): ReduceResult {
   return { state, effects: [] };
 }
 
+/**
+ * Merge job identity FIELD BY FIELD across the pages of a run. A whole-object
+ * "first non-null wins" loses data: an early page often yields the job title
+ * while the employer name only appears on a later step, so locking the object
+ * on the first sighting left the employer permanently blank.
+ */
+function mergeJob(prev: JobMeta | null, next: JobMeta | null): JobMeta | null {
+  if (!next) return prev;
+  if (!prev) return next;
+  return {
+    title: prev.title ?? next.title,
+    company: prev.company ?? next.company,
+    url: prev.url ?? next.url,
+  };
+}
+
 export function reduce(state: RunState | null, action: Action): ReduceResult {
   switch (action.type) {
     // ── Start a run ──────────────────────────────────────────────────────────
@@ -71,6 +88,15 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
       return { state: scanning, effects };
     }
 
+    // ── Job identity sighting ─────────────────────────────────────────────────
+    // Accepted in ANY status: the page naming the employer is frequently one
+    // with no form on it, so this can't be tied to the scan/fill cycle.
+    case "job-meta": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      const merged = mergeJob(state.job, action.job);
+      return { state: { ...state, job: merged }, effects: [] };
+    }
+
     // ── Cancel ───────────────────────────────────────────────────────────────
     case "cancel-run": {
       if (state == null) return noChange(state);
@@ -84,8 +110,7 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
       if (!isForActiveRun(state, action.runId)) return noChange(state);
       if (state.status !== "scanning") return noChange(state);
 
-      // Capture the job identity the first time content reports it.
-      const job = state.job ?? action.job;
+      const job = mergeJob(state.job, action.job);
 
       if (action.questions.length === 0) {
         const done = withStatus(state, "done", "no questions — flow complete", action.at, { job });

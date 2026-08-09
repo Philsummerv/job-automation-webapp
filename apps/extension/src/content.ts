@@ -501,9 +501,32 @@ function init() {
   // Shown after a guided application completes. The user confirms (and can edit)
   // before anything is written to their activity log — nothing is logged silently.
 
+  /** Queue a completed application for the web app's activity log. */
+  function submitLog(employer: string, jobTitle: string | null, url: string | null): void {
+    sendToWorker({ type: "log-activity", employer_name: employer, job_title: jobTitle, url });
+  }
+
   function renderLogConfirm(job: JobMeta): void {
     reviewEl.innerHTML = "";
-    reviewEl.appendChild(hHeader("Application submitted 🎉", "Log this to your activity record? You confirm every entry."));
+
+    // The point of the assist is that the log fills itself in. When we captured
+    // an employer we log it straight away and just report what happened; the
+    // form below is the fallback for when the page didn't name the employer.
+    if (job.company) {
+      submitLog(job.company, job.title, job.url);
+      const done = mkEl("div", "margin:6px 0;padding:8px;background:#064e3b;border:1px solid #059669;border-radius:6px");
+      done.appendChild(mkEl("div", "font-weight:700;margin-bottom:2px", "Logged ✓"));
+      done.appendChild(mkEl(
+        "div",
+        "font-size:11px;line-height:1.4",
+        `${job.company}${job.title ? ` — ${job.title}` : ""}. Syncs to your activity record next time you open the web app. Wrong? Remove it on your dashboard.`,
+      ));
+      reviewEl.appendChild(done);
+      log(`logged: ${job.company}`, true);
+      return;
+    }
+
+    reviewEl.appendChild(hHeader("Application submitted 🎉", "We couldn't read the employer from this page — add it and we'll log it."));
 
     const card = mkEl("div", "margin:6px 0;padding:8px;background:#1e293b;border-radius:6px;display:flex;flex-direction:column;gap:6px");
     const empWrap = mkEl("div", "");
@@ -528,12 +551,7 @@ function init() {
     row.appendChild(mkBtn("Log it", "#059669", () => {
       const employer = emp.value.trim();
       if (!employer) { log("employer is required to log", false); return; }
-      sendToWorker({
-        type: "log-activity",
-        employer_name: employer,
-        job_title: title.value.trim() || null,
-        url: job.url,
-      });
+      submitLog(employer, title.value.trim() || null, job.url);
       reviewEl.innerHTML = "";
       log("logged — syncs to your activity record next time you open the web app", true);
     }));
@@ -596,11 +614,19 @@ function init() {
     switch (msg.command) {
       case "scan": {
         const found = scanPage();
+        // Report job identity from EVERY page, form or not. The step naming the
+        // employer is often one with no questions on it (the listing pane, or
+        // the post-submit page), and that data used to be thrown away because it
+        // could only ride along with a scan-result.
+        const job = captureJobMeta();
+        if (job.title || job.company) {
+          sendToWorker({ type: "job-meta", runId: msg.runId, job });
+        }
         // Stay silent when this frame has no form so a sibling frame — or the
         // controller's no-form timeout — decides. An empty reply would be read
         // as "flow complete".
         if (found.length > 0) {
-          sendToWorker({ type: "scan-result", runId: msg.runId, questions: found, job: captureJobMeta() });
+          sendToWorker({ type: "scan-result", runId: msg.runId, questions: found, job });
         }
         sendResponse({ ok: true });
         return false;
@@ -821,7 +847,10 @@ function captureJobMeta(): JobMeta {
     pick('[data-testid="inlineHeader-companyName"]') ||
     pick('[data-company-name]') ||
     pick('[class*="CompanyInfoContainer" i] a') ||
-    pick('[class*="companyName" i]');
+    pick('[class*="companyName" i]') ||
+    // Indeed links an employer's profile at /cmp/<company>; on the apply flow's
+    // job card that link is often the only place the name is marked up at all.
+    pick('a[href*="/cmp/"]');
 
   // Last resort: Indeed's document.title reads "<job> - <company> - Indeed.com",
   // and the smartapply flow keeps that shape even where the header markup is

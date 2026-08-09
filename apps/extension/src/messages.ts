@@ -35,6 +35,17 @@ export interface ScanResultMsg {
   job: JobMeta | null;
 }
 
+/**
+ * Job identity spotted on a page. Sent on EVERY scan, whether or not the page
+ * had questions — the page carrying the employer name is often a step with no
+ * form on it at all (the listing, or the post-submit confirmation).
+ */
+export interface JobMetaMsg {
+  type: "job-meta";
+  runId: string;
+  job: JobMeta;
+}
+
 /** A form frame reports that its fill pass completed. */
 export interface FillResultMsg {
   type: "fill-result";
@@ -122,6 +133,7 @@ export type WorkerBoundMsg =
   | StartRunMsg
   | CancelRunMsg
   | ScanResultMsg
+  | JobMetaMsg
   | FillResultMsg
   | ReviewDecisionMsg
   | PauseRunMsg
@@ -163,6 +175,7 @@ export interface ResponseMap {
   "start-run": StartRunResponse;
   "cancel-run": Ack;
   "scan-result": Ack;
+  "job-meta": Ack;
   "fill-result": Ack;
   "review-decision": Ack;
   "pause-run": Ack;
