@@ -85,18 +85,31 @@ function pressApplyInPage(): "handler" | "click" | "not-found" {
         /apply with indeed/i.test(b.getAttribute("aria-label") || ""),
     ) as HTMLElement | undefined);
 
-  const targets = [wrapper, button].filter(Boolean) as HTMLElement[];
+  // BUTTON FIRST. The wrapper often carries its own onclick (tracking), and
+  // stopping at the first handler found meant calling that stub and reporting
+  // success while the real one — on the button — was never invoked.
+  const targets = [button, wrapper].filter(Boolean) as HTMLElement[];
   if (!targets.length) return "not-found";
 
+  const ev = () => new MouseEvent("click", { bubbles: true, cancelable: true, view: window });
+  let calledHandler = false;
   for (const t of targets) {
     const handler = (t as unknown as { onclick?: (e: MouseEvent) => void }).onclick;
     if (typeof handler === "function") {
-      handler.call(t, new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
-      return "handler";
+      try {
+        handler.call(t, ev());
+        calledHandler = true;
+      } catch {
+        // A throwing handler shouldn't stop the plain click below.
+      }
     }
   }
-  targets[targets.length - 1].click();
-  return "click";
+
+  // Always follow with a real press too. Running in the page's own world, this
+  // reaches listeners registered with addEventListener, which an onclick lookup
+  // can't see at all.
+  (button ?? wrapper)?.click();
+  return calledHandler ? "handler" : "click";
 }
 
 async function runEffect(effect: Effect): Promise<void> {
