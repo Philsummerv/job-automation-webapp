@@ -178,16 +178,33 @@ and PDF export, billing/paywall states. Fold in the three surfaces still
 never tested: the site on a real phone, evidence screenshot upload, and an
 export for a state other than New York.
 
-**Then LinkedIn — the user's next feature request (2026-08-08).** Scope was
-not specified, so clarify before building. The plausible readings are very
-different in size: (a) LinkedIn as a logging source / activity type
-alongside Indeed in the manual Self-Directed log, which is small; (b)
-LinkedIn as a second job board for the future web-native Guided path, which
-means a `packages/automation` platform adapter mirroring `indeed.ts` and
-inherits all the cloud-browser economics still unresolved; or (c) LinkedIn
-sign-in as an auth provider. Ask which before estimating. Note the existing
-scout code is Indeed-only and its selectors deliberately live in
-`packages/automation/src/indeed.ts` for exactly this kind of extension.
+**LinkedIn is DEFERRED (user decision 2026-08-08) — Indeed is the vector.**
+The user wants Guided assist (search + apply + template fill-ins, browser-
+navigator style) built out on **Indeed first**; they'll revisit LinkedIn
+integration later on their own terms. Reasons this is the right order:
+Indeed already has a passing end-to-end go/no-go behind it (2026-07-05)
+and its adapter exists in `packages/automation/src/indeed.ts`, whereas
+LinkedIn explicitly prohibits automated access in its User Agreement and
+routinely restricts accounts for it — which would land on *users*, whose
+professional network and job history are on the line, and would sit far
+from the carefully-built "user-directed, user confirms every action" legal
+posture.
+
+**Carried over unchanged: the residential-proxy economics still apply to
+Indeed.** Dropping LinkedIn removes the account-ban exposure, not the cost
+problem — the Cloudflare Turnstile loop that motivated proxies happened on
+*Indeed*, through Browserbase's datacenter IP. Answer these before writing
+worker code: (1) proxy strategy and whether image/font/media blocking gets
+per-session bandwidth low enough to survive $10/GB; (2) whether Guided
+lives under a fair-use cap on the $12 tier or becomes a higher tier; (3)
+persistent Browserbase contexts are per-user (that's what makes login
+survive between runs), so factor per-user context cost and storage.
+
+Also worth weighing first: the much cheaper **assist-without-automation**
+shape — the user drives Indeed in their own browser and the product
+surfaces their template answers and one-click-logs the application. Keeps
+the core value (no retyping, no manual logging), skips the cloud browser,
+proxy bill, and ban risk entirely. See [[project-guided-template-ux]].
 
 Also outstanding from before:
 
