@@ -266,8 +266,11 @@ function init() {
     // the `seen` links instead, so returning from an application still resumes
     // past the jobs already dealt with.
     const saved = await getItem("jobQueue");
-    const sameSearch = saved && saved.query === query && saved.location === loc;
-    const seen = sameSearch ? saved.seen : [];
+    const sameSearch = saved != null && saved.query === query && saved.location === loc;
+    // Never trust the SHAPE of stored data: a queue written by an earlier build
+    // has no `seen` array, and reading straight through threw on every load.
+    // chrome.storage has no migrations, so validate each field on the way in.
+    const seen = sameSearch && Array.isArray(saved.seen) ? saved.seen : [];
 
     const jobs = scrapeFilteredJobs();
     const firstUnseen = jobs.findIndex((j) => !seen.includes(j.link));
@@ -318,6 +321,9 @@ function init() {
   /** Show ONE job at a time: a short summary, then Apply or Next. */
   function renderJobBrowser(queue: JobQueue): void {
     reviewEl.innerHTML = "";
+    // Same defensiveness as the read above — render must not assume shape.
+    if (!Array.isArray(queue.jobs)) queue = { ...queue, jobs: [] };
+    if (!Array.isArray(queue.seen)) queue = { ...queue, seen: [] };
 
     if (!queue.jobs.length) {
       reviewEl.appendChild(hHeader(
