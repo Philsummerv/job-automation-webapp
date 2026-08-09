@@ -87,6 +87,21 @@ function isApplyPage(): boolean {
     /indeedapply|applystart|\/apply\b/i.test(location.pathname);
 }
 
+/**
+ * Indeed opens the application EITHER by navigating to smartapply.indeed.com or
+ * by dropping a smartapply iframe over the job page — both happen in the wild.
+ * The panel lives in the top frame, so on the iframe route the top frame is
+ * still /viewjob and an isApplyPage() check alone reports "not applying" even
+ * though the form is right there on screen.
+ */
+function hasApplyFrame(): boolean {
+  return !!document.querySelector('iframe[src*="smartapply"], iframe[src*="indeedapply"]');
+}
+
+function isApplyContext(): boolean {
+  return isApplyPage() || hasApplyFrame();
+}
+
 // Only mount where it makes sense: the top frame, or any child frame that
 // actually contains a form (Indeed sometimes iframes the apply flow).
 const isTop = window.self === window.top;
@@ -886,11 +901,18 @@ function init() {
   // Scanning only makes sense inside an application. Off it, the button stays
   // visible but greyed and explains itself rather than silently doing nothing.
   const startBtn = panel.querySelector<HTMLButtonElement>("#aaui-start")!;
-  if (!isApplyPage()) {
-    startBtn.style.opacity = "0.45";
-    startBtn.style.cursor = "not-allowed";
-    startBtn.title = "Available once you're inside an application form";
-  }
+  // Re-checked on a timer, not just at load: the application often arrives as an
+  // iframe dropped onto the job page some seconds later, and the button has to
+  // come alive when it does.
+  const refreshScanEnabled = () => {
+    const on = isApplyContext();
+    startBtn.style.opacity = on ? "1" : "0.45";
+    startBtn.style.cursor = on ? "pointer" : "not-allowed";
+    startBtn.title = on ? "" : "Available once you're inside an application form";
+    if (on) clearInterval(scanWatch);
+  };
+  const scanWatch = setInterval(refreshScanEnabled, 1500);
+  refreshScanEnabled();
 
   let startPending = false;
 
@@ -922,7 +944,7 @@ function init() {
   }
 
   startBtn.addEventListener("click", () => {
-    if (!isApplyPage()) {
+    if (!isApplyContext()) {
       log("use “Find jobs” here — Scan works once you're in an application", false);
       return;
     }
@@ -951,8 +973,8 @@ function init() {
       return;
     }
 
-    // Still on the job page: press Indeed's Apply button, which navigates to the
-    // form and re-runs this block there.
+    // Still on the job page: press Indeed's Apply button, which either navigates
+    // to the form or drops it in as an iframe — this block re-runs there.
     if (/^\/jobs\b/.test(location.pathname)) return; // results page, not a job
     showBusy("Opening the application");
     const btn = await waitFor(findIndeedApplyDom, 8000);
@@ -961,16 +983,20 @@ function init() {
       failBusy("Couldn't find Indeed's Apply button on this page — press it yourself, then Scan Indeed page.");
       return;
     }
-    log("clicking Apply with Indeed");
-    realClick(btn);
 
-    // Indeed's button can decline a scripted press. Say so rather than sitting
-    // on a spinner that will never finish.
-    setTimeout(() => {
-      if (isApplyPage()) return;
-      void setItem("autoApply", null);
-      failBusy("Indeed didn't open the form. Press “Apply with Indeed” yourself — the assist takes over from there.");
-    }, 8000);
+    // The button renders before React wires its handler, so the first press can
+    // land on a button that does nothing yet. Press again a few times rather
+    // than declaring failure on one attempt; a real click is verified to work.
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      if (isApplyContext()) return;
+      log(attempt === 1 ? "clicking Apply with Indeed" : `Apply didn't take — retry ${attempt - 1}`);
+      realClick(btn);
+      await sleep(1800);
+      if (isApplyContext()) return;
+    }
+
+    await setItem("autoApply", null);
+    failBusy("Indeed didn't open the form. Press “Apply with Indeed” yourself — the assist takes over from there.");
   })();
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
