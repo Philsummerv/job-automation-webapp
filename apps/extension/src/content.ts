@@ -1001,8 +1001,10 @@ function init() {
       // script's dispatched events don't move this button. Fall back to the
       // DOM press if that route is unavailable.
       const res = await sendToWorker({ type: "click-apply" });
+      // Always report the outcome. Silently falling back hid WHY the press
+      // failed — whether the in-page route ran at all, or found no button.
+      log(res ? `in-page press: ${res.ok ? res.how : `failed (${res.how ?? "no result"})`}` : "in-page press: worker unavailable", res?.ok === true);
       if (!res?.ok) realClick(btn);
-      else if (attempt === 1) log(`pressed via ${res.how}`);
       await sleep(1800);
       if (isApplyContext()) return;
     }
