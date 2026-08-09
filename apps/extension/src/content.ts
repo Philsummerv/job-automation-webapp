@@ -997,6 +997,13 @@ function init() {
       await setItem("autoApply", null);
       await loadTemplate();
       showBusy("Reading the application");
+      // Indeed renders the questions after the shell, so starting immediately
+      // scanned an empty page and the run ended with "0 question(s)". Wait for
+      // real form controls before kicking off.
+      await waitFor(
+        () => document.querySelector('input[type="radio"], input[type="checkbox"], select, textarea, input[type="text"]'),
+        8000,
+      );
       log("starting the application automatically");
       await startRun();
       return;
