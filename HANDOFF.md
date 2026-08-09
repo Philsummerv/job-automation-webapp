@@ -15,6 +15,41 @@ Panel shows `run started` → `scanned: 0 question(s)` and then sits on
 groups ("Do you have experience with Laboratory experience?" etc).
 `18bfba8` added a wait for form controls to render and did NOT fix it.
 
+### UPDATE 2026-08-09 (later) — narrowed, still open
+
+Two things were proven by inspecting a LIVE application:
+- The flow opens on `smartapply.../form/commute-check`: 0 labels, 0 radios,
+  one button "Continue applying". An empty scan is the run's "flow
+  complete" signal, so the run died on page 1. Fixed in `18d17ec` (scan
+  now hops past question-less pages).
+- Iframes are NOT the problem on the navigated route: that page had only a
+  reCAPTCHA iframe and an empty one.
+
+**Still stuck after that fix**, now on the questions page (33%), panel
+showing only "scanned: 0 question(s)" and a frozen "Reading the
+application…". Best remaining theory, UNVERIFIED:
+
+> The apply form sometimes arrives as an OVERLAY IFRAME on
+> indeed.com/viewjob rather than by navigation (both routes are real —
+> confirmed earlier). The content script runs in every frame and **each
+> frame builds its own panel**. The panel the user sees belongs to the TOP
+> frame, which genuinely has no questions — so it logs "scanned: 0" — while
+> the form iframe scans, fills, and renders its review gate into ITS OWN
+> panel, hidden behind the overlay. That would explain a stuck spinner with
+> a correct-but-useless top-frame log.
+
+Check this first: on a stuck page, open devtools, switch the console's
+frame selector to the smartapply iframe, and see whether that frame's
+panel exists and what its log says. If confirmed, the fix is for child
+frames to render no panel and instead relay their state to the top frame's
+panel (one visible UI per tab).
+
+### ALSO REQUESTED (user, 2026-08-09): rework the panel's buttons
+
+"Find jobs" should be the primary action that runs the whole automation;
+"Scan Indeed page" should be demoted to a restart/recovery button for when
+something goes wrong. Currently Scan is styled as the primary.
+
 ### Debug that first — leads, in order
 
 1. **The form is very likely in an IFRAME.** The panel says "top frame" and
