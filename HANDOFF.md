@@ -1,3 +1,103 @@
+# 👉 START HERE (2026-08-09) — the Chrome extension is mid-build
+
+**Everything below this section is older launch history. Read this part first.**
+
+## Where the extension stands
+
+The whole Indeed loop works EXCEPT the final step. Verified live today:
+search → job list → pick a job → it presses "Apply with Indeed" by itself →
+the application form opens. That last bit took most of the session and is
+finally fixed (`b27ed47`).
+
+**The one broken thing: the scan finds nothing on the questions page.**
+Panel shows `run started` → `scanned: 0 question(s)` and then sits on
+"Reading the application…" forever, on a page visibly showing five radio
+groups ("Do you have experience with Laboratory experience?" etc).
+`18bfba8` added a wait for form controls to render and did NOT fix it.
+
+### Debug that first — leads, in order
+
+1. **The form is very likely in an IFRAME.** The panel says "top frame" and
+   reports 0, which means the frame that owns the form either never
+   answered the scan or has no content script in it. Check whether the
+   questions live in an iframe (`document.querySelectorAll('iframe')` on the
+   apply page) — the manifest has `all_frames: true`, so a frame on a
+   non-`*.indeed.com` host would get no content script at all.
+2. **Or `collectFormQuestions` doesn't match this markup.** It's in
+   `packages/automation/src/forms.ts` and is shared with the Playwright
+   scout. These radio groups may not be inside a `<fieldset>`, which that
+   scraper leans on.
+3. Use the Claude-in-Chrome browser tools to open a live Indeed apply page
+   and run `collectFormQuestions` against it directly. That worked well
+   twice today (it's how the apply-button and job-scrape bugs were found) —
+   inspect the live page rather than reasoning from the code.
+4. **Also: the busy spinner never clears when a run ends with nothing.**
+   `showBusy` is only cleared by `renderReviewGate`, so a dead-end run
+   leaves it spinning. Clear it when a run completes or finds no questions.
+
+## Then: resume keyword matching (user asked for this, decided 2026-08-09)
+
+Per-job questions like "experience with Compounding medications?" can never
+be covered by a fixed template, so infer them from the user's resume.
+**User chose plain KEYWORD MATCHING for now, not an LLM.**
+
+- The resume is already stored (base64 in `chrome.storage`, picked via the
+  panel's 📄 Resume button) but its TEXT is never extracted — that's the
+  missing piece.
+- `makeSuggestFromResume` already exists in
+  `packages/automation/src/autofill.ts` and greps resume text for skills,
+  years and education. It is currently unused by the extension.
+- Shape: extract text once at upload, store it beside the file, and for a
+  "do you have experience with X?" question answer Yes when X appears in
+  the resume. **No match must leave it UNANSWERED for the review gate to
+  ask** — never guess a No, and never claim experience on a weak match.
+  This is a claim made to an employer in the user's name; stay conservative.
+- Nice follow-on: when the user answers one by hand, offer to save it as a
+  custom rule so it fills itself next time.
+
+## How to test the extension (needed every time)
+
+1. `cd apps/extension && npm run build`
+2. `chrome://extensions` → refresh icon on the JobAssistUI card.
+   **If the manifest changed, Remove and Load unpacked `apps/extension/dist`
+   instead** — a refresh may not grant new permissions.
+3. Removing the extension WIPES `chrome.storage`, so the account template is
+   gone until a jobassistui.com tab is reloaded (the bridge re-syncs it).
+4. Read the log at the BOTTOM of the dark panel — that's the only debug
+   surface. Green ✓ worked, red ✗ failed.
+
+## Hard-won gotchas from 2026-08-09 (don't re-learn these)
+
+- **A content script cannot press "Apply with Indeed".** It runs in an
+  isolated world; Indeed's handler is an `onclick` property that reads as
+  null from there, and dispatched events are ignored. It's pressed via
+  `chrome.scripting` with `world:"MAIN"` from the worker
+  (`pressApplyInPage` in `background.ts`). This is why the Electron app
+  "just works" — Playwright produces genuinely trusted input.
+- The apply button's handler is on a WRAPPER span
+  (`indeed-apply-status-not-applied`, `data-click-handler="attached"`), and
+  the wrapper ALSO has a tracking `onclick`. Call the BUTTON's handler, not
+  the first one found, and always `.click()` as well.
+- Every job page carries a hidden `<iframe src=".../preloadresumeapply">`.
+  Do not count it as "the application is open" — that bug made a successful
+  press look already-finished.
+- Indeed rewrites its own URLs (`/rc/clk` → `/viewjob` → `/?vjk=`), so match
+  a job by its key appearing ANYWHERE in the URL, not by one query param.
+- **Never bail silently.** Three separate bugs today presented as a blank
+  panel or a stuck spinner because a guard returned without logging.
+- `chrome.storage` has no migrations. Validate the shape of anything read
+  back; a queue written by an older build crashed on a field it lacked.
+- Indeed's markup has no stable ids or classes (`css-1neivp9`, hashed ids).
+  Match on text, `aria-label`, or semantic `data-*` hooks only.
+
+## Not the extension? Then the web app is live and healthy
+
+Product is launched and taking real money. Login is code-only and email is
+fully authenticated (SPF+DKIM+DMARC, inbox-verified). See the launch
+sections below.
+
+---
+
 # JobAssistUI — Launch Handoff (updated 2026-08-07)
 
 Reference doc for picking work back up. Written at the end of the launch push.
