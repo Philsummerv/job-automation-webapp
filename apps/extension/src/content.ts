@@ -72,6 +72,21 @@ function sendToWorker<M extends WorkerBoundMsg>(msg: M): Promise<ResponseMap[M["
   });
 }
 
+/**
+ * True only inside Indeed's application flow.
+ *
+ * Scanning anywhere else is actively dangerous: on a search or results page the
+ * scraper treats Indeed's own search and location comboboxes as application
+ * questions, fills them, and then looks for a button to advance with — and
+ * "Apply with Indeed" matches, so the assist starts applying to whatever job
+ * happens to be on screen. Scanning is therefore gated to the apply form, which
+ * is also the only place the answer template means anything.
+ */
+function isApplyPage(): boolean {
+  return location.hostname.includes("smartapply.") ||
+    /indeedapply|applystart|\/apply\b/i.test(location.pathname);
+}
+
 // Only mount where it makes sense: the top frame, or any child frame that
 // actually contains a form (Indeed sometimes iframes the apply flow).
 const isTop = window.self === window.top;
@@ -806,8 +821,21 @@ function init() {
     if (r) log(`resume ready: ${r.name}`);
   });
 
+  // Scanning only makes sense inside an application. Off it, the button stays
+  // visible but greyed and explains itself rather than silently doing nothing.
+  const startBtn = panel.querySelector<HTMLButtonElement>("#aaui-start")!;
+  if (!isApplyPage()) {
+    startBtn.style.opacity = "0.45";
+    startBtn.style.cursor = "not-allowed";
+    startBtn.title = "Available once you're inside an application form";
+  }
+
   let startPending = false;
-  panel.querySelector("#aaui-start")!.addEventListener("click", async () => {
+  startBtn.addEventListener("click", async () => {
+    if (!isApplyPage()) {
+      log("use “Find jobs” here — Scan works once you're in an application", false);
+      return;
+    }
     // Guard against stacked runs: ignore re-clicks while a start is in flight or
     // a run is already active for this tab (re-clicking used to spawn overlapping
     // scans, producing the inconsistent scanned-count noise in the log).
@@ -1488,7 +1516,11 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
 
 // ─── Advance-button finder ─────────────────────────────────────────────────────
 
-const POSITIVE_RE = /\b(review|continue|submit|next|apply|proceed|advance|finish|send)\b/i;
+// "apply" deliberately absent: inside the application flow the advance buttons
+// say Continue / Review / Submit, while "Apply with Indeed" is the button that
+// STARTS an application. Matching it meant a stray scan could begin applying to
+// whatever job was on screen.
+const POSITIVE_RE = /\b(review|continue|submit|next|proceed|advance|finish|send)\b/i;
 const NEGATIVE_RE = /\b(back|cancel|withdraw|close|skip|dismiss|report|feedback|help|sign in|sign out|log in|log out|delete|remove|edit|undo)\b/i;
 
 function isVisibleEnabled(el: HTMLElement): boolean {
