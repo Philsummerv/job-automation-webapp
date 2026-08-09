@@ -1007,8 +1007,12 @@ function init() {
       if (isApplyContext()) return;
     }
 
-    await setItem("autoApply", null);
-    failBusy("Indeed didn't open the form. Press “Apply with Indeed” yourself — the assist takes over from there.");
+    // KEEP the intent rather than clearing it. The message below tells the user
+    // to press Apply themselves, and the assist can only honour that promise if
+    // the intent is still there when the form opens. The clock restarts so they
+    // get the full window; the listing is already pinned to this job.
+    await setItem("autoApply", { at: Date.now(), link: stamp.link });
+    failBusy("Couldn't press Apply for you. Press “Apply with Indeed” yourself — the assist takes over as soon as the form opens.");
   })();
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
