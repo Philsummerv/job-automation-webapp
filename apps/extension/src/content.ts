@@ -1154,11 +1154,18 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
         ? document.querySelector(`input[name="${CSS.escape(field.inputName)}"], textarea[name="${CSS.escape(field.inputName)}"]`)
         : null) as HTMLInputElement | HTMLTextAreaElement | null;
     if (!el) return { ok: false, detail: "input not found" };
+    // A Yes/No rule can land on a free-text box — employers ask the same
+    // question as radios on one form and a textarea on the next. Type the
+    // keyword rather than the raw `__RADIO:No` marker.
+    const text = answer.startsWith("__RADIO:")
+      ? (answer.slice(8).split(",")[0] ?? "").trim()
+      : answer;
+    if (!text) return { ok: false, detail: "no answer to fill" };
     el.focus();
-    setNativeValue(el, answer);
+    setNativeValue(el, text);
     el.dispatchEvent(new Event("blur", { bubbles: true }));
-    const stuck = await stickValue(el, answer);
-    return { ok: stuck, detail: stuck ? `filled "${answer}"` : "value did NOT stick (React reverted it)" };
+    const stuck = await stickValue(el, text);
+    return { ok: stuck, detail: stuck ? `filled "${text}"` : "value did NOT stick (React reverted it)" };
   } catch (err) {
     return { ok: false, detail: (err as Error).message };
   }

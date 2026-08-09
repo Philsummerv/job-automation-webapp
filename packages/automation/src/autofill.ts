@@ -37,10 +37,34 @@ export function makeAutoFillAnswer(config: ScoutConfig) {
     if (lower.includes("city")) return config.city;
     if (lower.includes("address")) return "__SKIP__";
 
-    if (lower.includes("previously worked") || lower.includes("association with") || lower.includes("formerly employed")) return "__RADIO:No";
+    // "No" questions about your relationship to THIS employer. Employers often
+    // ask these as free text with the wanted answer written into the prompt
+    // ("if no, enter N/A"), so honour that instruction instead of typing "No"
+    // into a box that asked for something else.
+    const wantsNA = lower.includes("n/a");
+    if (lower.includes("previously worked") || lower.includes("association with") ||
+        lower.includes("formerly employed") || lower.includes("previously employed") ||
+        lower.includes("ever been employed") || lower.includes("ever worked")) {
+      return wantsNA ? "N/A" : "__RADIO:No";
+    }
+    // Referrals and "do you know anyone who works here" — same shape.
+    if (lower.includes("referred you") || lower.includes("referral") ||
+        lower.includes("acquaintance") || lower.includes("relatives employed") ||
+        lower.includes("friends or relatives") || lower.includes("know anyone")) {
+      return wantsNA ? "N/A" : "__RADIO:No";
+    }
 
     if (lower.includes("authorized to work") || lower.includes("legal authorization") || lower.includes("legally authorized") || lower.includes("right to work") || lower.includes("eligibility to work") || lower.includes("eligible to work")) return `__RADIO:${config.authorizedToWork}`;
-    if (lower.includes("sponsorship") || lower.includes("sponsor")) return `__RADIO:${config.needsSponsorship}`;
+    // Sponsorship is frequently asked WITHOUT the word "sponsor" — the common
+    // long form is "will you require us to file a petition for employment-based
+    // visa status". Kept after the authorization rule above, which owns the
+    // "authorized to work without sponsorship" phrasings.
+    if (lower.includes("sponsorship") || lower.includes("sponsor") ||
+        lower.includes("visa") || lower.includes("work permit") ||
+        lower.includes("immigration status") || lower.includes("h-1b") || lower.includes("h1b") ||
+        (lower.includes("petition") && lower.includes("employment"))) {
+      return `__RADIO:${config.needsSponsorship}`;
+    }
     if (lower.includes("citizen") || lower.includes("citizenship")) return `__RADIO:${config.usCitizen}`;
 
     if (lower.includes("veteran") || lower.includes("protected vet")) return `__RADIO:${config.veteranStatus}`;
