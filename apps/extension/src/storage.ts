@@ -100,6 +100,12 @@ export interface StorageSchema {
   jobQueue: JobQueue | null;
   /** Set when Find jobs navigates to a search, so the results page self-scrapes on arrival. */
   autoBrowse: boolean;
+  /**
+   * Epoch ms when the user pressed "Apply to this job". Carries that intent
+   * across the job page and into the application form; time-limited so a stale
+   * value can never make a later page start applying on its own.
+   */
+  autoApply: number | null;
 }
 
 const DEFAULTS: StorageSchema = {
@@ -111,6 +117,7 @@ const DEFAULTS: StorageSchema = {
   resume: null,
   jobQueue: null,
   autoBrowse: false,
+  autoApply: null,
 };
 
 /** Read a key, falling back to its schema default when unset. */

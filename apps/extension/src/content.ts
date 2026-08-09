@@ -405,6 +405,7 @@ function init() {
     const row = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:6px");
     row.appendChild(makePrimary(mkBtn("Apply to this job", "#059669", async () => {
       await advance();
+      await setItem("autoApply", Date.now());
       window.location.assign(job.link);
     })));
     row.appendChild(makePrimary(
@@ -854,11 +855,9 @@ function init() {
   }
 
   let startPending = false;
-  startBtn.addEventListener("click", async () => {
-    if (!isApplyPage()) {
-      log("use “Find jobs” here — Scan works once you're in an application", false);
-      return;
-    }
+
+  /** Begin a guided run on this application. Shared by the button and auto-apply. */
+  async function startRun(): Promise<void> {
     // Guard against stacked runs: ignore re-clicks while a start is in flight or
     // a run is already active for this tab (re-clicking used to spawn overlapping
     // scans, producing the inconsistent scanned-count noise in the log).
@@ -882,7 +881,49 @@ function init() {
     } finally {
       startPending = false;
     }
+  }
+
+  startBtn.addEventListener("click", () => {
+    if (!isApplyPage()) {
+      log("use “Find jobs” here — Scan works once you're in an application", false);
+      return;
+    }
+    void startRun();
   });
+
+  // ── Auto-apply hand-off ───────────────────────────────────────────────────────
+  // "Apply to this job" sets a short-lived stamp, which carries the intent across
+  // the two navigations that follow: the job page (where Indeed's own Apply
+  // button has to be pressed) and the application form (where the run starts).
+  // It's time-limited so a stale stamp can never make a later page apply by
+  // itself — the same failure the search-page guard exists to prevent.
+  void (async () => {
+    const stamp = await getItem("autoApply");
+    if (!stamp || Date.now() - stamp > AUTO_APPLY_TTL_MS) {
+      if (stamp) await setItem("autoApply", null);
+      return;
+    }
+
+    if (isApplyPage()) {
+      await setItem("autoApply", null);
+      await loadTemplate();
+      log("starting the application automatically");
+      await startRun();
+      return;
+    }
+
+    // Still on the job page: press Indeed's Apply button, which navigates to the
+    // form and re-runs this block there.
+    if (/^\/jobs\b/.test(location.pathname)) return; // results page, not a job
+    const btn = await waitFor(findIndeedApplyDom, 8000);
+    if (!btn) {
+      await setItem("autoApply", null);
+      log("couldn't find Indeed's Apply button — press it yourself, then Scan", false);
+      return;
+    }
+    log("clicking Apply with Indeed");
+    btn.click();
+  })();
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
   });
@@ -1538,6 +1579,29 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
 }
 
 // ─── Advance-button finder ─────────────────────────────────────────────────────
+
+/** How long an "Apply to this job" intent stays good for, across 2 navigations. */
+const AUTO_APPLY_TTL_MS = 120_000;
+
+/**
+ * Indeed's own "Apply with Indeed" button — the one that OPENS an application.
+ * Deliberately separate from findAdvanceDom: this is only ever pressed when the
+ * user explicitly chose a job, never while hunting for a way to advance a page.
+ */
+function findIndeedApplyDom(): HTMLElement | null {
+  const direct = document.querySelector<HTMLElement>(
+    '#indeedApplyButton, [id*="indeedApplyButton"], [class*="indeed-apply-button"], [class*="IndeedApplyButton"]',
+  );
+  if (direct && isVisibleEnabled(direct)) return direct;
+  for (const el of document.querySelectorAll<HTMLElement>('button, a[role="button"], [role="button"]')) {
+    if (!isVisibleEnabled(el)) continue;
+    const text = (el.innerText || el.getAttribute("aria-label") || "").trim();
+    if (!text || text.length > 40) continue;
+    if (/\bapplied\b/i.test(text)) continue;
+    if (/^apply\b|\bapply with indeed\b|\bapply now\b/i.test(text)) return el;
+  }
+  return null;
+}
 
 // "apply" deliberately absent: inside the application flow the advance buttons
 // say Continue / Review / Submit, while "Apply with Indeed" is the button that
