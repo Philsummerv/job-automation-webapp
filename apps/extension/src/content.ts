@@ -748,6 +748,12 @@ const TEMPLATE_FIELDS: TemplateField[] = [
     ],
   },
   { key: "linkedin", label: "LinkedIn URL" },
+  { key: "priorJobTitle", label: "Most recent job title" },
+  { key: "priorJobCompany", label: "Most recent employer" },
+  { key: "priorJobDuration", label: "Time at most recent job", placeholder: "e.g. 3 years" },
+  { key: "timeZone", label: "Time zone", placeholder: "e.g. Eastern" },
+  { key: "preferredDay", label: "Preferred interview day", placeholder: "e.g. Monday" },
+  { key: "preferredTime", label: "Preferred interview time", placeholder: "e.g. Morning" },
 ];
 
 /** Merge the user's template overrides onto DEFAULT_CONFIG (blanks ignored). */
