@@ -17,40 +17,15 @@ import {
 } from "./forms.js";
 import type { FormField, JobListing, RunContext } from "./types.js";
 
-// ─── Search URL (source L1349-1356, L1400-1405) ────────────────────────────────
-// Omit the &l= param entirely when nationwide: an empty `&l=` triggers
-// Indeed's "specify location" disambiguation page and the bot then sees zero
-// job beacons and bails out. Indeed paginates in steps of 10 via &start=;
-// page 0 omits the param. Reconstructing the URL per page is more reliable
-// than clicking "Next", because we navigate away to apply and would
-// otherwise lose our place in the results.
-export function buildIndeedSearchUrl(query: string, loc: string, start = 0): string {
-  const base = loc
-    ? `https://www.indeed.com/jobs?q=${encodeURIComponent(query)}&l=${encodeURIComponent(loc)}`
-    : `https://www.indeed.com/jobs?q=${encodeURIComponent(query)}`;
-  return start > 0 ? `${base}&start=${start}` : base;
-}
+// ─── Search URL + results scrape (source L1349-1356, L1400-1425) ───────────────
+// Both live in ./indeed-search.js so the browser extension can import them
+// without dragging in Playwright or Node types. Re-exported here so this file
+// stays the whole Indeed adapter surface.
+export { buildIndeedSearchUrl, collectIndeedJobs } from "./indeed-search.js";
+import { collectIndeedJobs as collectJobsInPage } from "./indeed-search.js";
 
-// ─── Results scrape (source L1407-1425) ────────────────────────────────────────
 export function scrapeIndeedJobs(page: Page): Promise<JobListing[]> {
-  return page.$$eval('[class*="job_seen_beacon"]', (cards) =>
-    cards.map((card) => {
-      const title =
-        (card.querySelector('[class*="jobTitle"] a, [class*="jobTitle"] span') as HTMLElement | null)?.innerText?.trim() || "N/A";
-      const company =
-        (card.querySelector('[data-testid="company-name"], [class*="company"]') as HTMLElement | null)?.innerText?.trim() || "N/A";
-      const location =
-        (card.querySelector('[data-testid="text-location"], [class*="companyLocation"]') as HTMLElement | null)?.innerText?.trim() || "N/A";
-      const snippet =
-        (card.querySelector('[class*="snippet"], .job-snippet') as HTMLElement | null)?.innerText?.trim() || "N/A";
-      const linkEl = card.querySelector('[class*="jobTitle"] a');
-      const link = linkEl ? `https://www.indeed.com${linkEl.getAttribute("href")}` : "N/A";
-      const cardText = (card as HTMLElement).innerText.toLowerCase();
-      const isIndeedApply =
-        cardText.includes("easily apply") || cardText.includes("indeed apply");
-      return { title, company, location, snippet, link, isIndeedApply };
-    })
-  );
+  return page.evaluate(collectJobsInPage);
 }
 
 // ─── Apply button (source L1169-1198) ──────────────────────────────────────────

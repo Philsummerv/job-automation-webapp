@@ -164,6 +164,12 @@ export const TEMPLATE_FIELDS: TemplateField[] = [
   { key: "timeZone", label: "Time zone", placeholder: "e.g. Eastern" },
   { key: "preferredDay", label: "Preferred interview day", placeholder: "e.g. Monday" },
   { key: "preferredTime", label: "Preferred interview time", placeholder: "e.g. Morning" },
+  // Job search — drives the "Find jobs" button, which builds Indeed's search
+  // URL rather than making the user type the same query every session.
+  { key: "searchQuery", label: "Search: job title or keywords", placeholder: "e.g. production technician" },
+  { key: "searchLocation", label: "Search: location", placeholder: "e.g. Syracuse, NY — blank searches everywhere" },
+  { key: "maxApplications", label: "Max applications per session", placeholder: "e.g. 5" },
+  { key: "exclusionTitleRegex", label: "Skip titles matching", placeholder: "e.g. senior|manager|intern" },
   // Referral questions are answered per EMPLOYER, not per application: list the
   // employers once here and the assist matches the job you're applying to
   // against the list, answering Yes with the contact's name only where it

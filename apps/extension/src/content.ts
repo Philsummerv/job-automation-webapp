@@ -12,6 +12,7 @@
 // the offline fallback), with intent-aware matching for options (scoreOption).
 
 import { collectFormQuestions } from "@applyassistui/automation/forms";
+import { buildIndeedSearchUrl, collectIndeedJobs } from "@applyassistui/automation/indeed-search";
 import { makeAutoFillAnswer } from "@applyassistui/automation/autofill";
 import { DEFAULT_CONFIG } from "@applyassistui/automation/config";
 import type { ScoutConfig } from "@applyassistui/automation/config";
@@ -165,6 +166,9 @@ function init() {
       <button id="aaui-start" style="flex:1;padding:6px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Scan Indeed page</button>
       <button id="aaui-cancel" style="flex:1;padding:6px;border:0;border-radius:6px;background:#475569;color:#fff;cursor:pointer">Cancel</button>
     </div>
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <button id="aaui-find" style="flex:1;padding:6px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">🔎 Find jobs</button>
+    </div>
     <div id="aaui-review"></div>
     <div id="aaui-log" style="margin-top:8px;border-top:1px solid #334155;padding-top:6px;opacity:.85"></div>
   `;
@@ -218,6 +222,73 @@ function init() {
       if (r) log(`resume → ${r.detail}`, r.ok);
     }
     log("fill pass done");
+  }
+
+  // ─── Job search ───────────────────────────────────────────────────────────────
+  // Off the results page, this types the search for you — building Indeed's URL
+  // from the template so the query and location don't get retyped every session.
+  // On the results page it lists what it found, so you pick without hunting.
+
+  function findJobs(): void {
+    const cfg = template?.config ?? {};
+    const query = (cfg.searchQuery ?? "").trim();
+    const loc = (cfg.searchLocation ?? "").trim();
+
+    if (!/^\/jobs\b/.test(location.pathname)) {
+      if (!query) {
+        log("add “Search: job title” to your template first", false);
+        return;
+      }
+      // Blank location is deliberate: an empty &l= sends Indeed to a "specify
+      // location" page with zero results, so buildIndeedSearchUrl omits it.
+      window.location.assign(buildIndeedSearchUrl(query, loc));
+      return;
+    }
+    renderJobList();
+  }
+
+  function renderJobList(): void {
+    const cfg = template?.config ?? {};
+    let jobs = collectIndeedJobs().filter((j) => j.link !== "N/A");
+    const total = jobs.length;
+
+    const pattern = (cfg.exclusionTitleRegex ?? "").trim();
+    if (pattern) {
+      try {
+        const re = new RegExp(pattern, "i");
+        jobs = jobs.filter((j) => !re.test(j.title));
+      } catch {
+        log("“Skip titles matching” isn't a valid pattern — ignoring it", false);
+      }
+    }
+    // Easy-apply first: those are the ones the assist can actually complete.
+    jobs.sort((a, b) => Number(b.isIndeedApply) - Number(a.isIndeedApply));
+
+    const cap = parseInt(cfg.maxApplications ?? "", 10);
+    if (cap > 0) jobs = jobs.slice(0, cap);
+
+    reviewEl.innerHTML = "";
+    if (!jobs.length) {
+      reviewEl.appendChild(hHeader("No jobs found", total > 0
+        ? `${total} listing(s) were all filtered out by “Skip titles matching”.`
+        : "Indeed's results didn't scrape — the page may still be loading, or the layout changed."));
+      return;
+    }
+    reviewEl.appendChild(hHeader(
+      `${jobs.length} job${jobs.length > 1 ? "s" : ""}`,
+      "Pick one to open it, then Scan Indeed page to apply.",
+    ));
+
+    for (const j of jobs) {
+      const card = mkEl("div", "margin:6px 0;padding:8px;background:#1e293b;border-radius:6px;display:flex;flex-direction:column;gap:4px");
+      card.appendChild(mkEl("div", "font-weight:700;font-size:12px", j.title));
+      card.appendChild(mkEl("div", "font-size:11px;opacity:.85", `${j.company} · ${j.location}`));
+      if (j.isIndeedApply) {
+        card.appendChild(mkEl("div", "font-size:11px;color:#4ade80", "Easy apply"));
+      }
+      card.appendChild(mkBtn("Open this job", "#2563eb", () => window.location.assign(j.link)));
+      reviewEl.appendChild(card);
+    }
   }
 
   /**
@@ -642,6 +713,8 @@ function init() {
 
   panel.querySelector("#aaui-template")!.addEventListener("click", () => renderTemplateEditor());
 
+  panel.querySelector("#aaui-find")!.addEventListener("click", () => findJobs());
+
   panel.querySelector("#aaui-resume")!.addEventListener("click", () => pickResume());
   getItem("resume").then((r) => {
     if (r) log(`resume ready: ${r.name}`);
@@ -832,6 +905,10 @@ const TEMPLATE_FIELDS: TemplateField[] = [
   { key: "timeZone", label: "Time zone", placeholder: "e.g. Eastern" },
   { key: "preferredDay", label: "Preferred interview day", placeholder: "e.g. Monday" },
   { key: "preferredTime", label: "Preferred interview time", placeholder: "e.g. Morning" },
+  { key: "searchQuery", label: "Search: job title or keywords", placeholder: "e.g. production technician" },
+  { key: "searchLocation", label: "Search: location", placeholder: "blank searches everywhere" },
+  { key: "maxApplications", label: "Max applications per session", placeholder: "e.g. 5" },
+  { key: "exclusionTitleRegex", label: "Skip titles matching", placeholder: "e.g. senior|manager" },
   { key: "referralCompanies", label: "Employers who referred you", placeholder: "Byrne Dairy: Bob Jones; Acme: Sue Lee" },
   { key: "relativeCompanies", label: "Employers where you know someone", placeholder: "Byrne Dairy: Jane Smith" },
 ];

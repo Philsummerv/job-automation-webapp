@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./forms": "./src/forms.ts",
+    "./indeed-search": "./src/indeed-search.ts",
     "./autofill": "./src/autofill.ts",
     "./config": "./src/config.ts",
     "./types": "./src/types.ts"
