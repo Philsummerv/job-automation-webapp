@@ -252,6 +252,43 @@ function init() {
     log("fill pass done");
   }
 
+  // ─── Busy indicator ───────────────────────────────────────────────────────────
+  // Auto-apply spans two page loads and a scan, which is several silent seconds.
+  // Without something moving, a stall and normal progress look identical.
+
+  let busyTimer: ReturnType<typeof setInterval> | null = null;
+
+  function showBusy(text: string): void {
+    stopBusy();
+    reviewEl.innerHTML = "";
+    const box = mkEl(
+      "div",
+      "margin:6px 0;padding:14px;background:#1e293b;border-radius:6px;font-size:14px;font-weight:600;text-align:center",
+    );
+    reviewEl.appendChild(box);
+    let n = 0;
+    const paint = () => { box.textContent = `${text}${".".repeat(n++ % 4)}`; };
+    paint();
+    busyTimer = setInterval(paint, 400);
+  }
+
+  function stopBusy(): void {
+    if (busyTimer) { clearInterval(busyTimer); busyTimer = null; }
+  }
+
+  /** Replace the spinner with a reason it stopped, so a stall is never silent. */
+  function failBusy(message: string): void {
+    stopBusy();
+    reviewEl.innerHTML = "";
+    const box = mkEl(
+      "div",
+      "margin:6px 0;padding:10px;background:#7f1d1d;border-radius:6px;font-size:12px;line-height:1.45",
+      message,
+    );
+    reviewEl.appendChild(box);
+    log(message, false);
+  }
+
   // ─── Job search ───────────────────────────────────────────────────────────────
   // Off the results page, this types the search for you — building Indeed's URL
   // from the template so the query and location don't get retyped every session.
@@ -475,6 +512,7 @@ function init() {
   //   paused — the assist is hands-off; edit here or on the page, then resume.
   // The cards stay live (edits apply to the form) in both modes.
   function renderReviewGate(runId: string, mode: "review" | "paused" = "review"): void {
+    stopBusy();
     reviewEl.innerHTML = "";
     reviewEl.appendChild(
       mode === "paused"
@@ -907,6 +945,7 @@ function init() {
     if (isApplyPage()) {
       await setItem("autoApply", null);
       await loadTemplate();
+      showBusy("Reading the application");
       log("starting the application automatically");
       await startRun();
       return;
@@ -915,14 +954,23 @@ function init() {
     // Still on the job page: press Indeed's Apply button, which navigates to the
     // form and re-runs this block there.
     if (/^\/jobs\b/.test(location.pathname)) return; // results page, not a job
+    showBusy("Opening the application");
     const btn = await waitFor(findIndeedApplyDom, 8000);
     if (!btn) {
       await setItem("autoApply", null);
-      log("couldn't find Indeed's Apply button — press it yourself, then Scan", false);
+      failBusy("Couldn't find Indeed's Apply button on this page — press it yourself, then Scan Indeed page.");
       return;
     }
     log("clicking Apply with Indeed");
-    btn.click();
+    realClick(btn);
+
+    // Indeed's button can decline a scripted press. Say so rather than sitting
+    // on a spinner that will never finish.
+    setTimeout(() => {
+      if (isApplyPage()) return;
+      void setItem("autoApply", null);
+      failBusy("Indeed didn't open the form. Press “Apply with Indeed” yourself — the assist takes over from there.");
+    }, 8000);
   })();
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
@@ -1584,15 +1632,28 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
 const AUTO_APPLY_TTL_MS = 120_000;
 
 /**
+ * Click, with the pointer and mouse sequence a real press produces around it.
+ * Indeed's "Apply with Indeed" ignores a bare `.click()` — it listens further
+ * down the event sequence — so the assist appeared to click and nothing moved.
+ */
+function realClick(el: HTMLElement): void {
+  const init: MouseEventInit = { bubbles: true, cancelable: true, view: window };
+  el.dispatchEvent(new PointerEvent("pointerdown", init));
+  el.dispatchEvent(new MouseEvent("mousedown", init));
+  el.dispatchEvent(new PointerEvent("pointerup", init));
+  el.dispatchEvent(new MouseEvent("mouseup", init));
+  el.click();
+}
+
+/**
  * Indeed's own "Apply with Indeed" button — the one that OPENS an application.
  * Deliberately separate from findAdvanceDom: this is only ever pressed when the
  * user explicitly chose a job, never while hunting for a way to advance a page.
  */
 function findIndeedApplyDom(): HTMLElement | null {
-  const direct = document.querySelector<HTMLElement>(
-    '#indeedApplyButton, [id*="indeedApplyButton"], [class*="indeed-apply-button"], [class*="IndeedApplyButton"]',
-  );
-  if (direct && isVisibleEnabled(direct)) return direct;
+  // No stable id or class to match on any more — Indeed ships CSS-in-JS class
+  // names ("css-1neivp9") and hashed element ids that change per build, so the
+  // button is identified by its text. Verified against a live job page.
   for (const el of document.querySelectorAll<HTMLElement>('button, a[role="button"], [role="button"]')) {
     if (!isVisibleEnabled(el)) continue;
     const text = (el.innerText || el.getAttribute("aria-label") || "").trim();
