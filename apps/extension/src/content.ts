@@ -82,6 +82,8 @@ function init() {
   let usingSynced = false;
   let getAutoFillAnswer = makeAutoFillAnswer(DEFAULT_CONFIG);
   let questions: FormField[] = [];
+  /** Employer being applied to, resolved at fill time; drives referral answers. */
+  let currentCompany: string | null = null;
 
   // Load the template and rebuild the ruleset resolver. The account template
   // synced from the web app wins; the local editor is an offline fallback.
@@ -95,7 +97,8 @@ function init() {
 
   // Resolve an answer for a question: the user's CUSTOM RULES win (first
   // substring match), then the built-in ruleset over the merged config.
-  function getAnswer(questionText: string): string | null {
+  function getAnswer(field: FormField): string | null {
+    const questionText = field.text;
     if (template?.rules?.length) {
       const q = questionText.toLowerCase();
       for (const r of template.rules) {
@@ -103,7 +106,36 @@ function init() {
         if (m && q.includes(m)) return r.answer;
       }
     }
+    // Employer-dependent answers beat the built-in rules, which can only ever
+    // answer "no" because they don't know who you're applying to.
+    const referral = referralAnswer(field);
+    if (referral !== null) return referral;
     return getAutoFillAnswer(questionText);
+  }
+
+  /**
+   * Answer a referral / "do you know anyone here" question against the employer
+   * being applied to. Yes only when this listing's company matches one the user
+   * listed in their template; free-text variants get the contact's name, which
+   * is what "if yes, please list their name" is actually asking for.
+   */
+  function referralAnswer(field: FormField): string | null {
+    const lower = field.text.toLowerCase();
+    const isReferral = lower.includes("referred") || lower.includes("referral");
+    const isRelative = lower.includes("acquaintance") || lower.includes("relative") ||
+      lower.includes("friends or family") || lower.includes("know anyone") ||
+      lower.includes("know someone");
+    if (!isReferral && !isRelative) return null;
+
+    const raw = (template?.config ?? {})[isReferral ? "referralCompanies" : "relativeCompanies"];
+    const hit = matchContact(parseContacts(raw), currentCompany);
+
+    if (!hit) return lower.includes("n/a") ? "N/A" : "__RADIO:No";
+    if (field.type === "radio" || field.type === "checkbox" ||
+        field.type === "select" || field.type === "combobox") {
+      return "__RADIO:Yes";
+    }
+    return hit.name || "Yes";
   }
 
   // ─── Panel ────────────────────────────────────────────────────────────────
@@ -164,8 +196,14 @@ function init() {
    * from any panel UI — the review gate is the only question UI now.
    */
   async function fillPage(): Promise<void> {
+    // Read the employer off the run, not this document: the form usually lives
+    // in an iframe that has no job card, while the worker has accumulated the
+    // company from whichever frame did see it.
+    const run = await getItem("activeRun");
+    currentCompany = run?.job?.company ?? captureJobMeta().company;
+
     for (const q of questions) {
-      const auto = getAnswer(q.text);
+      const auto = getAnswer(q);
       if (!auto || auto === "__SKIP__") continue;
       const result = await fillFieldDom(q, auto);
       log(`${q.text.slice(0, 40)} → ${result.detail}`, result.ok);
@@ -754,6 +792,8 @@ const TEMPLATE_FIELDS: TemplateField[] = [
   { key: "timeZone", label: "Time zone", placeholder: "e.g. Eastern" },
   { key: "preferredDay", label: "Preferred interview day", placeholder: "e.g. Monday" },
   { key: "preferredTime", label: "Preferred interview time", placeholder: "e.g. Morning" },
+  { key: "referralCompanies", label: "Employers who referred you", placeholder: "Byrne Dairy: Bob Jones; Acme: Sue Lee" },
+  { key: "relativeCompanies", label: "Employers where you know someone", placeholder: "Byrne Dairy: Jane Smith" },
 ];
 
 /** Merge the user's template overrides onto DEFAULT_CONFIG (blanks ignored). */
@@ -763,6 +803,59 @@ function mergedConfig(template: AnswerTemplate | null): ScoutConfig {
     if (v != null && String(v).trim() !== "") cfg[k] = v;
   }
   return cfg as unknown as ScoutConfig;
+}
+
+// ─── Referral matching ────────────────────────────────────────────────────────
+// "Were you referred?" and "do you have relatives here?" depend on WHICH
+// employer you're applying to, so the user lists their contacts once in the
+// template and we match the current listing's company against that list.
+
+interface Contact {
+  company: string;
+  name: string;
+}
+
+/** Parse "Employer: Person" entries, one per line (";" also separates). */
+function parseContacts(raw: string | undefined): Contact[] {
+  if (!raw) return [];
+  return raw
+    .split(/[\n;]+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      // ":" first — company names contain hyphens, so only a SPACED hyphen
+      // counts as a separator ("Byrne-Dairy - Bob Jones").
+      const m = /^([^:]+):\s*(.*)$/.exec(line) ?? /^(.+?)\s+[-–]\s+(.*)$/.exec(line);
+      return m ? { company: m[1].trim(), name: m[2].trim() } : { company: line, name: "" };
+    })
+    .filter((c) => c.company.length > 0);
+}
+
+const COMPANY_NOISE = /\b(inc|llc|ltd|limited|corp|corporation|company|co|group|holdings|plc|the)\b/g;
+
+/** Strip case, punctuation and legal suffixes so "Byrne Dairy, Inc." == "byrne dairy". */
+function normalizeCompany(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(COMPANY_NOISE, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Find the user's contact at this employer, if any. */
+function matchContact(list: Contact[], company: string | null): Contact | null {
+  const target = normalizeCompany(company ?? "");
+  if (!target) return null;
+  for (const c of list) {
+    const n = normalizeCompany(c.company);
+    if (!n) continue;
+    if (n === target) return c;
+    // Loose containment only for names long enough that a partial hit isn't a
+    // coincidence — "co" or "abc" would otherwise match half the internet.
+    if (n.length >= 4 && (target.includes(n) || n.includes(target))) return c;
+  }
+  return null;
 }
 
 // ─── Resume attachment ────────────────────────────────────────────────────────

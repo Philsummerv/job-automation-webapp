@@ -108,7 +108,7 @@ export interface AnswerTemplate {
 export interface TemplateField {
   key: string;
   label: string;
-  type?: "yesno" | "select";
+  type?: "yesno" | "select" | "list";
   placeholder?: string;
   /** For type "select": the choices. `value` is the phrase the extension
    * matches against a form's live option labels at fill time. */
@@ -164,6 +164,22 @@ export const TEMPLATE_FIELDS: TemplateField[] = [
   { key: "timeZone", label: "Time zone", placeholder: "e.g. Eastern" },
   { key: "preferredDay", label: "Preferred interview day", placeholder: "e.g. Monday" },
   { key: "preferredTime", label: "Preferred interview time", placeholder: "e.g. Morning" },
+  // Referral questions are answered per EMPLOYER, not per application: list the
+  // employers once here and the assist matches the job you're applying to
+  // against the list, answering Yes with the contact's name only where it
+  // actually applies.
+  {
+    key: "referralCompanies",
+    label: "Employers where someone referred you",
+    type: "list",
+    placeholder: "One per line — Byrne Dairy: Bob Jones",
+  },
+  {
+    key: "relativeCompanies",
+    label: "Employers where you know a relative or acquaintance",
+    type: "list",
+    placeholder: "One per line — Byrne Dairy: Jane Smith",
+  },
 ];
 
 export interface ActivityLogEntry {

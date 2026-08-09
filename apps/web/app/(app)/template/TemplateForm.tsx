@@ -20,7 +20,7 @@ export function TemplateForm({ template }: { template: AnswerTemplate | null }) 
     <form action={saveTemplate} className="mt-6 space-y-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {TEMPLATE_FIELDS.map((f) => (
-          <div key={f.key} className={f.type ? "" : "sm:col-span-1"}>
+          <div key={f.key} className={f.type === "list" ? "sm:col-span-2" : f.type ? "" : "sm:col-span-1"}>
             <label htmlFor={f.key} className="block text-sm font-medium">
               {f.label}
             </label>
@@ -39,6 +39,15 @@ export function TemplateForm({ template }: { template: AnswerTemplate | null }) 
                   </option>
                 ))}
               </select>
+            ) : f.type === "list" ? (
+              <textarea
+                id={f.key}
+                name={f.key}
+                rows={3}
+                defaultValue={cfg[f.key] ?? ""}
+                placeholder={f.placeholder}
+                className={INPUT}
+              />
             ) : (
               <input
                 id={f.key}
