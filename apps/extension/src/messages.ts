@@ -46,6 +46,16 @@ export interface JobMetaMsg {
   job: JobMeta;
 }
 
+/**
+ * Ask the worker to press "Apply with Indeed" in the PAGE's own JS world.
+ * A content script lives in an isolated world: it can dispatch DOM events, but
+ * Indeed's handler ignores those, and the handler function itself is invisible
+ * from out here. Only chrome.scripting with world:"MAIN" can reach it.
+ */
+export interface ClickApplyMsg {
+  type: "click-apply";
+}
+
 /** A form frame reports that its fill pass completed. */
 export interface FillResultMsg {
   type: "fill-result";
@@ -134,6 +144,7 @@ export type WorkerBoundMsg =
   | CancelRunMsg
   | ScanResultMsg
   | JobMetaMsg
+  | ClickApplyMsg
   | FillResultMsg
   | ReviewDecisionMsg
   | PauseRunMsg
@@ -167,6 +178,13 @@ export interface StartRunResponse {
   reason?: "not-signed-in" | "not-entitled" | "no-tab";
 }
 
+/** What the in-page press actually managed to do. */
+export interface ClickApplyResponse {
+  ok: boolean;
+  /** "handler" = called Indeed's own onclick; "click" = fell back to .click(). */
+  how?: "handler" | "click" | "not-found";
+}
+
 export interface PendingActivitiesResponse {
   activities: PendingActivity[];
 }
@@ -176,6 +194,7 @@ export interface ResponseMap {
   "cancel-run": Ack;
   "scan-result": Ack;
   "job-meta": Ack;
+  "click-apply": ClickApplyResponse;
   "fill-result": Ack;
   "review-decision": Ack;
   "pause-run": Ack;

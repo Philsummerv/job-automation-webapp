@@ -101,11 +101,12 @@ export interface StorageSchema {
   /** Set when Find jobs navigates to a search, so the results page self-scrapes on arrival. */
   autoBrowse: boolean;
   /**
-   * Epoch ms when the user pressed "Apply to this job". Carries that intent
-   * across the job page and into the application form; time-limited so a stale
-   * value can never make a later page start applying on its own.
+   * The pending "Apply to this job" intent: when it was made, and for WHICH
+   * listing. Both are checked — the timestamp expires it, and the link stops it
+   * being picked up by an unrelated Indeed page (closing the tab and opening a
+   * fresh one used to resume "Opening the application…" on whatever loaded).
    */
-  autoApply: number | null;
+  autoApply: { at: number; link: string } | null;
 }
 
 const DEFAULTS: StorageSchema = {

@@ -457,7 +457,7 @@ function init() {
     const row = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:6px");
     row.appendChild(makePrimary(mkBtn("Apply to this job", "#059669", async () => {
       await advance();
-      await setItem("autoApply", Date.now());
+      await setItem("autoApply", { at: Date.now(), link: job.link });
       window.location.assign(job.link);
     })));
     row.appendChild(makePrimary(
@@ -959,8 +959,15 @@ function init() {
   // itself — the same failure the search-page guard exists to prevent.
   void (async () => {
     const stamp = await getItem("autoApply");
-    if (!stamp || Date.now() - stamp > AUTO_APPLY_TTL_MS) {
+    if (!stamp || typeof stamp.at !== "number" || Date.now() - stamp.at > AUTO_APPLY_TTL_MS) {
       if (stamp) await setItem("autoApply", null);
+      return;
+    }
+    // The intent belongs to ONE listing. Without this, closing the tab mid-apply
+    // and opening a fresh Indeed page had that page pick the intent up and start
+    // "Opening the application…" on something the user never chose.
+    if (!isApplyContext() && jobKeyOf(location.href) !== jobKeyOf(stamp.link)) {
+      await setItem("autoApply", null);
       return;
     }
 
@@ -990,7 +997,12 @@ function init() {
     for (let attempt = 1; attempt <= 4; attempt++) {
       if (isApplyContext()) return;
       log(attempt === 1 ? "clicking Apply with Indeed" : `Apply didn't take — retry ${attempt - 1}`);
-      realClick(btn);
+      // Ask the worker to press it inside the page's own JS world; a content
+      // script's dispatched events don't move this button. Fall back to the
+      // DOM press if that route is unavailable.
+      const res = await sendToWorker({ type: "click-apply" });
+      if (!res?.ok) realClick(btn);
+      else if (attempt === 1) log(`pressed via ${res.how}`);
       await sleep(1800);
       if (isApplyContext()) return;
     }
@@ -1656,6 +1668,15 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
 
 /** How long an "Apply to this job" intent stays good for, across 2 navigations. */
 const AUTO_APPLY_TTL_MS = 120_000;
+
+/** Indeed's per-listing id, used to check a pending apply belongs to THIS page. */
+function jobKeyOf(url: string): string | null {
+  try {
+    return new URL(url, location.href).searchParams.get("jk");
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Click, with the pointer and mouse sequence a real press produces around it.

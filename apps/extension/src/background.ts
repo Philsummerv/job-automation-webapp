@@ -57,6 +57,48 @@ function dispatch(makeAction: (state: RunState | null) => Action | null): Promis
   return chain;
 }
 
+/**
+ * Runs in the PAGE's JavaScript world via chrome.scripting, not in the content
+ * script's isolated world — which is the whole point. Indeed keeps its click
+ * handler as an `onclick` property on the wrapper around "Apply with Indeed";
+ * from the isolated world that property reads as null and dispatched events are
+ * ignored, so the only way to press it is to call it here.
+ *
+ * SELF-CONTAINED: this function is serialized and injected, so it can't close
+ * over anything outside itself.
+ */
+function pressApplyInPage(): "handler" | "click" | "not-found" {
+  const matches = (el: Element | null) =>
+    !!el && /apply with indeed/i.test((el as HTMLElement).innerText || "");
+
+  const wrapper = Array.from(
+    document.querySelectorAll(
+      '[class*="indeed-apply-status-not-applied"], [data-click-handler="attached"]',
+    ),
+  ).find(matches) as HTMLElement | undefined;
+
+  const button =
+    (wrapper?.querySelector("button") as HTMLElement | null) ??
+    (Array.from(document.querySelectorAll("button")).find(
+      (b) =>
+        /apply with indeed/i.test(b.innerText || "") ||
+        /apply with indeed/i.test(b.getAttribute("aria-label") || ""),
+    ) as HTMLElement | undefined);
+
+  const targets = [wrapper, button].filter(Boolean) as HTMLElement[];
+  if (!targets.length) return "not-found";
+
+  for (const t of targets) {
+    const handler = (t as unknown as { onclick?: (e: MouseEvent) => void }).onclick;
+    if (typeof handler === "function") {
+      handler.call(t, new MouseEvent("click", { bubbles: true, cancelable: true, view: window }));
+      return "handler";
+    }
+  }
+  targets[targets.length - 1].click();
+  return "click";
+}
+
 async function runEffect(effect: Effect): Promise<void> {
   switch (effect.kind) {
     case "send-command": {
@@ -158,6 +200,22 @@ chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse)
       const job = msg.job;
       dispatch(() => ({ type: "scan-result", runId: msg.runId, frameId, questions, job, at: Date.now() }))
         .then(() => sendResponse({ ok: true }));
+      return true;
+    }
+
+    case "click-apply": {
+      const tabId = sender.tab?.id;
+      if (tabId == null) {
+        sendResponse({ ok: false, how: "not-found" });
+        return false;
+      }
+      chrome.scripting
+        .executeScript({ target: { tabId }, world: "MAIN", func: pressApplyInPage })
+        .then((results) => {
+          const how = results?.[0]?.result as "handler" | "click" | "not-found" | undefined;
+          sendResponse({ ok: how != null && how !== "not-found", how: how ?? "not-found" });
+        })
+        .catch(() => sendResponse({ ok: false, how: "not-found" }));
       return true;
     }
 
