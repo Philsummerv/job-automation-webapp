@@ -1,4 +1,4 @@
-// Bridge content script — runs ONLY on the ApplyAssistUI web-app origin. It
+// Bridge content script — runs ONLY on the JobAssistUI web-app origin. It
 // probes /api/extension/session SAME-ORIGIN, so the user's login cookies flow
 // automatically (no token handoff, no externally_connectable), and relays
 // sign-in + entitlement to the service worker. The worker caches it and gates

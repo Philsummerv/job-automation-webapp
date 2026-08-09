@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "ApplyAssistUI",
-  "version": "0.0.1",
+  "name": "JobAssistUI",
+  "version": "1.0.0",
   "description": "Guided autofill for job-application forms, driven by your saved answer template.",
   "background": { "service_worker": "background.js" },
   "permissions": ["storage", "tabs", "webNavigation"],
   "host_permissions": [
-    "https://job-automation-webapp-web.vercel.app/*",
+    "https://www.jobassistui.com/*",
     "http://localhost:3000/*"
   ],
   "content_scripts": [
@@ -18,7 +18,7 @@
     },
     {
       "matches": [
-        "https://job-automation-webapp-web.vercel.app/*",
+        "https://www.jobassistui.com/*",
         "http://localhost:3000/*"
       ],
       "js": ["web-bridge.js"],

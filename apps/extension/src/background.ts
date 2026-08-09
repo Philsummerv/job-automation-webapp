@@ -22,7 +22,7 @@ const VERSION = chrome.runtime.getManifest().version;
 const NO_FORM_TIMEOUT_MS = 4000;
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log(`ApplyAssistUI installed (v${VERSION})`);
+  console.log(`JobAssistUI installed (v${VERSION})`);
 });
 
 // ── Serialized dispatch ─────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ function dispatch(makeAction: (state: RunState | null) => Action | null): Promis
       }
       for (const effect of result.effects) await runEffect(effect);
     } catch (err) {
-      console.error("[ApplyAssistUI] dispatch failed", err);
+      console.error("[JobAssistUI] dispatch failed", err);
     }
   });
   return chain;

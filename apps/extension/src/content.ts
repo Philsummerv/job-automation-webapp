@@ -122,7 +122,7 @@ function init() {
   ].join(";");
   panel.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <strong style="font-size:13px">ApplyAssistUI</strong>
+      <strong style="font-size:13px">JobAssistUI</strong>
       <span style="display:flex;gap:8px;align-items:center">
         <button id="aaui-template" title="Edit answer template" style="border:0;background:transparent;color:#e2e8f0;cursor:pointer;font-size:14px;padding:0">⚙ Template</button>
         <span style="opacity:.6">${isTop ? "top frame" : "iframe"}</span>
@@ -372,7 +372,7 @@ function init() {
       const note = mkEl(
         "div",
         "margin:4px 0 8px;padding:6px;background:#1e293b;border:1px solid #2563eb;border-radius:6px;font-size:11px;line-height:1.4",
-        "Showing your web-app template. Edit it at job-automation-webapp-web.vercel.app → Answer Template. Saving here only sets a local fallback used when signed out.",
+        "Showing your web-app template. Edit it at jobassistui.com → Answer Template. Saving here only sets a local fallback used when signed out.",
       );
       reviewEl.appendChild(note);
     }
@@ -517,7 +517,7 @@ function init() {
       const res = await sendToWorker({ type: "start-run" });
       if (res?.ok) { log("run started", true); return; }
       if (res?.reason === "not-signed-in") {
-        log("Sign in at applyassistui (job-automation-webapp-web.vercel.app) to use the assist", false);
+        log("Sign in at jobassistui.com to use the assist", false);
       } else if (res?.reason === "not-entitled") {
         log("Account not active — start your trial / subscribe on the web app, then reload here", false);
       } else {
