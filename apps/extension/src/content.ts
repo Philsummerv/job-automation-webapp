@@ -1664,11 +1664,18 @@ const AUTO_APPLY_TTL_MS = 120_000;
  */
 function realClick(el: HTMLElement): void {
   const init: MouseEventInit = { bubbles: true, cancelable: true, view: window };
-  el.dispatchEvent(new PointerEvent("pointerdown", init));
-  el.dispatchEvent(new MouseEvent("mousedown", init));
-  el.dispatchEvent(new PointerEvent("pointerup", init));
-  el.dispatchEvent(new MouseEvent("mouseup", init));
-  el.click();
+  const press = (t: HTMLElement) => {
+    t.dispatchEvent(new PointerEvent("pointerdown", init));
+    t.dispatchEvent(new MouseEvent("mousedown", init));
+    t.dispatchEvent(new PointerEvent("pointerup", init));
+    t.dispatchEvent(new MouseEvent("mouseup", init));
+    t.click();
+  };
+  press(el);
+  // Indeed's listener sits on a wrapper while the visible control is a nested
+  // <button>; press both so it doesn't matter which one owns the handler.
+  const inner = el.querySelector<HTMLElement>('button, [role="button"]');
+  if (inner && inner !== el) press(inner);
 }
 
 /**
@@ -1677,9 +1684,20 @@ function realClick(el: HTMLElement): void {
  * user explicitly chose a job, never while hunting for a way to advance a page.
  */
 function findIndeedApplyDom(): HTMLElement | null {
-  // No stable id or class to match on any more — Indeed ships CSS-in-JS class
-  // names ("css-1neivp9") and hashed element ids that change per build, so the
-  // button is identified by its text. Verified against a live job page.
+  // Indeed attaches its click handler to a WRAPPER SPAN, not to the button:
+  //   <span class="… indeed-apply-status-not-applied" data-click-handler="attached">
+  //     <button aria-label="Apply with Indeed"> … </button>
+  //   </span>
+  // Those two hooks are stable, while the button's id and its css-* classes are
+  // hashed per build. Prefer the wrapper so the press lands on the listener.
+  const wrapper = Array.from(
+    document.querySelectorAll<HTMLElement>(
+      '[class*="indeed-apply-status-not-applied"], [data-click-handler="attached"]',
+    ),
+  ).find((el) => isVisibleEnabled(el) && /apply with indeed/i.test(el.innerText || ""));
+  if (wrapper) return wrapper;
+
+  // Fallback: the button itself, matched on its text/aria-label.
   for (const el of document.querySelectorAll<HTMLElement>('button, a[role="button"], [role="button"]')) {
     if (!isVisibleEnabled(el)) continue;
     const text = (el.innerText || el.getAttribute("aria-label") || "").trim();
