@@ -15,7 +15,46 @@ Panel shows `run started` → `scanned: 0 question(s)` and then sits on
 groups ("Do you have experience with Laboratory experience?" etc).
 `18bfba8` added a wait for form controls to render and did NOT fix it.
 
-### UPDATE 2026-08-09 (later) — narrowed, still open
+### UPDATE 2026-08-09 (latest) — root cause found in the code, fix built, NEEDS A LIVE TEST
+
+**The controller was killing the run while the scan was still working.**
+`NO_FORM_TIMEOUT_MS` was 4000ms, armed the moment the scan is broadcast. The
+`18d17ec` hop loop spends ~2.2s per question-less page, so by the time it
+reached the real questions page the window had closed: the reducer had already
+taken the run to `done` and cleared it, so the `scan-result` that followed hit
+`isForActiveRun() === false` and was dropped on the floor. Panel keeps the last
+log line it wrote (`scanned: 0 question(s)`) and spins forever. That matches
+every symptom exactly.
+
+What changed (all in this commit):
+- Frames send a new `scan-progress` message before each hop; the reducer
+  re-arms the no-form window. The window itself is now 12s — a backstop, not a
+  race.
+- Scans WAIT for the step to render: `scanWhenReady()` polls for a form control
+  (2.5s) and then re-scans until questions parse (6s). Scanning the instant a
+  page appears was reading Indeed's empty shell.
+- **Never hop past a page that HAS controls.** Hopping only happens on a page
+  with no controls at all. Clicking Continue on a page whose questions we
+  failed to read would submit the user's application with them blank.
+- A page with controls but 0 parsed questions now ends the run loudly
+  (`unreadable form (...)`) with a DOM summary in the log —
+  `labels:.. radios:.. fieldsets:..` — so the next test says instantly whether
+  this is still a timing bug or a `collectFormQuestions` parser bug.
+- Frames that aren't the application itself (the `/viewjob` page behind an
+  overlay) no longer answer a scan. Its header search box is a text input the
+  scraper reads as a question — that frame could pre-empt the real form frame.
+- The spinner is cleared by an `activeRun` watcher, so ANY ending (timeout,
+  error, completion) replaces it with a reason. It was only ever cleared by the
+  review gate.
+- Panel buttons reworked as requested: 🔎 Find jobs is the primary action;
+  Scan is demoted to a small "↻ Rescan page" recovery button next to Cancel.
+
+**Still unverified on a live page.** If the next run logs
+`unreadable form (labels:N radios:N …)` with non-zero counts, the remaining bug
+is in `collectFormQuestions` (`packages/automation/src/forms.ts`) and lead 2
+below is the one to chase — with the counts telling you what it saw.
+
+### UPDATE 2026-08-09 (earlier) — narrowed, still open
 
 Two things were proven by inspecting a LIVE application:
 - The flow opens on `smartapply.../form/commute-check`: 0 labels, 0 radios,
@@ -44,11 +83,10 @@ panel exists and what its log says. If confirmed, the fix is for child
 frames to render no panel and instead relay their state to the top frame's
 panel (one visible UI per tab).
 
-### ALSO REQUESTED (user, 2026-08-09): rework the panel's buttons
+### ALSO REQUESTED (user, 2026-08-09): rework the panel's buttons — DONE
 
-"Find jobs" should be the primary action that runs the whole automation;
-"Scan Indeed page" should be demoted to a restart/recovery button for when
-something goes wrong. Currently Scan is styled as the primary.
+"Find jobs" is now the primary action; Scan is a small "↻ Rescan page"
+recovery button beside Cancel.
 
 ### Debug that first — leads, in order
 
@@ -66,9 +104,8 @@ something goes wrong. Currently Scan is styled as the primary.
    and run `collectFormQuestions` against it directly. That worked well
    twice today (it's how the apply-button and job-scrape bugs were found) —
    inspect the live page rather than reasoning from the code.
-4. **Also: the busy spinner never clears when a run ends with nothing.**
-   `showBusy` is only cleared by `renderReviewGate`, so a dead-end run
-   leaves it spinning. Clear it when a run completes or finds no questions.
+4. ~~The busy spinner never clears when a run ends with nothing.~~ FIXED —
+   an `activeRun` watcher now clears it with a reason on any ending.
 
 ## Then: resume keyword matching (user asked for this, decided 2026-08-09)
 

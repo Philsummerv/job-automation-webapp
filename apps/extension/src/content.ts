@@ -19,7 +19,7 @@ import type { ScoutConfig } from "@applyassistui/automation/config";
 import type { FormField } from "@applyassistui/automation/types";
 import { sendToWorker as rawSendToWorker } from "./messages";
 import type { ContentBoundMsg, ResponseMap, WorkerBoundMsg } from "./messages";
-import { getItem, setItem } from "./storage";
+import { getItem, onChange, setItem } from "./storage";
 import type { AnswerTemplate, CustomRule, JobQueue, QueuedJob, StoredResume } from "./storage";
 import type { JobMeta } from "./state/types";
 
@@ -70,6 +70,25 @@ function sendToWorker<M extends WorkerBoundMsg>(msg: M): Promise<ResponseMap[M["
     // Never let a send rejection escape as an uncaught error in the page.
     return null;
   });
+}
+
+// Anything that counts as "this step is asking the user something". Used to tell
+// a step that renders no questions (commute-check, resume-selection) apart from
+// one whose questions simply haven't rendered yet.
+const FORM_CONTROL_SEL =
+  'input[type="radio"], input[type="checkbox"], select, textarea, input[type="text"], ' +
+  'input[type="number"], input[type="tel"], input[type="email"], [role="combobox"], [role="radiogroup"]';
+
+/**
+ * What the page looks like to the scraper when it comes back empty. Logged so a
+ * failed scan says WHY: "5 radios, 0 questions" is a parser bug, everything at
+ * zero is just an empty page. Without this the panel's only clue was the count.
+ */
+function domSummary(): string {
+  const n = (sel: string) => document.querySelectorAll(sel).length;
+  return `labels:${n("label")} radios:${n('input[type="radio"]')} checks:${n('input[type="checkbox"]')}` +
+    ` fieldsets:${n("fieldset")} selects:${n("select")} text:${n('input[type="text"], textarea')}` +
+    ` combos:${n('[role="combobox"]')} iframes:${n("iframe")}`;
 }
 
 /**
@@ -213,12 +232,12 @@ function init() {
         <span style="opacity:.6">${isTop ? "top frame" : "iframe"}</span>
       </span>
     </div>
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button id="aaui-start" style="flex:1;padding:10px 8px;font-size:13px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Scan Indeed page</button>
-      <button id="aaui-cancel" style="flex:1;padding:10px 8px;font-size:13px;border:0;border-radius:6px;background:#475569;color:#fff;cursor:pointer">Cancel</button>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <button id="aaui-find" style="flex:1;padding:12px 8px;font-size:14px;font-weight:600;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">🔎 Find jobs</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button id="aaui-find" style="flex:1;padding:10px 8px;font-size:13px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">🔎 Find jobs</button>
+      <button id="aaui-start" style="flex:1;padding:6px;font-size:11px;border:1px solid #334155;border-radius:6px;background:transparent;color:#cbd5e1;cursor:pointer">↻ Rescan page</button>
+      <button id="aaui-cancel" style="flex:1;padding:6px;font-size:11px;border:1px solid #334155;border-radius:6px;background:transparent;color:#cbd5e1;cursor:pointer">Cancel run</button>
     </div>
     <div id="aaui-review"></div>
     <div id="aaui-log" style="margin-top:8px;border-top:1px solid #334155;padding-top:6px;opacity:.85"></div>
@@ -237,11 +256,38 @@ function init() {
 
   // ─── Executor actions (driven by worker commands) ────────────────────────────
 
-  /** Scan the page. Returns the questions found. */
+  /** Scan the page as it stands right now. Returns the questions found. */
   function scanPage(): FormField[] {
     questions = collectFormQuestions();
     log(`scanned: ${questions.length} question(s)`);
     return questions;
+  }
+
+  /**
+   * Scan once the step has actually rendered. Indeed builds each step's shell
+   * first and its controls a beat later, so scanning the instant a page appears
+   * reads an empty form — the run then treats the page as question-less and
+   * either steps past real questions or ends outright. Wait for a control, then
+   * keep re-scanning until questions parse out of it.
+   *
+   * Returns the questions plus whether any control was on the page at all, which
+   * is what tells "nothing is asked here" apart from "we couldn't read what's
+   * being asked" — two very different situations for the caller.
+   */
+  async function scanWhenReady(): Promise<{ found: FormField[]; hadControls: boolean }> {
+    const hadControls = !!(await waitFor(() => document.querySelector(FORM_CONTROL_SEL), 2500));
+    if (!hadControls) {
+      questions = [];
+      log("scanned: 0 question(s) — no form controls on this page");
+      return { found: [], hadControls: false };
+    }
+    const found = await waitFor(() => {
+      const qs = collectFormQuestions();
+      return qs.length ? qs : null;
+    }, 6000, 250);
+    questions = found ?? [];
+    log(found ? `scanned: ${found.length} question(s)` : `scanned: 0 question(s) — ${domSummary()}`);
+    return { found: questions, hadControls: true };
   }
 
   /**
@@ -311,6 +357,28 @@ function init() {
     reviewEl.appendChild(box);
     log(message, false);
   }
+
+  // A run can end without ever reaching the review gate: the flow finishes, the
+  // controller's no-form window closes, or a frame errors. The gate was the only
+  // thing that ever cleared the spinner, so every one of those endings left it
+  // turning with no explanation. Watch the run itself and always say why it
+  // stopped. Only touches the panel while the spinner owns it — the review gate
+  // and the log card clear it themselves.
+  onChange("activeRun", (run) => {
+    if (run && run.status !== "done" && run.status !== "error") return;
+    if (!busyTimer) return;
+    if (run?.status === "error") {
+      failBusy(run.error ?? "The assist stopped with an error.");
+      return;
+    }
+    stopBusy();
+    reviewEl.innerHTML = "";
+    reviewEl.appendChild(mkEl(
+      "div",
+      "margin:6px 0;padding:10px;background:#1e293b;border-radius:6px;font-size:12px;line-height:1.45",
+      "Nothing left for the assist to fill here. Press “↻ Rescan page” to try again once the next step loads.",
+    ));
+  });
 
   // ─── Job search ───────────────────────────────────────────────────────────────
   // Off the results page, this types the search for you — building Indeed's URL
@@ -962,7 +1030,7 @@ function init() {
 
   startBtn.addEventListener("click", () => {
     if (!isApplyContext()) {
-      log("use “Find jobs” here — Scan works once you're in an application", false);
+      log("use “Find jobs” here — rescanning only works inside an application", false);
       return;
     }
     void startRun();
@@ -1019,7 +1087,7 @@ function init() {
     const btn = await waitFor(findIndeedApplyDom, 8000);
     if (!btn) {
       await setItem("autoApply", null);
-      failBusy("Couldn't find Indeed's Apply button on this page — press it yourself, then Scan Indeed page.");
+      failBusy("Couldn't find Indeed's Apply button on this page — press it yourself, then “↻ Rescan page”.");
       return;
     }
 
@@ -1067,20 +1135,28 @@ function init() {
     switch (msg.command) {
       case "scan": {
         void (async () => {
-        let found = scanPage();
+        let { found, hadControls } = await scanWhenReady();
 
         // Indeed's flow opens on steps that ask NOTHING — commute-check,
         // resume-selection — whose only control is "Continue applying". A scan
         // there finds no questions, and an empty scan is the signal the run
         // uses for "flow complete", so the run ended on the first page and the
         // panel sat on its spinner. Step through those pages instead.
-        for (let hop = 0; found.length === 0 && hop < 4 && isApplyContext(); hop++) {
+        //
+        // Only ever hop past a page with NO controls on it. A page that has
+        // controls we failed to read is a scraper bug, and clicking Continue
+        // there would submit the user's application with its questions blank.
+        for (let hop = 0; !found.length && !hadControls && hop < 4 && isApplyContext(); hop++) {
           const next = findAdvanceDom();
           if (!next) break; // nothing to advance with — genuinely the end
+          // Each step costs a click plus a render. Tell the controller we're
+          // still working or its no-form window closes mid-step and everything
+          // we report afterwards is discarded.
+          sendToWorker({ type: "scan-progress", runId: msg.runId });
           log(`no questions here — ${(next.innerText || "continuing").trim().slice(0, 24)}`);
           next.click();
-          await sleep(2200);
-          found = scanPage();
+          await sleep(1000);
+          ({ found, hadControls } = await scanWhenReady());
         }
         // Report job identity from EVERY page, form or not. The step naming the
         // employer is often one with no questions on it (the listing pane, or
@@ -1090,12 +1166,36 @@ function init() {
         if (job.title || job.company) {
           sendToWorker({ type: "job-meta", runId: msg.runId, job });
         }
-        // Stay silent when this frame has no form so a sibling frame — or the
-        // controller's no-form timeout — decides. An empty reply would be read
-        // as "flow complete".
+
+        // A frame that isn't the application itself never gets to decide the
+        // run. On the overlay route the top frame is still /viewjob, whose
+        // header search box is a text input the scraper will happily read as a
+        // "question" — answering from here would fill Indeed's search bar and
+        // pre-empt the frame that actually holds the form.
+        if (!isApplyPage()) {
+          if (isTop && !hasApplyFrame()) {
+            sendToWorker({ type: "scan-result", runId: msg.runId, questions: [], job });
+          }
+          return;
+        }
+
         if (found.length > 0) {
           sendToWorker({ type: "scan-result", runId: msg.runId, questions: found, job });
+          return;
         }
+
+        if (hadControls) {
+          // Controls are on screen and none of them parsed. Stop rather than
+          // guess: report it as an error so the run ends loudly instead of the
+          // panel sitting on a spinner nobody can explain.
+          failBusy("Found form controls on this page but couldn't read any questions. Fill this page yourself — the log line below has what the scraper saw.");
+          sendToWorker({ type: "run-error", runId: msg.runId, reason: `unreadable form (${domSummary()})` });
+          return;
+        }
+
+        // An application page that asks nothing and has nothing to continue
+        // with is the end of the flow (the post-submit confirmation).
+        sendToWorker({ type: "scan-result", runId: msg.runId, questions: [], job });
         })();
         sendResponse({ ok: true });
         return false;

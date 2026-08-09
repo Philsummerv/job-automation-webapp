@@ -36,6 +36,16 @@ export interface ScanResultMsg {
 }
 
 /**
+ * "Still scanning" — the frame is stepping past a page that asks nothing and
+ * needs more time. Without this the controller's no-form timeout ends the run
+ * mid-step and the scan-result that follows is thrown away.
+ */
+export interface ScanProgressMsg {
+  type: "scan-progress";
+  runId: string;
+}
+
+/**
  * Job identity spotted on a page. Sent on EVERY scan, whether or not the page
  * had questions — the page carrying the employer name is often a step with no
  * form on it at all (the listing, or the post-submit confirmation).
@@ -143,6 +153,7 @@ export type WorkerBoundMsg =
   | StartRunMsg
   | CancelRunMsg
   | ScanResultMsg
+  | ScanProgressMsg
   | JobMetaMsg
   | ClickApplyMsg
   | FillResultMsg
@@ -193,6 +204,7 @@ export interface ResponseMap {
   "start-run": StartRunResponse;
   "cancel-run": Ack;
   "scan-result": Ack;
+  "scan-progress": Ack;
   "job-meta": Ack;
   "click-apply": ClickApplyResponse;
   "fill-result": Ack;

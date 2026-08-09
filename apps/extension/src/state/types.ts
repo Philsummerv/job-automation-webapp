@@ -75,6 +75,8 @@ export type Action =
   | { type: "pause-run"; runId: string; at: number }
   | { type: "resume-run"; runId: string; at: number }
   | { type: "nav-completed"; tabId: number; at: number }
+  /** The scanning frame is still working (stepping past a question-less page). */
+  | { type: "scan-progress"; runId: string; at: number }
   | { type: "no-form"; runId: string; at: number }
   | { type: "run-error"; runId: string; reason: string; at: number };
 

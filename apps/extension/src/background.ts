@@ -19,7 +19,14 @@ import { reduce } from "./state/machine";
 import type { Action, Effect, RunState } from "./state/types";
 
 const VERSION = chrome.runtime.getManifest().version;
-const NO_FORM_TIMEOUT_MS = 4000;
+// Backstop only, and deliberately generous. The scanning frame waits for the
+// step's controls to render before it reports, and steps past pages that ask
+// nothing — several seconds of legitimate work. At 4s this timeout was firing
+// first, ending the run while the frame was still scanning, which is what left
+// the panel spinning on "Reading the application…" forever. The frame re-arms
+// it with scan-progress on every step, so it only expires when nobody is
+// working at all.
+const NO_FORM_TIMEOUT_MS = 12000;
 
 chrome.runtime.onInstalled.addListener(() => {
   console.log(`JobAssistUI installed (v${VERSION})`);
@@ -215,6 +222,11 @@ chrome.runtime.onMessage.addListener((msg: WorkerBoundMsg, sender, sendResponse)
         .then(() => sendResponse({ ok: true }));
       return true;
     }
+
+    case "scan-progress":
+      dispatch(() => ({ type: "scan-progress", runId: msg.runId, at: Date.now() }))
+        .then(() => sendResponse({ ok: true }));
+      return true;
 
     case "click-apply": {
       const tabId = sender.tab?.id;

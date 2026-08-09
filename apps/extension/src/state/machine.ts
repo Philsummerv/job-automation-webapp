@@ -233,6 +233,21 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
       };
     }
 
+    // ── Scan still in progress ────────────────────────────────────────────────
+    // The scanning frame reports that it's stepping past a page that asks
+    // nothing (commute-check, resume-selection). Each of those steps costs a
+    // click plus a render, which easily outlasts the no-form window — and once
+    // that fires the run is over, so the eventual scan-result is dropped and the
+    // panel spins forever. Re-arm the window for every step the frame reports.
+    case "scan-progress": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "scanning") return noChange(state);
+      return {
+        state,
+        effects: [{ kind: "arm-no-form-timeout", tabId: state.tabId, runId: state.runId }],
+      };
+    }
+
     // ── No form found within the scan window ──────────────────────────────────
     // The controller's timeout fired without a scan-result. If we were still
     // scanning, treat the flow as complete (nothing left to fill).
