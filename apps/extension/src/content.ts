@@ -1066,7 +1066,22 @@ function init() {
 
     switch (msg.command) {
       case "scan": {
-        const found = scanPage();
+        void (async () => {
+        let found = scanPage();
+
+        // Indeed's flow opens on steps that ask NOTHING — commute-check,
+        // resume-selection — whose only control is "Continue applying". A scan
+        // there finds no questions, and an empty scan is the signal the run
+        // uses for "flow complete", so the run ended on the first page and the
+        // panel sat on its spinner. Step through those pages instead.
+        for (let hop = 0; found.length === 0 && hop < 4 && isApplyContext(); hop++) {
+          const next = findAdvanceDom();
+          if (!next) break; // nothing to advance with — genuinely the end
+          log(`no questions here — ${(next.innerText || "continuing").trim().slice(0, 24)}`);
+          next.click();
+          await sleep(2200);
+          found = scanPage();
+        }
         // Report job identity from EVERY page, form or not. The step naming the
         // employer is often one with no questions on it (the listing pane, or
         // the post-submit page), and that data used to be thrown away because it
@@ -1081,6 +1096,7 @@ function init() {
         if (found.length > 0) {
           sendToWorker({ type: "scan-result", runId: msg.runId, questions: found, job });
         }
+        })();
         sendResponse({ ok: true });
         return false;
       }
