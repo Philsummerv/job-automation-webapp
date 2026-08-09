@@ -162,7 +162,7 @@ function init() {
       </span>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button id="aaui-start" style="flex:1;padding:6px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Start run</button>
+      <button id="aaui-start" style="flex:1;padding:6px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Scan Indeed page</button>
       <button id="aaui-cancel" style="flex:1;padding:6px;border:0;border-radius:6px;background:#475569;color:#fff;cursor:pointer">Cancel</button>
     </div>
     <div id="aaui-review"></div>
@@ -305,9 +305,9 @@ function init() {
 
     const footer = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:8px");
     if (mode === "paused") {
-      footer.appendChild(mkBtn("Resume assist", "#7c3aed", () => sendToWorker({ type: "resume-run", runId })));
+      footer.appendChild(makePrimary(mkBtn("Resume assist", "#7c3aed", () => sendToWorker({ type: "resume-run", runId }))));
     } else {
-      footer.appendChild(mkBtn("Looks right → Continue", "#059669", () => {
+      footer.appendChild(makePrimary(mkBtn("Looks right → Continue", "#059669", () => {
         // Guard: don't advance while a REQUIRED question is still unanswered —
         // Indeed just rejects the page ("Choose an option to continue.") and the
         // run stalls. Point the user at the exact cards (still editable inline),
@@ -327,7 +327,7 @@ function init() {
         }
         reviewEl.innerHTML = "";
         sendToWorker({ type: "review-decision", runId, decision: "approved" });
-      }));
+      })));
     }
     const row = mkEl("div", "display:flex;gap:6px");
     if (mode !== "paused") {
@@ -977,6 +977,19 @@ function mkEl(tag: string, css: string, text?: string): HTMLElement {
   if (css) e.style.cssText = css;
   if (text != null) e.textContent = text;
   return e;
+}
+
+/**
+ * Promote a button to the panel's primary action. Continue is pressed on every
+ * page of every application, so it gets a large target rather than sharing the
+ * secondary buttons' 6px padding.
+ */
+function makePrimary(b: HTMLButtonElement): HTMLButtonElement {
+  b.style.padding = "14px 10px";
+  b.style.fontSize = "15px";
+  b.style.fontWeight = "700";
+  b.style.borderRadius = "8px";
+  return b;
 }
 
 function mkBtn(label: string, bg: string, onClick: () => void): HTMLButtonElement {
