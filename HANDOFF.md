@@ -26,14 +26,22 @@ trial start. Full paywall on everything; `COMPED_EMAILS` env var bypasses it
 - Product renamed **JobAssistUI** (was ApplyAssistUI) to match the domain.
   Internal package names are still `@applyassistui/*` — cosmetic only, not
   worth the churn.
-- **The Chrome extension is phased out** (user decision: "all functionality
-  migrated out of a chrome extension and into a web interface"). All
-  extension references removed from user-facing copy. Guided assist is
-  marketed as "coming soon" only. The future web-native Guided = the
-  cloud-browser path (Browserbase live-view iframe) already proven in the
-  July go/no-go; build it when revenue justifies (economics need residential
-  proxies + browser-minutes → fair-use cap or higher tier). `apps/extension`
-  stays in-repo but gets no further investment.
+- **The Chrome extension was phased out on 2026-08-06** (user decision: "all
+  functionality migrated out of a chrome extension and into a web
+  interface"). All extension references removed from user-facing copy;
+  Guided assist is marketed as "coming soon" only.
+
+  ⚠️ **BUT read `apps/extension/STAGE_B_STATUS.md` before acting on that.**
+  The extension is NOT an abandoned POC — Stage B was finished and merged
+  on 2026-07-18 and the doc records it verified end-to-end on Indeed
+  smartapply: full guided run loop (scan → fill from template → review gate
+  → advance → submitted, no auto-submit), review gate rendering each
+  question in its native control, answer template synced from the web app
+  via `/api/extension/{session,template,activity}`, auth + subscription
+  entitlement gating, and completed applications logged to `activity_log`
+  with source `guided`. That is the Guided feature, essentially built.
+  Under-reinvestigation as of 2026-08-08 (see "Is the extension the
+  profitable path?" below).
 
 ## Production infrastructure (all live)
 
@@ -205,6 +213,47 @@ shape — the user drives Indeed in their own browser and the product
 surfaces their template answers and one-click-logs the application. Keeps
 the core value (no retyping, no manual logging), skips the cloud browser,
 proxy bill, and ban risk entirely. See [[project-guided-template-ux]].
+
+### Is the extension the profitable path? (raised 2026-08-08)
+
+Short answer: yes, decisively, on unit economics — and the build is
+already done (see the ⚠️ note at the top).
+
+- **Extension marginal cost per guided run: $0.** It runs in the user's own
+  Chrome, on their residential IP, using their bandwidth. Gross margin on
+  Guided stays ~100% forever.
+- **Cloud-browser marginal cost: real and usage-scaling.** Residential
+  proxies ~$10/GB plus browser-minutes, against a flat $12/mo — the worst
+  possible cost shape. Needs fair-use caps purely to stay solvent.
+- The extension also **deletes infra that otherwise has to be built, paid
+  for, and operated**: worker, BullMQ/Redis, WebSockets, live-view UI.
+- It **dissolves the login problem entirely** — it's the user's own browser,
+  already signed into Indeed. No persistent Browserbase contexts, no
+  email-code login inside a live view, no per-user context cost.
+
+Real costs, honestly: Chrome Web Store review latency on every update
+(which is exactly what motivated the `problem_reports` telemetry design);
+desktop-Chrome-only, so no mobile; and install friction. Friction is the
+one that matters — but it lands well here, because Guided is not the
+acquisition hook. People sign up for compliance logging and exports; the
+install ask only reaches someone already paying who actively wants Guided.
+
+This is not really a reversal of the 2026-08-06 direction. Same-origin
+means a web page fundamentally cannot fill forms on indeed.com, so the
+extension is the delivery mechanism for one feature, not a competing
+product — which is how `STAGE_B_STATUS.md` framed it all along. The web app
+stays the brain (account, billing, template, log, exports); the extension
+is the hands.
+
+**To actually ship it:** update `apps/extension/manifest.json` (still named
+"ApplyAssistUI", host permissions still point at
+`job-automation-webapp-web.vercel.app` — needs `https://www.jobassistui.com/*`),
+rebuild `dist/`, then Chrome Web Store listing (developer account is a $5
+one-time fee, plus screenshots, privacy disclosure, review). Then reinstate
+Guided in user-facing copy, which commit `c2c8f1f` stripped. Known gaps
+worth closing first are listed in `STAGE_B_STATUS.md`: resume file upload
+via DataTransfer, verify-after-settle fill hardening, job-metadata selector
+coverage.
 
 Also outstanding from before:
 
