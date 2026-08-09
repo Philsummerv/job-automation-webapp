@@ -20,7 +20,7 @@ import type { FormField } from "@applyassistui/automation/types";
 import { sendToWorker as rawSendToWorker } from "./messages";
 import type { ContentBoundMsg, ResponseMap, WorkerBoundMsg } from "./messages";
 import { getItem, setItem } from "./storage";
-import type { AnswerTemplate, CustomRule, StoredResume } from "./storage";
+import type { AnswerTemplate, CustomRule, JobQueue, QueuedJob, StoredResume } from "./storage";
 import type { JobMeta } from "./state/types";
 
 // ─── Extension-context safety ──────────────────────────────────────────────────
@@ -163,11 +163,11 @@ function init() {
       </span>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button id="aaui-start" style="flex:1;padding:6px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Scan Indeed page</button>
-      <button id="aaui-cancel" style="flex:1;padding:6px;border:0;border-radius:6px;background:#475569;color:#fff;cursor:pointer">Cancel</button>
+      <button id="aaui-start" style="flex:1;padding:10px 8px;font-size:13px;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">Scan Indeed page</button>
+      <button id="aaui-cancel" style="flex:1;padding:10px 8px;font-size:13px;border:0;border-radius:6px;background:#475569;color:#fff;cursor:pointer">Cancel</button>
     </div>
     <div style="display:flex;gap:6px;margin-bottom:8px">
-      <button id="aaui-find" style="flex:1;padding:6px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">🔎 Find jobs</button>
+      <button id="aaui-find" style="flex:1;padding:10px 8px;font-size:13px;border:0;border-radius:6px;background:#2563eb;color:#fff;cursor:pointer">🔎 Find jobs</button>
     </div>
     <div id="aaui-review"></div>
     <div id="aaui-log" style="margin-top:8px;border-top:1px solid #334155;padding-top:6px;opacity:.85"></div>
@@ -229,7 +229,7 @@ function init() {
   // from the template so the query and location don't get retyped every session.
   // On the results page it lists what it found, so you pick without hunting.
 
-  function findJobs(): void {
+  async function findJobs(): Promise<void> {
     const cfg = template?.config ?? {};
     const query = (cfg.searchQuery ?? "").trim();
     const loc = (cfg.searchLocation ?? "").trim();
@@ -244,13 +244,25 @@ function init() {
       window.location.assign(buildIndeedSearchUrl(query, loc));
       return;
     }
-    renderJobList();
+
+    // Resume an in-progress queue for this same search rather than restarting
+    // at the first listing every time the user comes back from applying.
+    const saved = await getItem("jobQueue");
+    if (saved && saved.query === query && saved.location === loc && saved.cursor < saved.jobs.length) {
+      renderJobBrowser(saved);
+      return;
+    }
+
+    const jobs = scrapeFilteredJobs();
+    const queue: JobQueue = { query, location: loc, cursor: 0, jobs };
+    await setItem("jobQueue", queue);
+    renderJobBrowser(queue);
   }
 
-  function renderJobList(): void {
+  /** Scrape this results page, drop skipped titles, easy-apply first, apply the cap. */
+  function scrapeFilteredJobs(): QueuedJob[] {
     const cfg = template?.config ?? {};
-    let jobs = collectIndeedJobs().filter((j) => j.link !== "N/A");
-    const total = jobs.length;
+    let jobs: QueuedJob[] = collectIndeedJobs().filter((j) => j.link !== "N/A");
 
     const pattern = (cfg.exclusionTitleRegex ?? "").trim();
     if (pattern) {
@@ -261,34 +273,70 @@ function init() {
         log("“Skip titles matching” isn't a valid pattern — ignoring it", false);
       }
     }
-    // Easy-apply first: those are the ones the assist can actually complete.
     jobs.sort((a, b) => Number(b.isIndeedApply) - Number(a.isIndeedApply));
 
     const cap = parseInt(cfg.maxApplications ?? "", 10);
-    if (cap > 0) jobs = jobs.slice(0, cap);
+    return cap > 0 ? jobs.slice(0, cap) : jobs;
+  }
 
+  /** Show ONE job at a time: a short summary, then Apply or Next. */
+  function renderJobBrowser(queue: JobQueue): void {
     reviewEl.innerHTML = "";
-    if (!jobs.length) {
-      reviewEl.appendChild(hHeader("No jobs found", total > 0
-        ? `${total} listing(s) were all filtered out by “Skip titles matching”.`
-        : "Indeed's results didn't scrape — the page may still be loading, or the layout changed."));
+
+    if (!queue.jobs.length) {
+      reviewEl.appendChild(hHeader(
+        "No jobs found",
+        "Nothing scraped from this results page — it may still be loading, or everything was filtered out by “Skip titles matching”.",
+      ));
       return;
     }
+
+    const job = queue.jobs[queue.cursor];
+    if (!job) {
+      reviewEl.appendChild(hHeader(
+        "That's all of them",
+        `You've been through all ${queue.jobs.length}. Go to the next page of Indeed's results and press Find jobs again.`,
+      ));
+      reviewEl.appendChild(makePrimary(mkBtn("Start over", "#475569", async () => {
+        await setItem("jobQueue", { ...queue, cursor: 0 });
+        renderJobBrowser({ ...queue, cursor: 0 });
+      })));
+      return;
+    }
+
     reviewEl.appendChild(hHeader(
-      `${jobs.length} job${jobs.length > 1 ? "s" : ""}`,
-      "Pick one to open it, then Scan Indeed page to apply.",
+      `Job ${queue.cursor + 1} of ${queue.jobs.length}`,
+      job.isIndeedApply
+        ? "Easy apply — the assist can complete this one."
+        : "This one applies on the employer's own site.",
     ));
 
-    for (const j of jobs) {
-      const card = mkEl("div", "margin:6px 0;padding:8px;background:#1e293b;border-radius:6px;display:flex;flex-direction:column;gap:4px");
-      card.appendChild(mkEl("div", "font-weight:700;font-size:12px", j.title));
-      card.appendChild(mkEl("div", "font-size:11px;opacity:.85", `${j.company} · ${j.location}`));
-      if (j.isIndeedApply) {
-        card.appendChild(mkEl("div", "font-size:11px;color:#4ade80", "Easy apply"));
-      }
-      card.appendChild(mkBtn("Open this job", "#2563eb", () => window.location.assign(j.link)));
-      reviewEl.appendChild(card);
+    const card = mkEl("div", "margin:6px 0;padding:10px;background:#1e293b;border-radius:6px;display:flex;flex-direction:column;gap:5px");
+    card.appendChild(mkEl("div", "font-weight:700;font-size:13px;line-height:1.3", job.title));
+    card.appendChild(mkEl("div", "font-size:12px;opacity:.85", `${job.company} · ${job.location}`));
+    if (job.snippet && job.snippet !== "N/A") {
+      const brief = job.snippet.length > 200 ? `${job.snippet.slice(0, 200)}…` : job.snippet;
+      card.appendChild(mkEl("div", "font-size:11px;opacity:.75;line-height:1.45", brief));
     }
+    reviewEl.appendChild(card);
+
+    // Advance the cursor BEFORE navigating away, so returning to the results
+    // lands on the next job rather than the one just applied to.
+    const advance = async () => {
+      const next = { ...queue, cursor: queue.cursor + 1 };
+      await setItem("jobQueue", next);
+      return next;
+    };
+
+    const row = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:6px");
+    row.appendChild(makePrimary(mkBtn("Apply to this job", "#059669", async () => {
+      await advance();
+      window.location.assign(job.link);
+    })));
+    row.appendChild(makePrimary(mkBtn("Next job →", "#475569", async () => {
+      renderJobBrowser(await advance());
+    })));
+    reviewEl.appendChild(row);
   }
 
   /**
@@ -1112,7 +1160,7 @@ function makePrimary(b: HTMLButtonElement): HTMLButtonElement {
 function mkBtn(label: string, bg: string, onClick: () => void): HTMLButtonElement {
   const b = document.createElement("button");
   b.textContent = label;
-  b.style.cssText = `flex:1;padding:6px;border:0;border-radius:6px;background:${bg};color:#fff;cursor:pointer;font:inherit`;
+  b.style.cssText = `flex:1;padding:10px 8px;font-size:13px;border:0;border-radius:6px;background:${bg};color:#fff;cursor:pointer;font-family:inherit`;
   b.addEventListener("click", onClick);
   return b;
 }

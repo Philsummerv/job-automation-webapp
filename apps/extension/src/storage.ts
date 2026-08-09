@@ -47,6 +47,28 @@ export interface StoredResume {
   savedAt: number;
 }
 
+/** One scraped Indeed listing, held in the session's job queue. */
+export interface QueuedJob {
+  title: string;
+  company: string;
+  location: string;
+  snippet: string;
+  link: string;
+  isIndeedApply: boolean;
+}
+
+/**
+ * The jobs found by the last search, plus where the user is in them. Persisted
+ * because applying navigates the tab away — without this, coming back to the
+ * results would start over at the first listing every time.
+ */
+export interface JobQueue {
+  query: string;
+  location: string;
+  cursor: number;
+  jobs: QueuedJob[];
+}
+
 /** Cached result of the web-app entitlement probe (M-B3). */
 export interface Entitlement {
   signedIn: boolean;
@@ -69,6 +91,8 @@ export interface StorageSchema {
   pendingActivities: PendingActivity[];
   /** The user's saved resume, attached to file inputs during a run; null until picked. */
   resume: StoredResume | null;
+  /** Jobs from the last search + the user's position in them; null until a search runs. */
+  jobQueue: JobQueue | null;
 }
 
 const DEFAULTS: StorageSchema = {
@@ -78,6 +102,7 @@ const DEFAULTS: StorageSchema = {
   entitlement: null,
   pendingActivities: [],
   resume: null,
+  jobQueue: null,
 };
 
 /** Read a key, falling back to its schema default when unset. */
