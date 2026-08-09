@@ -108,6 +108,34 @@ per-browser and does not sync from the web app the way the answer template
 does. Deliberate — it avoids building resume storage, an upload UI, and a
 bytes-over-the-bridge path. Revisit if users hit it.
 
+## Next feature: the search loop (scoped 2026-08-08, NOT built)
+
+User wants the Electron app's search automation here — type the query and
+location, walk the results, apply to each. **Decided against porting to a
+desktop app**: the search code is already framework-independent in this repo
+(`indeed.ts` → `buildIndeedSearchUrl` with `&start=` pagination,
+`scrapeIndeedJobs` as a pure-DOM callback, and `searchQuery` /
+`searchLocation` / `maxApplications` / `exclusionTitleRegex` already in
+config), and the extension already holds `tabs` + `webNavigation` plus a
+worker state machine built to survive navigation — which is the same problem
+a results loop poses. Electron would additionally mean rebuilding auth,
+entitlement, logging and template sync, none of which can borrow the web
+app's cookie the way the bridge does. Its one real edge is shipping updates
+without Web Store review latency.
+
+Shape to build:
+1. Template gains search query + location + a per-session application cap.
+2. A new run mode: navigate the tab to `buildIndeedSearchUrl(...)`, scrape
+   the cards, filter by `exclusionTitleRegex`, then for each listing open it
+   and hand off to the EXISTING per-application run, log it, return to the
+   results, continue until the cap.
+3. The loop's cursor (result index + `start=` offset) lives in the worker's
+   run state, since the tab navigates constantly.
+4. Cap on *applied*, not on listings seen — see
+   [[project-scout-buttons-and-pagination]] for the verified gotchas
+   (hidden duplicate buttons → click first VISIBLE, empty location omits
+   `&l=`).
+
 ## Known gaps / next candidates
 
 - **Product-vision** (see memory `project_guided_template_ux`): multi-board

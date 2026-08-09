@@ -342,6 +342,46 @@ function init() {
     }));
     footer.appendChild(row);
     reviewEl.appendChild(footer);
+
+    // ── Auto-advance ──────────────────────────────────────────────────────────
+    // Clicking Continue on a page that needed no corrections is pure friction,
+    // so advance on a short timer instead. Two hard conditions: nothing is
+    // unanswered, and this is not the page that submits. Advancing a form page
+    // is reversible; sending the application to an employer is not, so that one
+    // always waits for a person. The countdown is cancellable — cancelling
+    // leaves the gate exactly as it was.
+    if (mode === "paused") return;
+    if (cards.some(({ q }) => isFieldRequired(q) && !isFieldAnswered(q))) return;
+    const advanceLabel = (findAdvanceDom()?.innerText || "").trim();
+    if (/\b(submit|send)\b/i.test(advanceLabel)) {
+      notice(`Ready to submit — press “${advanceLabel || "Continue"}” yourself when you've checked it.`);
+      return;
+    }
+
+    const bar = mkEl("div", "display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;opacity:.9");
+    const label = mkEl("span", "flex:1");
+    const cancel = document.createElement("button");
+    cancel.textContent = "Cancel";
+    cancel.style.cssText = "border:0;border-radius:4px;padding:4px 8px;background:#475569;color:#fff;cursor:pointer;font:inherit";
+    bar.append(label, cancel);
+    reviewEl.appendChild(bar);
+
+    let left = 4;
+    label.textContent = `Everything answered — continuing in ${left}…`;
+    const tick = setInterval(() => {
+      left -= 1;
+      if (left > 0) {
+        label.textContent = `Everything answered — continuing in ${left}…`;
+        return;
+      }
+      clearInterval(tick);
+      reviewEl.innerHTML = "";
+      sendToWorker({ type: "review-decision", runId, decision: "approved" });
+    }, 1000);
+    cancel.addEventListener("click", () => {
+      clearInterval(tick);
+      bar.remove();
+    });
   }
 
   /** One question card, rendering the control that matches the field type. */
