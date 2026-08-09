@@ -245,16 +245,25 @@ function init() {
       return;
     }
 
-    // Resume an in-progress queue for this same search rather than restarting
-    // at the first listing every time the user comes back from applying.
+    // ALWAYS re-scrape the page in front of us. Replaying a stored list meant a
+    // queue captured under an older build could never refresh itself — the
+    // panel just kept showing that stale list forever. Progress is carried by
+    // the `seen` links instead, so returning from an application still resumes
+    // past the jobs already dealt with.
     const saved = await getItem("jobQueue");
-    if (saved && saved.query === query && saved.location === loc && saved.cursor < saved.jobs.length) {
-      renderJobBrowser(saved);
-      return;
-    }
+    const sameSearch = saved && saved.query === query && saved.location === loc;
+    const seen = sameSearch ? saved.seen : [];
 
     const jobs = scrapeFilteredJobs();
-    const queue: JobQueue = { query, location: loc, cursor: 0, start: currentStart(), jobs };
+    const firstUnseen = jobs.findIndex((j) => !seen.includes(j.link));
+    const queue: JobQueue = {
+      query,
+      location: loc,
+      start: currentStart(),
+      cursor: firstUnseen >= 0 ? firstUnseen : jobs.length,
+      seen,
+      jobs,
+    };
     await setItem("jobQueue", queue);
     renderJobBrowser(queue);
   }
@@ -306,7 +315,8 @@ function init() {
     // Walking off the end of a page continues into Indeed's next 10 results
     // rather than dead-ending.
     const goNextPage = async () => {
-      await setItem("jobQueue", null);
+      // Keep `seen`; the jobs themselves get re-scraped on arrival.
+      await setItem("jobQueue", { ...queue, start: queue.start + 10 });
       window.location.assign(buildIndeedSearchUrl(queue.query, queue.location, queue.start + 10));
     };
 
@@ -343,7 +353,12 @@ function init() {
     // Advance the cursor BEFORE navigating away, so returning to the results
     // lands on the next job rather than the one just applied to.
     const advance = async () => {
-      const next = { ...queue, cursor: queue.cursor + 1 };
+      const next: JobQueue = {
+        ...queue,
+        cursor: queue.cursor + 1,
+        // Capped so a long session can't grow this without bound.
+        seen: [...queue.seen.filter((l) => l !== job.link), job.link].slice(-200),
+      };
       await setItem("jobQueue", next);
       return next;
     };

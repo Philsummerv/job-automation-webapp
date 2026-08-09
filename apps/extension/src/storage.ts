@@ -69,6 +69,8 @@ export interface JobQueue {
   cursor: number;
   /** Indeed's `&start=` offset for the results page these came from. */
   start: number;
+  /** Links already applied to or skipped, so a re-scrape resumes past them. */
+  seen: string[];
   jobs: QueuedJob[];
 }
 
