@@ -19,7 +19,7 @@ import type { FormField } from "@applyassistui/automation/types";
 import { sendToWorker as rawSendToWorker } from "./messages";
 import type { ContentBoundMsg, ResponseMap, WorkerBoundMsg } from "./messages";
 import { getItem, setItem } from "./storage";
-import type { AnswerTemplate, CustomRule } from "./storage";
+import type { AnswerTemplate, CustomRule, StoredResume } from "./storage";
 import type { JobMeta } from "./state/types";
 
 // ─── Extension-context safety ──────────────────────────────────────────────────
@@ -125,6 +125,7 @@ function init() {
       <strong style="font-size:13px">JobAssistUI</strong>
       <span style="display:flex;gap:8px;align-items:center">
         <button id="aaui-template" title="Edit answer template" style="border:0;background:transparent;color:#e2e8f0;cursor:pointer;font-size:14px;padding:0">⚙ Template</button>
+        <button id="aaui-resume" title="Choose the resume to attach on applications" style="border:0;background:transparent;color:#e2e8f0;cursor:pointer;font-size:14px;padding:0">📄 Resume</button>
         <span style="opacity:.6">${isTop ? "top frame" : "iframe"}</span>
       </span>
     </div>
@@ -170,7 +171,51 @@ function init() {
       log(`${q.text.slice(0, 40)} → ${result.detail}`, result.ok);
       await sleep(200);
     }
+    // Resume upload is a separate pass: file inputs aren't scraped as questions,
+    // and most pages in a flow have none. attachResumeDom returns null when
+    // there's nothing to attach to, which is the normal case.
+    const resume = await getItem("resume");
+    if (resume) {
+      const r = await attachResumeDom(resume);
+      if (r) log(`resume → ${r.detail}`, r.ok);
+    }
     log("fill pass done");
+  }
+
+  /**
+   * Pick a resume and keep it. Runs from the panel button's click handler, which
+   * is the user gesture a file picker requires.
+   */
+  function pickResume(): void {
+    const picker = document.createElement("input");
+    picker.type = "file";
+    picker.accept = ".pdf,.doc,.docx,.rtf,.txt";
+    picker.style.display = "none";
+    picker.setAttribute("data-aaui-ignore", "1");
+    picker.addEventListener("change", async () => {
+      const f = picker.files?.[0];
+      picker.remove();
+      if (!f) return;
+      if (f.size > MAX_RESUME_BYTES) {
+        log(`resume too large (${(f.size / 1024 / 1024).toFixed(1)}MB, 4MB max)`, false);
+        return;
+      }
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        await setItem("resume", {
+          name: f.name,
+          type: f.type,
+          data: toBase64(bytes),
+          size: f.size,
+          savedAt: Date.now(),
+        });
+        log(`resume saved: ${f.name}`, true);
+      } catch (err) {
+        log(`couldn't save resume: ${(err as Error).message}`, false);
+      }
+    });
+    document.documentElement.appendChild(picker);
+    picker.click();
   }
 
   /** Click the visible Continue/Submit button. Returns whether one was found. */
@@ -501,6 +546,11 @@ function init() {
 
   panel.querySelector("#aaui-template")!.addEventListener("click", () => renderTemplateEditor());
 
+  panel.querySelector("#aaui-resume")!.addEventListener("click", () => pickResume());
+  getItem("resume").then((r) => {
+    if (r) log(`resume ready: ${r.name}`);
+  });
+
   let startPending = false;
   panel.querySelector("#aaui-start")!.addEventListener("click", async () => {
     // Guard against stacked runs: ignore re-clicks while a start is in flight or
@@ -595,6 +645,31 @@ function setNativeValue(el: HTMLElement, value: string) {
   el.dispatchEvent(new Event("change", { bubbles: true }));
 }
 
+/** Resolve once the browser has painted and React has had a chance to commit. */
+function settled(): Promise<void> {
+  return new Promise((r) =>
+    requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 40))),
+  );
+}
+
+/**
+ * Verify a fill AFTER React settles rather than same-tick. React commits state
+ * asynchronously, so reading `el.value` immediately can report a value that a
+ * re-render then throws away — the fill looks successful and silently isn't.
+ * Re-read once the frame has settled and, if the value is gone, re-apply a
+ * single time before reporting failure.
+ */
+async function stickValue(
+  el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement,
+  want: string,
+): Promise<boolean> {
+  await settled();
+  if (el.value === want) return true;
+  setNativeValue(el, want);
+  await settled();
+  return el.value === want;
+}
+
 // ─── Template helpers ──────────────────────────────────────────────────────────
 
 const INPUT_CSS = "width:100%;padding:4px;border:1px solid #334155;border-radius:4px;background:#0f172a;color:#e2e8f0;font:inherit;box-sizing:border-box";
@@ -658,6 +733,61 @@ function mergedConfig(template: AnswerTemplate | null): ScoutConfig {
   return cfg as unknown as ScoutConfig;
 }
 
+// ─── Resume attachment ────────────────────────────────────────────────────────
+// `input.files` is read-only, so a resume can't be assigned directly. The only
+// programmatic path is to build a DataTransfer, add a File to it, and hand the
+// page its FileList — then fire change so the site's own handler runs.
+
+const MAX_RESUME_BYTES = 4 * 1024 * 1024;
+
+/** Rebuild a File from the base64 bytes held in chrome.storage. */
+function resumeToFile(r: StoredResume): File {
+  const bin = atob(r.data);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return new File([bytes], r.name, { type: r.type || "application/octet-stream" });
+}
+
+/** base64-encode in chunks — spreading megabytes into fromCharCode blows the stack. */
+function toBase64(bytes: Uint8Array): string {
+  let bin = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+
+/**
+ * Attach the saved resume to a file input on this page. Returns null when the
+ * page has no eligible input — that's the common case, not a failure, so the
+ * caller stays quiet about it. Hidden inputs are fair game: sites routinely
+ * hide the real input behind a styled label.
+ */
+async function attachResumeDom(resume: StoredResume): Promise<{ ok: boolean; detail: string } | null> {
+  const target = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="file"]')).find((el) => {
+    if (el.disabled) return false;
+    if ((el.files?.length ?? 0) > 0) return false; // already carries a file
+    const accept = (el.accept || "").toLowerCase();
+    // An `accept` naming only images is a photo upload, not a resume slot.
+    return !accept || !/^[\s,]*image\//.test(accept);
+  });
+  if (!target) return null;
+
+  try {
+    const dt = new DataTransfer();
+    dt.items.add(resumeToFile(resume));
+    target.files = dt.files;
+    target.dispatchEvent(new Event("input", { bubbles: true }));
+    target.dispatchEvent(new Event("change", { bubbles: true }));
+    await settled();
+    const ok = (target.files?.length ?? 0) > 0;
+    return { ok, detail: ok ? `attached ${resume.name}` : "the file input rejected the attachment" };
+  } catch (err) {
+    return { ok: false, detail: (err as Error).message };
+  }
+}
+
 // ─── Job-identity capture (compliance log) ────────────────────────────────────
 // Best-effort extraction of the job's title/company/url from the current page.
 // Site markup varies, so these only PREFILL the confirmation card — the user
@@ -669,20 +799,45 @@ function captureJobMeta(): JobMeta {
     const t = el?.innerText?.trim();
     return t && t.length > 0 && t.length < 200 ? t : null;
   };
-  const title =
+  const meta = (name: string): string | null => {
+    const el = document.querySelector<HTMLMetaElement>(
+      `meta[property="${name}"], meta[name="${name}"]`,
+    );
+    const c = el?.content?.trim();
+    return c && c.length > 0 && c.length < 200 ? c : null;
+  };
+  let title =
     pick('[data-testid*="jobTitle" i]') ||
     pick('[data-testid*="job-title" i]') ||
+    pick('[data-testid="jobsearch-JobInfoHeader-title"]') ||
+    pick('[class*="JobInfoHeader-title" i]') ||
     pick('[class*="jobTitle" i]') ||
-    null;
-  const company =
+    pick("h1") ||
+    meta("og:title");
+  let company =
     pick('[data-testid*="companyName" i]') ||
     pick('[data-testid*="company-name" i]') ||
     pick('[data-testid*="employerName" i]') ||
-    pick('[class*="companyName" i]') ||
-    null;
+    pick('[data-testid="inlineHeader-companyName"]') ||
+    pick('[data-company-name]') ||
+    pick('[class*="CompanyInfoContainer" i] a') ||
+    pick('[class*="companyName" i]');
+
+  // Last resort: Indeed's document.title reads "<job> - <company> - Indeed.com",
+  // and the smartapply flow keeps that shape even where the header markup is
+  // gone. Anything still missing is filled in by the user on the log card.
+  if (!title || !company) {
+    const parts = document.title
+      .split(/\s+[-–|]\s+/)
+      .map((s) => s.trim())
+      .filter((s) => s && !/^indeed(\.com)?$/i.test(s) && !/^(apply|job application)\b/i.test(s));
+    if (!title && parts[0]) title = parts[0];
+    if (!company && parts[1]) company = parts[1];
+  }
+
   const jobLink = document.querySelector<HTMLAnchorElement>('a[href*="/viewjob"], a[href*="/rc/clk"]');
   const url = jobLink?.href || location.href;
-  return { title, company, url };
+  return { title: title ?? null, company: company ?? null, url };
 }
 
 // ─── Review-gate helpers ──────────────────────────────────────────────────────
@@ -941,6 +1096,10 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
       // must not flip it. A native click also fires React's onChange, so we
       // don't dispatch extra events (that would double-fire and revert).
       if (!cbEl.checked) cbEl.click();
+      // Re-read after the frame settles — a controlled checkbox can be reverted
+      // by a re-render. Never re-click to fix it: a second click would toggle
+      // it back off.
+      await settled();
       const checked = cbEl.checked;
       return { ok: checked, detail: checked ? `selected "${opt.label}"` : `could not check "${opt.label}"` };
     }
@@ -952,7 +1111,11 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
       const el = document.getElementById(field.inputId) as HTMLSelectElement | null;
       if (!el) return { ok: false, detail: "select not found" };
       setNativeValue(el, match.value);
-      return { ok: el.value === match.value, detail: `selected "${match.label}"` };
+      const held = await stickValue(el, match.value);
+      return {
+        ok: held,
+        detail: held ? `selected "${match.label}"` : `selection did NOT stick for "${match.label}"`,
+      };
     }
 
     // Text-like fields.
@@ -965,7 +1128,7 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
     el.focus();
     setNativeValue(el, answer);
     el.dispatchEvent(new Event("blur", { bubbles: true }));
-    const stuck = el.value === answer;
+    const stuck = await stickValue(el, answer);
     return { ok: stuck, detail: stuck ? `filled "${answer}"` : "value did NOT stick (React reverted it)" };
   } catch (err) {
     return { ok: false, detail: (err as Error).message };

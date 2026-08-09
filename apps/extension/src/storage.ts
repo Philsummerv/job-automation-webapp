@@ -32,6 +32,21 @@ export interface PendingActivity {
   date: string; // YYYY-MM-DD
 }
 
+/**
+ * The user's resume, picked once in the panel and reused on every application.
+ * chrome.storage.local is JSON-only, so the bytes are held base64-encoded and
+ * decoded back into a File at attach time.
+ */
+export interface StoredResume {
+  name: string;
+  /** MIME type as reported by the file picker; may be empty. */
+  type: string;
+  /** base64-encoded file bytes. */
+  data: string;
+  size: number;
+  savedAt: number;
+}
+
 /** Cached result of the web-app entitlement probe (M-B3). */
 export interface Entitlement {
   signedIn: boolean;
@@ -52,6 +67,8 @@ export interface StorageSchema {
   entitlement: Entitlement | null;
   /** Confirmed guided applications awaiting flush to the web-app activity log. */
   pendingActivities: PendingActivity[];
+  /** The user's saved resume, attached to file inputs during a run; null until picked. */
+  resume: StoredResume | null;
 }
 
 const DEFAULTS: StorageSchema = {
@@ -60,6 +77,7 @@ const DEFAULTS: StorageSchema = {
   syncedTemplate: null,
   entitlement: null,
   pendingActivities: [],
+  resume: null,
 };
 
 /** Read a key, falling back to its schema default when unset. */

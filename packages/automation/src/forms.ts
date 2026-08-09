@@ -309,15 +309,49 @@ export async function fillFormField(
         log.info(`    -> No matching radio option found. Skipping.`);
       }
     } else if (field.type === "checkbox") {
-      const nums = answer.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
-      for (const idx of nums) {
-        if (idx >= 1 && idx <= field.options.length) {
-          const opt = field.options[idx - 1];
-          if (opt.id) {
-            await target.click(`#${cssEscape(opt.id)}`);
-          }
-          log.info(`    -> Checked: "${opt.label}"`);
+      // Mirrors the radio branch on purpose. Indeed renders some Yes/No
+      // questions as a CHECKBOX pair rather than radios, so a checkbox group
+      // has to resolve `__RADIO:` keywords exactly the way a radio group does —
+      // without this it only understood numeric indices and silently skipped
+      // every templated Yes/No that landed on a checkbox pair.
+      const picked: typeof field.options = [];
+
+      if (answer.startsWith("__RADIO:")) {
+        const keywords = answer.slice(8).split(",").map((k) => k.trim().toLowerCase()).filter(Boolean);
+        for (const kw of keywords) {
+          const hit = field.options.find((o) => o.label.toLowerCase().includes(kw));
+          if (hit) { picked.push(hit); break; }
         }
+        if (!picked.length) {
+          const firstKw = keywords[0];
+          const exact = field.options.find((o) => o.label.toLowerCase().trim() === firstKw);
+          if (exact) picked.push(exact);
+        }
+      } else {
+        const nums = answer.split(",").map((s) => parseInt(s.trim(), 10)).filter((n) => !isNaN(n));
+        for (const idx of nums) {
+          if (idx >= 1 && idx <= field.options.length) picked.push(field.options[idx - 1]);
+        }
+      }
+
+      for (const opt of picked) {
+        const sel = opt.id
+          ? `#${cssEscape(opt.id)}`
+          : field.inputName
+            ? `input[name="${field.inputName}"][value="${opt.value}"]`
+            : null;
+        if (!sel) continue;
+        // Only click to SELECT — clicking an already-checked box toggles it off,
+        // so a re-fill would undo the answer. Same guard the extension uses.
+        if (await target.isChecked(sel).catch(() => false)) {
+          log.info(`    -> Already checked: "${opt.label}"`);
+          continue;
+        }
+        await target.click(sel);
+        log.info(`    -> Checked: "${opt.label}"`);
+      }
+      if (!picked.length) {
+        log.info(`    -> No matching checkbox option found. Skipping.`);
       }
     } else if (field.type === "select") {
       let match = null;
