@@ -98,6 +98,8 @@ export interface StorageSchema {
   resume: StoredResume | null;
   /** Jobs from the last search + the user's position in them; null until a search runs. */
   jobQueue: JobQueue | null;
+  /** Set when Find jobs navigates to a search, so the results page self-scrapes on arrival. */
+  autoBrowse: boolean;
 }
 
 const DEFAULTS: StorageSchema = {
@@ -108,6 +110,7 @@ const DEFAULTS: StorageSchema = {
   pendingActivities: [],
   resume: null,
   jobQueue: null,
+  autoBrowse: false,
 };
 
 /** Read a key, falling back to its schema default when unset. */

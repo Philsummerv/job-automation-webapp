@@ -111,6 +111,19 @@ function init() {
   }
   loadTemplate();
 
+  // Landing on a results page that Find jobs sent us to: scrape and show the
+  // listings without a second press. Indeed renders its cards after load, so
+  // wait for the first one rather than scraping an empty page.
+  if (isTop && /^\/jobs\b/.test(location.pathname)) {
+    void (async () => {
+      if (!(await getItem("autoBrowse"))) return;
+      await setItem("autoBrowse", false);
+      await loadTemplate();
+      await waitFor(() => document.querySelector('[class*="job_seen_beacon"]'), 6000);
+      await findJobs();
+    })();
+  }
+
   // Resolve an answer for a question: the user's CUSTOM RULES win (first
   // substring match), then the built-in ruleset over the merged config.
   function getAnswer(field: FormField): string | null {
@@ -254,6 +267,10 @@ function init() {
         log("add “Search: job title” to your template first", false);
         return;
       }
+      // Flag the hand-off so the results page browses itself on arrival —
+      // otherwise Find jobs has to be pressed twice, once to search and again
+      // to read what came back.
+      await setItem("autoBrowse", true);
       // Blank location is deliberate: an empty &l= sends Indeed to a "specify
       // location" page with zero results, so buildIndeedSearchUrl omits it.
       window.location.assign(buildIndeedSearchUrl(query, loc));
