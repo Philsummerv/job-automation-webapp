@@ -95,7 +95,15 @@ function isApplyPage(): boolean {
  * though the form is right there on screen.
  */
 function hasApplyFrame(): boolean {
-  return !!document.querySelector('iframe[src*="smartapply"], iframe[src*="indeedapply"]');
+  return Array.from(document.querySelectorAll("iframe")).some((f) => {
+    const src = f.getAttribute("src") || "";
+    if (!/smartapply|indeedapply/i.test(src)) return false;
+    // Every job page carries a hidden <iframe src=".../preloadresumeapply">.
+    // Counting that as "the application is open" made a successful press look
+    // like it had already finished, so the panel sat on its spinner forever.
+    if (/preload/i.test(src)) return false;
+    return !f.hasAttribute("hidden");
+  });
 }
 
 function isApplyContext(): boolean {
@@ -998,6 +1006,9 @@ function init() {
     // to the form or drops it in as an iframe — this block re-runs there.
     if (/^\/jobs\b/.test(location.pathname)) return; // results page, not a job
     showBusy("Opening the application");
+    // Let the page settle before reaching for the button: it renders before
+    // Indeed's script wires it up, and pressing in that gap does nothing.
+    await sleep(1200);
     const btn = await waitFor(findIndeedApplyDom, 8000);
     if (!btn) {
       await setItem("autoApply", null);
