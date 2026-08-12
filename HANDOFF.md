@@ -129,7 +129,7 @@ be covered by a fixed template, so infer them from the user's resume.
 
 ## How to test the extension (needed every time)
 
-1. `cd apps/extension && npm run build`
+1. `npm run build:ext` (from the repo root)
 2. `chrome://extensions` → refresh icon on the JobAssistUI card.
    **If the manifest changed, Remove and Load unpacked `apps/extension/dist`
    instead** — a refresh may not grant new permissions.
