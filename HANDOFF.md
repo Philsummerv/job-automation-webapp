@@ -194,6 +194,28 @@ DOL-ready PDF/CSV reports. $12/month, 14-day free trial, card required at
 trial start. Full paywall on everything; `COMPED_EMAILS` env var bypasses it
 (owner + future beta testers).
 
+**⚠️ FREE UNTIL 2027-01-01 (set 2026-08-17).** The paywall above is currently
+switched off: the product is free to everyone with **no card collected** until
+`FREE_UNTIL` in `packages/shared/src/index.ts`. Reason — the owner is
+collecting unemployment and cannot take income before then, but wants to market
+now and gather user feedback. Mechanics:
+- `isEntitled()` returns `true` while `isFreePeriod()`, which opens both the web
+  paywall (`lib/auth.ts` `requireEntitled`) and the extension's
+  `/api/extension/session` in one place.
+- `startCheckout` (`app/(app)/billing/actions.ts`) hard-returns during the free
+  period, so no Stripe subscription can be created and no money can arrive.
+- All pricing copy (landing, billing, settings, OG image) branches on
+  `isFreePeriod()`, and the root layout has `revalidate = 3600` so the
+  statically-prerendered marketing pages expire the free-period copy on their
+  own. **Nothing needs to be deployed on 2027-01-01** — the site re-paywalls
+  itself and existing free users get bounced to `/billing`.
+- Decision: **no grandfathering.** Everyone pays from 2027-01-01. Because their
+  `trial_ends_at` is still `null` they'll be `trialEligible` and get the normal
+  14-day trial at that point; make `trialEligible` unconditional then if you'd
+  rather they pay immediately.
+- To end the free period early, move `FREE_UNTIL`. To go back to paid entirely,
+  delete the short-circuit in `isEntitled` and the guard in `startCheckout`.
+
 **Strategic decisions locked on 2026-08-06:**
 - Product renamed **JobAssistUI** (was ApplyAssistUI) to match the domain.
   Internal package names are still `@applyassistui/*` — cosmetic only, not

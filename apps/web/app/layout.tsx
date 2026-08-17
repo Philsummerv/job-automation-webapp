@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site";
+import FreePeriodBanner from "@/components/FreePeriodBanner";
 
 const title = "JobAssistUI — Job Search Log for Unemployment Compliance";
 const description =
@@ -24,6 +25,12 @@ export const metadata: Metadata = {
   },
 };
 
+// The landing, login and legal pages are statically prerendered, which would
+// otherwise bake isFreePeriod() in at build time and leave "free until Jan 1"
+// on the site after the date. Hourly ISR (inherited by every child segment)
+// means the free-period copy expires on its own with no deploy.
+export const revalidate = 3600;
+
 export default function RootLayout({
   children,
 }: {
@@ -31,7 +38,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <FreePeriodBanner />
+        {children}
+      </body>
     </html>
   );
 }

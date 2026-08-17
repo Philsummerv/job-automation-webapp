@@ -1,4 +1,9 @@
 import { ImageResponse } from "next/og";
+import {
+  FREE_UNTIL_LABEL,
+  MONTHLY_PRICE,
+  isFreePeriod,
+} from "@applyassistui/shared";
 
 export const runtime = "edge";
 export const alt = "JobAssistUI — Job Search Log for Unemployment Compliance";
@@ -36,7 +41,9 @@ export default function OgImage() {
           Track your weekly job search. Export a report your state accepts.
         </div>
         <div style={{ marginTop: 36, fontSize: 32, opacity: 0.85 }}>
-          $12/month · 14-day free trial
+          {isFreePeriod()
+            ? `Free until ${FREE_UNTIL_LABEL} · no credit card`
+            : `${MONTHLY_PRICE}/month · 14-day free trial`}
         </div>
       </div>
     ),

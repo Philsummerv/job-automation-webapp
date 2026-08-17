@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { isEntitled } from "@applyassistui/shared";
+import { isEntitled, isFreePeriod } from "@applyassistui/shared";
 import { requireOnboarded } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -9,6 +9,11 @@ import { createServiceClient } from "@/lib/supabase/service";
 // Sends the user to Stripe Checkout to start the trial (or resubscribe).
 // requireOnboarded, not requireEntitled — non-subscribers must reach this.
 export async function startCheckout() {
+  // Nothing is for sale during the free period. This is a hard stop, not just
+  // hidden UI: no Stripe subscription can be created — and therefore no money
+  // can arrive — before FREE_UNTIL, however this action gets invoked.
+  if (isFreePeriod()) redirect("/billing");
+
   const { user, profile } = await requireOnboarded();
   if (isEntitled(profile.subscription_status)) redirect("/dashboard");
 

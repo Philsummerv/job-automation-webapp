@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { isEntitled, type Profile } from "@applyassistui/shared";
+import {
+  FREE_UNTIL_LABEL,
+  MONTHLY_PRICE,
+  isEntitled,
+  isFreePeriod,
+  type Profile,
+} from "@applyassistui/shared";
 import { isCompedEmail, requireOnboarded } from "@/lib/auth";
 import { syncFromCustomer } from "@/lib/billing";
 import SubmitButton from "@/components/SubmitButton";
@@ -48,6 +54,9 @@ export default async function BillingPage({
 
   const status = profile.subscription_status;
   const comped = isCompedEmail(ctx.user.email);
+  // During the free period nobody has anything to pay, so the whole
+  // subscription-state UI below is replaced by a single explanatory card.
+  const free = isFreePeriod();
 
   return (
     <div className="mx-auto max-w-xl">
@@ -59,7 +68,33 @@ export default async function BillingPage({
         </div>
       )}
 
-      {comped && (
+      {free && (
+        <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-8">
+          <h2 className="text-lg font-semibold text-emerald-900">
+            Free until {FREE_UNTIL_LABEL}
+          </h2>
+          <p className="mt-2 text-sm text-emerald-800">
+            You have full access and there is nothing to pay. We don&apos;t have
+            your card and won&apos;t ask for it during the free period.
+          </p>
+          <p className="mt-2 text-sm text-emerald-800">
+            Starting {FREE_UNTIL_LABEL}, keeping your account active costs{" "}
+            {MONTHLY_PRICE}/month. We&apos;ll ask you to subscribe then — your
+            activity log stays yours either way, and you can always export it.
+          </p>
+          <ul className="mt-5 space-y-2 text-sm text-emerald-900">
+            {FEATURES.map((f) => (
+              <li key={f}>✓ {f}</li>
+            ))}
+          </ul>
+          <div className="mt-6 flex items-center gap-3">
+            <StartApplyingButton />
+            {profile.stripe_customer_id && <ManageBillingButton />}
+          </div>
+        </div>
+      )}
+
+      {!free && comped && (
         <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-8">
           <h2 className="text-lg font-semibold text-emerald-900">
             Complimentary access
@@ -73,14 +108,14 @@ export default async function BillingPage({
         </div>
       )}
 
-      {!comped && (status === "none" || status === "incomplete") && (
+      {!free && !comped &&(status === "none" || status === "incomplete") && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">
             Start your 14-day free trial
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            $12/month after the trial. Card required — you won&apos;t be
-            charged until your trial ends. Cancel anytime.
+            {MONTHLY_PRICE}/month after the trial. Card required — you
+            won&apos;t be charged until your trial ends. Cancel anytime.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-slate-700">
             {FEATURES.map((f) => (
@@ -98,12 +133,12 @@ export default async function BillingPage({
         </div>
       )}
 
-      {!comped && status === "trialing" && (
+      {!free && !comped &&status === "trialing" && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">Trial active</h2>
           <p className="mt-2 text-sm text-slate-600">
             Your free trial ends on {formatDate(profile.trial_ends_at)}. After
-            that your card is charged $12/month. Cancel anytime before then and
+            that your card is charged {MONTHLY_PRICE}/month. Cancel anytime before then and
             you won&apos;t be charged.
           </p>
           <div className="mt-6 flex items-center gap-3">
@@ -113,11 +148,12 @@ export default async function BillingPage({
         </div>
       )}
 
-      {!comped && status === "active" && (
+      {!free && !comped &&status === "active" && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">Subscription active</h2>
           <p className="mt-2 text-sm text-slate-600">
-            $12/month — renews on {formatDate(profile.current_period_end)}.
+            {MONTHLY_PRICE}/month — renews on{" "}
+            {formatDate(profile.current_period_end)}.
           </p>
           <div className="mt-6 flex items-center gap-3">
             <StartApplyingButton />
@@ -126,7 +162,7 @@ export default async function BillingPage({
         </div>
       )}
 
-      {!comped && status === "past_due" && (
+      {!free && !comped &&status === "past_due" && (
         <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 p-8">
           <h2 className="text-lg font-semibold text-red-800">Payment failed</h2>
           <p className="mt-2 text-sm text-red-700">
@@ -140,11 +176,11 @@ export default async function BillingPage({
         </div>
       )}
 
-      {!comped && status === "canceled" && (
+      {!free && !comped &&status === "canceled" && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">Your subscription has ended</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Resubscribe for $12/month to get back to your activity log. Your
+            Resubscribe for {MONTHLY_PRICE}/month to get back to your activity log. Your
             existing entries are safe.
           </p>
           <form action={startCheckout} className="mt-6">

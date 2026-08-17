@@ -1,6 +1,13 @@
 import Link from "next/link";
+import {
+  FREE_UNTIL_LABEL,
+  MONTHLY_PRICE,
+  isFreePeriod,
+} from "@applyassistui/shared";
 
 export default function LandingPage() {
+  const free = isFreePeriod();
+
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
@@ -43,15 +50,24 @@ export default function LandingPage() {
             href="/login"
             className="rounded-lg bg-brand px-6 py-3 font-medium text-white hover:bg-brand-dark"
           >
-            Start 14-day free trial
+            {free ? "Get started free" : "Start 14-day free trial"}
           </Link>
           <a href="#how" className="text-sm font-medium text-slate-600 hover:text-slate-900">
             See how it works →
           </a>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          14-day free trial — card required, you won&apos;t be charged until it
-          ends. $12/month after. Cancel anytime.
+          {free ? (
+            <>
+              Free for everyone until {FREE_UNTIL_LABEL} — no credit card
+              required. {MONTHLY_PRICE}/month starts {FREE_UNTIL_LABEL}.
+            </>
+          ) : (
+            <>
+              14-day free trial — card required, you won&apos;t be charged until
+              it ends. {MONTHLY_PRICE}/month after. Cancel anytime.
+            </>
+          )}
         </p>
       </section>
 
@@ -97,19 +113,42 @@ export default function LandingPage() {
       {/* Pricing */}
       <section id="pricing" className="border-t border-slate-100">
         <div className="mx-auto max-w-md px-6 py-16 text-center">
-          <h2 className="text-2xl font-semibold">Simple pricing</h2>
+          <h2 className="text-2xl font-semibold">
+            {free ? "Free right now" : "Simple pricing"}
+          </h2>
           <p className="mx-auto mt-3 max-w-sm text-sm text-slate-600">
             Protect the benefits you rely on for less than a coffee a week. One
             missed reporting week can cost you far more.
           </p>
           <div className="mt-8 rounded-2xl border border-slate-200 p-8 shadow-sm">
-            <div className="text-4xl font-bold">
-              $12
-              <span className="text-base font-normal text-slate-500">/month</span>
-            </div>
-            <p className="mt-1 text-sm text-slate-600">
-              Start with a 14-day free trial (card required, cancel anytime).
-            </p>
+            {free ? (
+              <>
+                <div className="text-4xl font-bold">
+                  Free
+                  <span className="text-base font-normal text-slate-500">
+                    {" "}
+                    until {FREE_UNTIL_LABEL}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">
+                  No credit card required. Starting {FREE_UNTIL_LABEL} it&apos;s{" "}
+                  {MONTHLY_PRICE}/month — you&apos;ll be asked to subscribe then,
+                  and nothing is charged before that.
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="text-4xl font-bold">
+                  {MONTHLY_PRICE}
+                  <span className="text-base font-normal text-slate-500">
+                    /month
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-slate-600">
+                  Start with a 14-day free trial (card required, cancel anytime).
+                </p>
+              </>
+            )}
             <ul className="mt-6 space-y-2 text-left text-sm text-slate-700">
               <li>✓ Unlimited activity logging</li>
               <li>✓ Weekly compliance tracking</li>
@@ -124,7 +163,7 @@ export default function LandingPage() {
               href="/login"
               className="mt-8 block rounded-lg bg-brand px-6 py-3 font-medium text-white hover:bg-brand-dark"
             >
-              Start free trial
+              {free ? "Get started free" : "Start free trial"}
             </Link>
           </div>
         </div>

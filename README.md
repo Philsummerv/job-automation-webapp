@@ -20,6 +20,13 @@ Implemented:
   required at trial start), full paywall on all app features, Stripe customer
   portal, idempotent webhook syncing subscription state to `profiles`, and
   record-only card-fingerprint tracking against trial abuse
+- **Launch free period:** the product is currently **free to everyone with no
+  card collected until 2027-01-01**, driven by `FREE_UNTIL` in
+  `packages/shared/src/index.ts`. `isEntitled()` short-circuits to `true` and
+  `startCheckout` refuses to run, so no Stripe subscription — and therefore no
+  revenue — can be created before that date. Every gate and every piece of
+  pricing copy reads `isFreePeriod()` at request time, so the paywall and the
+  paid marketing copy return on their own with no deploy needed.
 
 Deferred to later milestones: M2 Guided browser runs, M3 resume management +
 evidence capture polish.

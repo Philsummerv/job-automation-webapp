@@ -3,6 +3,8 @@ import { getProfileContext, isCompedEmail } from "@/lib/auth";
 import {
   US_STATES,
   DAYS_OF_WEEK,
+  FREE_UNTIL_LABEL,
+  isFreePeriod,
   type SubscriptionStatus,
 } from "@applyassistui/shared";
 import SubmitButton from "@/components/SubmitButton";
@@ -152,9 +154,11 @@ export default async function SettingsPage({
             <div className="flex justify-between">
               <dt>Status</dt>
               <dd className="font-medium text-slate-900">
-                {comped
-                  ? "Complimentary access"
-                  : SUBSCRIPTION_LABELS[profile.subscription_status]}
+                {isFreePeriod()
+                  ? `Free until ${FREE_UNTIL_LABEL}`
+                  : comped
+                    ? "Complimentary access"
+                    : SUBSCRIPTION_LABELS[profile.subscription_status]}
               </dd>
             </div>
             {!comped &&

@@ -57,10 +57,19 @@ export default function TermsPage() {
       <h2>4. Subscription, trial, and billing</h2>
       <ul>
         <li>
-          The Service costs <strong>$12 per month</strong>, billed through
-          Stripe, and begins with a <strong>14-day free trial</strong>. A
-          payment card is required to start the trial; you are not charged
-          until the trial ends.
+          <strong>Launch free period.</strong> The Service is free to all users
+          through <strong>December 31, 2026</strong>. No payment card is
+          collected during that period and no charge of any kind is made.
+          Beginning <strong>January 1, 2027</strong>, continued use of the
+          Service requires a paid subscription. Your account and your saved
+          activity log are not deleted if you choose not to subscribe, and you
+          may export your records at any time.
+        </li>
+        <li>
+          After the free period the Service costs <strong>$12 per month</strong>,
+          billed through Stripe, and begins with a{" "}
+          <strong>14-day free trial</strong>. A payment card is required to
+          start the trial; you are not charged until the trial ends.
         </li>
         <li>
           Your subscription renews automatically each month until you cancel.

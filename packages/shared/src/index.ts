@@ -275,8 +275,30 @@ export function groupByReportingPeriod(
     });
 }
 
+// ─── Launch free period ──────────────────────────────────────────────────────
+// The product is free to everyone, no card collected, until FREE_UNTIL. Nothing
+// needs to be deployed on the date: every gate and every piece of pricing copy
+// below reads isFreePeriod() at request time, so the site paywalls itself and
+// the marketing copy reverts on its own. To end the free period early, move the
+// date; to go back to paid entirely, delete the short-circuit in isEntitled.
+
+/** The product is free to all users until this instant; paid after. */
+export const FREE_UNTIL = new Date("2027-01-01T08:00:00Z"); // 2027-01-01 00:00 PT
+
+/** Human-readable form of FREE_UNTIL, for user-facing copy. */
+export const FREE_UNTIL_LABEL = "January 1, 2027";
+
+/** The monthly price, as displayed. Single source for all pricing copy. */
+export const MONTHLY_PRICE = "$12";
+
+export function isFreePeriod(now: Date = new Date()): boolean {
+  return now.getTime() < FREE_UNTIL.getTime();
+}
+
 /** Whether an active subscription/trial entitles the user to premium features. */
 export function isEntitled(status: SubscriptionStatus): boolean {
+  // Free launch period: everyone is entitled, regardless of stored status.
+  if (isFreePeriod()) return true;
   return status === "trialing" || status === "active";
 }
 
