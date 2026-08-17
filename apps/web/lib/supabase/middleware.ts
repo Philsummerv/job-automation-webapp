@@ -49,7 +49,14 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   // Segment-exact prefixes: "/log".startsWith would also capture "/login".
-  const isAppRoute = ["/dashboard", "/log", "/settings", "/export", "/billing"].some(
+  const isAppRoute = [
+    "/dashboard",
+    "/log",
+    "/settings",
+    "/export",
+    "/billing",
+    "/admin",
+  ].some(
     (p) => path === p || path.startsWith(`${p}/`),
   );
 

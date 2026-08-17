@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getProfileContext } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 
 function trialDaysLeft(trialEndsAt: string): number {
   const ms = new Date(trialEndsAt).getTime() - Date.now();
@@ -41,6 +42,11 @@ export default async function AppLayout({
               <Link href="/billing" className="text-slate-600 hover:text-slate-900">
                 Billing
               </Link>
+              {isAdminEmail(user.email) && (
+                <Link href="/admin" className="font-medium text-brand hover:underline">
+                  Admin
+                </Link>
+              )}
             </nav>
           </div>
           <div className="flex items-center gap-3 text-sm">
