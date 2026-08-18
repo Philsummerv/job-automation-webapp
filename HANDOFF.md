@@ -1,6 +1,165 @@
-# 👉 START HERE (2026-08-09) — the Chrome extension is mid-build
+# 👉 START HERE (2026-08-18) — the product is FREE until 2027-01-01; next job is MARKETING
 
-**Everything below this section is older launch history. Read this part first.**
+**Everything below this section is older history (extension work, then launch
+history). Read this part first.**
+
+Two things shipped this session, both live on https://www.jobassistui.com and
+both pushed to `main`. Working tree is clean; nothing is half-finished in code.
+
+---
+
+## ⚠️ ONE THING TO DO BEFORE `/admin` WORKS IN PRODUCTION
+
+The admin dashboard is deployed but **fails closed** until you add its env var.
+Right now `/admin` returns 404 in production — including for you.
+
+1. vercel.com → project `job-automation-webapp` → **Settings** → **Environment Variables**
+2. Key `ADMIN_EMAILS`, value `psommerville3@gmail.com`
+3. Tick **Production**, Save
+4. **Deployments** → newest → ⋯ → **Redeploy**
+
+Then sign in and the nav shows an **Admin** link.
+
+## ⚠️ ALSO: an editor tab may still hold an emptied file
+
+At the end of this session `packages/db/migrations/0002_billing.sql` was found
+**emptied to 0 bytes** in the working tree (not by any command run here — it was
+open in the IDE). It was restored from git (`git checkout --`) and the tree is
+clean. **If that tab is still open in the editor holding the blank version,
+close it WITHOUT saving** or it will wipe the file again. Production is
+unaffected — that migration was applied to Supabase long ago.
+
+---
+
+## 1. FREE FOR EVERYONE UNTIL 2027-01-01 (commit `4ca0221`)
+
+**Why:** the owner is collecting unemployment and cannot take income before
+2027-01-01, but wants to market now and gather user feedback. The constraint is
+**zero revenue**, not generosity — anything that could create a Stripe
+subscription early defeats the whole point.
+
+**Decisions the user made explicitly:**
+- Free to everyone, **no credit card collected**. (They first asked to still
+  require a card, then reversed: "nevermind we will wait until january 1 2027
+  for the card entry". Final answer = no card.)
+- **Everyone pays on 2027-01-01. No grandfathering, no permanently-free cohort.**
+- Price confirmed **$12/month** — not $12.99, which they had misremembered.
+
+**How it works.** Everything keys off `FREE_UNTIL` in
+`packages/shared/src/index.ts` (alongside new `FREE_UNTIL_LABEL`,
+`MONTHLY_PRICE`, `isFreePeriod()`):
+
+- `isEntitled()` short-circuits to `true` during the period. That one function
+  is the chokepoint that **both** the web paywall (`lib/auth.ts`
+  `requireEntitled`) and the extension's `/api/extension/session` already went
+  through, so the whole product opened with no Stripe, schema, or route changes.
+- `startCheckout` (`app/(app)/billing/actions.ts`) hard-returns during the
+  period. **This is the actual guarantee**: no Stripe subscription can be
+  created, so no money can arrive, however the action is invoked.
+- New `apps/web/components/FreePeriodBanner.tsx`, mounted in the **root**
+  layout — the only shell shared by the landing page, `/login`, the legal pages
+  and the authenticated app. Not dismissible: it is the disclosure that the
+  product becomes paid.
+- All pricing copy **branches** on `isFreePeriod()` rather than being replaced,
+  so the paid story returns by itself: `app/page.tsx`, `(app)/billing/page.tsx`,
+  `(app)/settings/page.tsx`, `opengraph-image.tsx`. `/terms` §4 gained a
+  permanent clause covering the free period.
+
+**Gotcha worth remembering:** `/`, `/login`, `/terms`, `/privacy` are statically
+prerendered, so the build **baked `isFreePeriod()` in at build time** — the site
+would have kept saying "free until Jan 1, 2027" after the date. Fixed with
+`export const revalidate = 3600` in the root layout, inherited by every child
+segment. **Nothing needs deploying on 2027-01-01**: the paywall, the banner and
+the marketing copy all flip on their own.
+
+**What happens on 2027-01-01:** `isFreePeriod()` goes false, banner vanishes,
+paid copy returns, `isEntitled` enforces again, and free-period users get
+bounced to `/billing`. Their `trial_ends_at` is still `null`, so they are
+`trialEligible` and get the normal 14-day trial — i.e. they would actually be
+charged ~Jan 15. If you would rather they pay immediately, make `trialEligible`
+unconditional in `billing/actions.ts` at that time. Not needed now.
+
+**To change it:** move `FREE_UNTIL` to end early. To go back to paid entirely,
+delete the short-circuit in `isEntitled` and the guard in `startCheckout`.
+
+**Verified:** build + typecheck pass; banner renders on all four public pages on
+prod; OG social image regenerated ("Free until January 1, 2027 · no credit
+card"); and a **rebuild with `FREE_UNTIL` set to a past date brought back the
+full paywall, the `$12/month` block and the 14-day-trial copy** — the revert
+path genuinely works.
+
+## 2. OWNER-ONLY `/admin` DASHBOARD (commit `132de0a`)
+
+User asked for "a tool that tells me how many emails I have signed up and the
+activity of the users, more user friendly than Supabase". Built **into the app**
+rather than adding another service — consistent with their strong preference for
+minimal third-party setup.
+
+- `apps/web/app/(app)/admin/page.tsx` + `apps/web/lib/admin.ts`.
+- Shows: signups total and last 7d, onboarded, activated (≥1 activity), active
+  last 7d, total activities; a signup funnel; signups-per-day bars for 14 days;
+  and a per-user table (email, joined, last sign-in, entry count, last entry,
+  state, "setup incomplete" flag).
+- **The number that matters** is the funnel gap between *Onboarded* and *Logged
+  ≥1 activity* — people who made an account and got nothing out of it. That is
+  the feedback list.
+- Reads via `createServiceClient()` (bypasses RLS) plus
+  `svc.auth.admin.listUsers()` for the emails.
+- **Access = new `ADMIN_EMAILS` env var**, deliberately SEPARATE from
+  `COMPED_EMAILS`: comped beta testers get a free account, **not** every other
+  user's email address. Unset means `/admin` 404s for everyone. Non-admins get
+  `notFound()` rather than a redirect, so the page's existence is not leaked.
+  `/admin` added to the middleware auth prefixes and to robots.txt disallow.
+
+**Verified:** build passes; unauthenticated `/admin` 307s to `/login`;
+robots.txt disallows it.
+**NOT verified:** the signed-in render against real data — it needs an emailed
+login code. A script written to check the queries directly was blocked by a
+permission rule for reading `.env.local` secrets. **First time you load
+`/admin`, sanity-check the numbers.**
+
+---
+
+## Pick up here (next session)
+
+1. **Do the `ADMIN_EMAILS` Vercel step above**, load `/admin`, confirm the
+   numbers look right.
+2. **MARKETING — this is the actual priority.** The product is live, free, and
+   says so; there is now a dashboard to measure whether anyone shows up. No
+   marketing work has been done at all yet.
+3. **Offered but not yet built: Vercel Web Analytics.** `/admin` shows people
+   who signed up, but nothing about people who visited and did not. Vercel Web
+   Analytics covers visitors / referrers / drop-off, is a toggle in a console
+   the user already uses, plus a one-line code change. **The user was asked and
+   had not answered when the session ended** — ask again.
+4. Optional follow-on idea, not requested: a "new signup" email alert via the
+   existing Resend setup, so they do not have to poll `/admin`.
+
+## Explicitly NOT done (and why)
+
+- **No Stripe changes at all** — no long `trial_end`, no 100%-off coupon, no new
+  price. Creating subscriptions now is the one class of change that could
+  produce income before the date.
+- **No database migration** — `subscription_status` stays `none` for free-period
+  users; entitlement is computed per-request, exactly like the existing
+  `COMPED_EMAILS` bypass.
+- `COMPED_EMAILS` untouched; still works and stays useful after Jan 1.
+- The Chrome extension was **not** touched this session. It remains parked
+  mid-build with one unverified fix — see the parked section below.
+
+## Commits this session (both pushed to `main`)
+
+- `4ca0221` Free for everyone until 2027-01-01, announced site-wide
+- `132de0a` Owner-only /admin dashboard: signups and whether people use it
+
+(The push also carried up two older unpushed extension commits, `86ee728` and
+`5efecad`.)
+
+---
+
+# (previously) The Chrome extension is mid-build — PARKED
+
+**This extension section is parked. See the START HERE section above it for current state.**
 
 ## Where the extension stands
 
