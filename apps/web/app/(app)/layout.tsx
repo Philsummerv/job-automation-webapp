@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BetaBar from "@/components/BetaBar";
 import { getProfileContext } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 
@@ -23,8 +24,11 @@ export default async function AppLayout({
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-6">
-            <Link href="/dashboard" className="text-lg font-bold text-brand">
-              JobAssistUI
+            <Link href="/dashboard" className="flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-brand">JobAssistUI</span>
+              <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+                Beta
+              </span>
             </Link>
             <nav className="flex items-center gap-4 text-sm">
               <Link href="/dashboard" className="text-slate-600 hover:text-slate-900">
@@ -41,6 +45,9 @@ export default async function AppLayout({
               </Link>
               <Link href="/billing" className="text-slate-600 hover:text-slate-900">
                 Billing
+              </Link>
+              <Link href="/feedback" className="text-slate-600 hover:text-slate-900">
+                Feedback
               </Link>
               {isAdminEmail(user.email) && (
                 <Link href="/admin" className="font-medium text-brand hover:underline">
@@ -62,6 +69,8 @@ export default async function AppLayout({
           </div>
         </div>
       </header>
+
+      <BetaBar />
 
       {status === "trialing" && profile.trial_ends_at && (
         <div className="border-b border-amber-200 bg-amber-50">

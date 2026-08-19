@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/lib/site";
 import {
   FREE_UNTIL_LABEL,
   MONTHLY_PRICE,
@@ -13,7 +14,12 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <span className="text-lg font-bold text-brand">JobAssistUI</span>
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-lg font-bold text-brand">JobAssistUI</span>
+            <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
+              Beta
+            </span>
+          </span>
           <div className="flex items-center gap-4 text-sm">
             <a href="#how" className="text-slate-600 hover:text-slate-900">
               How it works
@@ -37,7 +43,7 @@ export default function LandingPage() {
           Unemployment job-search compliance
         </p>
         <h1 className="mt-3 text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
-          Track your weekly job search. Export a report your state accepts.
+          Track your weekly job search. Export a report ready for your claim.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
           Most states require you to document 3–5 job-search activities every
@@ -110,6 +116,38 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Beta note — the honest version of "why is this free?" */}
+      <section className="border-t border-slate-100">
+        <div className="mx-auto max-w-2xl px-6 py-16">
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-8">
+            <span className="rounded bg-sky-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
+              Early beta
+            </span>
+            <h2 className="mt-4 text-xl font-semibold text-slate-900">
+              I built this because I&apos;m job searching too
+            </h2>
+            <div className="mt-3 space-y-3 text-sm leading-relaxed text-slate-700">
+              <p>
+                I kept my work-search log in a spreadsheet and spent every
+                reporting week worried I&apos;d miscounted something and would
+                lose a payment over it. So I built the thing I wanted.
+              </p>
+              <p>
+                It&apos;s free for everyone until {FREE_UNTIL_LABEL} — no card,
+                no trial countdown, nothing to cancel. After that it&apos;s{" "}
+                {MONTHLY_PRICE}/month and you decide then.
+              </p>
+              <p>
+                It&apos;s also genuinely early. If something breaks, or the
+                export doesn&apos;t look how your state wants it, I want to hear
+                about it — there&apos;s a Feedback link inside the app, and it
+                comes straight to me.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Pricing */}
       <section id="pricing" className="border-t border-slate-100">
         <div className="mx-auto max-w-md px-6 py-16 text-center">
@@ -176,7 +214,13 @@ export default function LandingPage() {
             provide legal advice; requirements vary by state. You are responsible
             for the accuracy of your records and for meeting your state&apos;s rules.
           </p>
-          <div className="mt-4 flex items-center justify-center gap-6">
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-6">
+            <a
+              href={`mailto:${SUPPORT_EMAIL}?subject=JobAssistUI%20feedback`}
+              className="hover:text-slate-900"
+            >
+              Report a bug
+            </a>
             <Link href="/terms" className="hover:text-slate-900">
               Terms of Service
             </Link>

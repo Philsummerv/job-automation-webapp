@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 import LegalPage from "@/components/LegalPage";
+import { SUPPORT_EMAIL } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Terms of Service — JobAssistUI",
 };
-
-const SUPPORT_EMAIL = "psommerville3@gmail.com";
 
 export default function TermsPage() {
   return (

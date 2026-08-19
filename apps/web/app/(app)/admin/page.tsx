@@ -24,6 +24,22 @@ type ProfileRow = {
   subscription_status: string;
 };
 type EntryRow = { user_id: string; created_at: string; source: string };
+type FeedbackRow = {
+  id: string;
+  email: string | null;
+  kind: string;
+  message: string;
+  page: string | null;
+  created_at: string;
+};
+
+const FEEDBACK_CAP = 200;
+const KIND_STYLE: Record<string, string> = {
+  bug: "bg-red-100 text-red-800",
+  confusing: "bg-amber-100 text-amber-800",
+  idea: "bg-sky-100 text-sky-800",
+  other: "bg-slate-100 text-slate-700",
+};
 
 function dayKey(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10);
@@ -51,7 +67,7 @@ export default async function AdminPage() {
   await requireAdmin();
   const svc = createServiceClient();
 
-  const [usersRes, profilesRes, entriesRes] = await Promise.all([
+  const [usersRes, profilesRes, entriesRes, feedbackRes] = await Promise.all([
     svc.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     svc
       .from("profiles")
@@ -61,11 +77,17 @@ export default async function AdminPage() {
       .select("user_id,created_at,source")
       .order("created_at", { ascending: false })
       .limit(ROW_CAP),
+    svc
+      .from("feedback")
+      .select("id,email,kind,message,page,created_at")
+      .order("created_at", { ascending: false })
+      .limit(FEEDBACK_CAP),
   ]);
 
   const users = (usersRes.data?.users ?? []) as unknown as AuthUser[];
   const profiles = (profilesRes.data ?? []) as ProfileRow[];
   const entries = (entriesRes.data ?? []) as EntryRow[];
+  const feedback = (feedbackRes.data ?? []) as FeedbackRow[];
 
   const profileByUser = new Map(profiles.map((p) => [p.user_id, p]));
 
@@ -149,6 +171,48 @@ export default async function AdminPage() {
           sub={guided > 0 ? `${guided} guided` : "all self-directed"}
         />
       </div>
+
+      {/* Beta feedback inbox — newest first, above the charts on purpose. */}
+      <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
+        <div className="flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-slate-900">Feedback</h2>
+          <span className="text-xs text-slate-500">
+            {feedback.length === 0
+              ? "nothing yet"
+              : `${feedback.length} message${feedback.length === 1 ? "" : "s"}`}
+          </span>
+        </div>
+        {feedback.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">
+            Nothing reported yet. Bug reports from the in-app Feedback form land
+            here.
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-slate-100">
+            {feedback.map((f) => (
+              <li key={f.id} className="py-3 first:pt-0">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                  <span
+                    className={`rounded px-1.5 py-0.5 font-medium ${
+                      KIND_STYLE[f.kind] ?? KIND_STYLE.other
+                    }`}
+                  >
+                    {f.kind}
+                  </span>
+                  <span className="font-medium text-slate-700">
+                    {f.email ?? "deleted account"}
+                  </span>
+                  <span>{relative(f.created_at)}</span>
+                  {f.page && <span className="text-slate-400">from {f.page}</span>}
+                </div>
+                <p className="mt-1.5 whitespace-pre-wrap text-sm text-slate-800">
+                  {f.message}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* Funnel: one measure across four stages → single hue, magnitude. */}
       <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5">

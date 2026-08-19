@@ -1,11 +1,12 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import { SITE_URL } from "@/lib/site";
 import FreePeriodBanner from "@/components/FreePeriodBanner";
 
 const title = "JobAssistUI — Job Search Log for Unemployment Compliance";
 const description =
-  "Document your weekly job-search activities and export a DOL-ready report. A user-directed job-search documentation tool.";
+  "Document your weekly job-search activities and export a clean report for your unemployment claim. A user-directed job-search documentation tool.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -41,6 +42,9 @@ export default function RootLayout({
       <body>
         <FreePeriodBanner />
         {children}
+        {/* Cookieless page/referrer analytics — how people found the site,
+            which is the whole question during the marketing push. */}
+        <Analytics />
       </body>
     </html>
   );

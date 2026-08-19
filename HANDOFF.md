@@ -1,4 +1,55 @@
-# 👉 START HERE (2026-08-18) — the product is FREE until 2027-01-01; next job is MARKETING
+# 👉 START HERE (2026-08-19) — beta framing + feedback inbox shipped; next job is MARKETING
+
+## What changed 2026-08-19
+
+The site now says **Beta** and there is finally a way for a user to report a
+bug. Built because the marketing push was about to send people to a product
+with no feedback channel at all (the only contact was a personal Gmail buried
+in /terms).
+
+- **`packages/db/migrations/0004_feedback.sql` — MUST BE APPLIED TO SUPABASE
+  BY HAND** (SQL editor → paste → run). Until it is, the Feedback form errors
+  and tells the user to email instead. Nothing else breaks.
+- New `/feedback` page + server action under `(app)`. Gated on `requireUser`,
+  **not** `requireEntitled` — someone locked out by the paywall or by a bug
+  still needs to be able to report it.
+- `components/BetaBar.tsx`: dismissible (localStorage `jaui.betaBarDismissed`)
+  sky-blue bar in the authenticated shell with a report-a-bug link carrying
+  `?from=<pathname>`. Distinct from `FreePeriodBanner`, which is a pricing
+  disclosure and is deliberately NOT dismissible.
+- `/admin` grew a **Feedback** inbox section above the charts (service-role
+  read; there is no cross-user select policy on the table by design).
+- Landing page: Beta badges, a first-person "why is this free / it's early"
+  block before pricing, and a `mailto:` "Report a bug" link in the footer for
+  people who cannot sign in.
+- **Copy claim softened**: the hero said "Export a report your state accepts"
+  — that warrants something no one can warrant for 50 states, and it
+  contradicted the footer disclaimer. Now "ready for your claim". Same fix in
+  the root layout's meta description ("DOL-ready" → "a clean report").
+- **The project email is now `prs.educ01@gmail.com`**, not the owner's personal
+  `psommerville3@gmail.com`. It is the value for `ADMIN_EMAILS`, and it is the
+  public contact address — now defined ONCE as `SUPPORT_EMAIL` in
+  `apps/web/lib/site.ts` (it used to be copy-pasted into /terms and /privacy)
+  and consumed by /terms, /privacy, the landing footer and the feedback form.
+  `COMPED_EMAILS` should gain it too, so the admin account isn't paywalled on
+  2027-01-01. `psommerville3@gmail.com` stays in the historical records below
+  (DMARC `rua`, the original comped/test accounts) — those are still accurate.
+- **Vercel Web Analytics** added (`@vercel/analytics` → `<Analytics />` in the
+  root layout). Cookieless, no banner needed. Turn it on in the Vercel
+  dashboard: project → **Analytics** tab → Enable, or it collects nothing.
+
+**Marketing plan agreed 2026-08-19** (channels, in priority order): Facebook
+state unemployment groups first, then Reddit state subs (r/Unemployment, r/EDD
+et al — help for a week before posting anything), then American Job Centers /
+WorkSource offices with a printed flyer, then per-state SEO pages. Explicitly
+**not** Product Hunt / HN / Twitter: that audience is employed developers.
+The pitch is the true one — "I'm job searching too, I built the thing I
+wanted, it's free until Jan 2027 because I can't take income before then,
+tell me what breaks."
+
+---
+
+# (2026-08-18) the product is FREE until 2027-01-01
 
 **Everything below this section is older history (extension work, then launch
 history). Read this part first.**
@@ -14,7 +65,7 @@ The admin dashboard is deployed but **fails closed** until you add its env var.
 Right now `/admin` returns 404 in production — including for you.
 
 1. vercel.com → project `job-automation-webapp` → **Settings** → **Environment Variables**
-2. Key `ADMIN_EMAILS`, value `psommerville3@gmail.com`
+2. Key `ADMIN_EMAILS`, value `prs.educ01@gmail.com`
 3. Tick **Production**, Save
 4. **Deployments** → newest → ⋯ → **Redeploy**
 
@@ -405,7 +456,7 @@ now and gather user feedback. Mechanics:
 | Email | Resend custom SMTP in Supabase; sender `login@jobassistui.com`. Fully authenticated as of 2026-08-08: SPF (`send.jobassistui.com` → amazonses.com), DKIM (`resend._domainkey`, aligned to the root From: domain), and DMARC (`_dmarc` → `v=DMARC1; p=none; rua=mailto:psommerville3@gmail.com`) all verified live via DNS. First post-DMARC send landed in the Gmail **inbox** |
 | Auth | **Typed email code only — no sign-in links anywhere.** Code length 6. Both the "Confirm signup" AND "Magic Link" templates in Supabase hold identical code-only bodies containing `{{ .Token }}` and no `{{ .ConfirmationURL }}` |
 | Stripe | LIVE mode: product JobAssistUI $12/mo, webhook `https://www.jobassistui.com/api/stripe/webhook` (4 events: checkout.session.completed + customer.subscription.created/updated/deleted), portal config saved. Secret key is a named key `vercel-production` (the original was expired after a copy mix-up) |
-| Vercel env (Production) | `STRIPE_SECRET_KEY` (sk_live), `STRIPE_PRICE_ID` (price_), `STRIPE_WEBHOOK_SECRET` (whsec_), `NEXT_PUBLIC_SITE_URL=https://www.jobassistui.com`, `COMPED_EMAILS=psommerville3@gmail.com`, plus the three Supabase vars |
+| Vercel env (Production) | `STRIPE_SECRET_KEY` (sk_live), `STRIPE_PRICE_ID` (price_), `STRIPE_WEBHOOK_SECRET` (whsec_), `NEXT_PUBLIC_SITE_URL=https://www.jobassistui.com`, `COMPED_EMAILS=psommerville3@gmail.com,prs.educ01@gmail.com`, `ADMIN_EMAILS=prs.educ01@gmail.com`, plus the three Supabase vars |
 | Supabase | Site URL + redirect allowlist include the www domain; rate limits raised for email |
 
 ## Launch-night gotchas worth remembering
@@ -502,10 +553,7 @@ harmless (comped wins), optional SQL cleanup someday.
 2. **2–3 comped beta users** (add emails to `COMPED_EMAILS` in Vercel,
    redeploy) — watch them use it, fix confusion points.
 3. **Phone check** of the site (see "Not yet tested").
-4. Support email: legal pages currently list `psommerville3@gmail.com` —
-   consider `support@jobassistui.com` (Resend inbound or registrar forward),
-   then update `SUPPORT_EMAIL` in `apps/web/app/terms/page.tsx` and
-   `apps/web/app/privacy/page.tsx`.
+4. Support email: RESOLVED 2026-08-19 — the public contact address is `prs.educ01@gmail.com`, defined once as `SUPPORT_EMAIL` in `apps/web/lib/site.ts` and used by /terms, /privacy, the landing footer and the feedback form.
 5. Later, revenue-permitting: **web-native Guided** (cloud-browser, worker +
    `/run/[runId]`, foundation in `packages/automation` already proven);
    activity-reminder emails (idea logged 2026-07-06 — Vercel Cron + Resend);
