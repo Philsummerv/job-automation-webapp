@@ -34,6 +34,39 @@ in /terms).
   `COMPED_EMAILS` should gain it too, so the admin account isn't paywalled on
   2027-01-01. `psommerville3@gmail.com` stays in the historical records below
   (DMARC `rua`, the original comped/test accounts) — those are still accurate.
+- **Email deliverability, revisited.** A sign-in email to a brand-new Gmail
+  address (`prs.educ01@gmail.com`) landed in spam. Diagnosed rather than
+  guessed — Gmail headers and mail-tester both show **SPF, DKIM and DMARC all
+  PASS** (DNS re-verified live), and SpamAssassin scores **-1.1** against a -5
+  spam threshold. So the August authentication work is intact and was not the
+  cause. Three real problems found, two fixed:
+  - **The SMTP sender name was still `ApplyAssistUI`** — the pre-rename product
+    name, matching neither the sending domain nor the site. A display name that
+    disagrees with the domain is a phishing signal AND confuses real users.
+    Now `JobAssistUI`.
+  - **The body was 335 bytes** (a heading, a label, six digits). Thin
+    transactional mail from a domain with no history is filter bait, and it told
+    the reader nothing. Replaced with a ~1.5KB version that says who we are, why
+    they got it, and what to do if it wasn't them. Subject went from the generic
+    `Confirm your email address` to `Your JobAssistUI sign-in code`. Pasted into
+    **both** Confirm signup and Magic Link — see `docs/email/README.md`, which is
+    now the versioned copy of what lives in the Supabase dashboard.
+  - **The SES shared IP is listed on SpamCop** (Yellow on Hostkarma). That is
+    Resend's shared infrastructure, **not delistable by us**, and a dedicated IP
+    is a paid upgrade not worth it at this volume. Accepted, not fixed.
+  - Remaining cause is plain reputation: a weeks-old domain with almost no send
+    history, delivering to an address with no history either. Only real
+    recipients fix that.
+  - **The retest is confounded** — the address had been marked Not Spam, which
+    trains Gmail per-mailbox. `+alias` and dotted Gmail variants share that
+    training, so they cannot serve as clean tests. The honest measurement is
+    asking the first few real users whether it landed in spam.
+  - Login page now names the sender and treats spam placement as expected,
+    pointing out the typed code works fine from the spam folder (there is no
+    link to click, so a filtered email is an annoyance, not a dead end).
+  - **Google Postmaster Tools: deliberately deferred.** It needs ~100+ msgs/day
+    to Gmail before it renders anything; at current volume it would be empty
+    charts. Revisit once there are real users.
 - **Vercel Web Analytics** added (`@vercel/analytics` → `<Analytics />` in the
   root layout). Cookieless, no banner needed. Turn it on in the Vercel
   dashboard: project → **Analytics** tab → Enable, or it collects nothing.

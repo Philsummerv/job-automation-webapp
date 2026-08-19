@@ -69,8 +69,20 @@ export default function LoginForm() {
     return (
       <div className="mt-6 space-y-4">
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
-          Check <strong>{email}</strong> for a sign-in email — if it&apos;s not
-          in your inbox within a minute, check your spam folder.
+          <p>
+            Check <strong>{email}</strong> for your sign-in code. It comes from{" "}
+            <strong>JobAssistUI &lt;login@jobassistui.com&gt;</strong>.
+          </p>
+          {/* Spam placement is the expected case, not the edge case: a domain
+              this new has no sending reputation yet. Say so plainly, and point
+              out the code works fine from the spam folder — there is no link
+              to click, so a filtered email is an annoyance, not a dead end. */}
+          <p className="mt-2">
+            Not there within a minute? <strong>Look in spam or junk.</strong>{" "}
+            We&apos;re a new sender, so mail often lands there at first — the
+            code below works either way, and marking it &ldquo;not spam&rdquo;
+            helps the next one arrive properly.
+          </p>
         </div>
         <form onSubmit={verifyCode} className="space-y-3">
           <label htmlFor="otp-code" className="block text-sm font-medium">

@@ -1,0 +1,50 @@
+<!--
+  JobAssistUI sign-in code email.
+
+  Paste this SAME body into BOTH Supabase templates:
+    Authentication → Emails → "Confirm signup"   (first-time addresses)
+    Authentication → Emails → "Magic Link"       (returning addresses)
+  Supabase picks the template by account state, so a body in only one of them
+  strands half your users. This bit us on 2026-08-08.
+
+  Do NOT add {{ .ConfirmationURL }}. Its presence is what makes Supabase send a
+  clickable link, and links get eaten by mail scanners (see HANDOFF.md).
+  {{ .Token }} is the 6-digit code.
+
+  Why it is this wordy: the previous version was 335 bytes of HTML, which
+  mail-tester flagged as thin content. Ultra-short transactional mail from a
+  domain with no sending history is a spam-filter magnet, and it also told the
+  reader nothing about who we are or why they got it.
+-->
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a;line-height:1.6;font-size:15px;">
+
+  <p style="font-size:18px;font-weight:600;margin:0 0 16px;">Your JobAssistUI sign-in code</p>
+
+  <p style="margin:0 0 16px;">
+    Someone asked to sign in to JobAssistUI &mdash; the job-search log people use to
+    document their weekly work-search activities for an unemployment claim.
+    Enter this code on the sign-in page to continue:
+  </p>
+
+  <p style="font-size:30px;font-weight:700;letter-spacing:6px;font-family:ui-monospace,Menlo,Consolas,monospace;margin:24px 0;color:#0f172a;">{{ .Token }}</p>
+
+  <p style="margin:0 0 16px;">
+    The code works once and expires in about an hour. Type it into the box on the
+    page where you asked for it &mdash; there is nothing in this email you need to
+    click.
+  </p>
+
+  <p style="margin:0 0 16px;">
+    If you didn't ask to sign in, you can ignore this message and nothing will
+    happen: your account can't be opened without this code. If these keep arriving
+    and it isn't you, email <strong>prs.educ01@gmail.com</strong> and I'll look into it.
+  </p>
+
+  <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e2e8f0;font-size:13px;color:#64748b;">
+    JobAssistUI &mdash; a user-directed job-search documentation tool.<br>
+    This is an automated sign-in message, sent because this address was entered at
+    jobassistui.com. It isn't a newsletter and you aren't subscribed to anything.<br>
+    <a href="https://www.jobassistui.com" style="color:#64748b;">www.jobassistui.com</a>
+  </p>
+
+</div>
