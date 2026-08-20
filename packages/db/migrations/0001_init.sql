@@ -1,4 +1,4 @@
--- ApplyAssistUI — M0 schema: profiles + activity_log, RLS, signup trigger, storage.
+-- JobAssistUI — M0 schema: profiles + activity_log, RLS, signup trigger, storage.
 -- Apply with the Supabase CLI (`supabase db push`) or paste into the SQL editor.
 
 create extension if not exists pgcrypto;

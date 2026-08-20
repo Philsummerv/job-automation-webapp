@@ -3,7 +3,7 @@ import {
   FREE_UNTIL_LABEL,
   MONTHLY_PRICE,
   isFreePeriod,
-} from "@applyassistui/shared";
+} from "@jobassistui/shared";
 
 export const runtime = "edge";
 export const alt = "JobAssistUI — Job Search Log for Unemployment Compliance";

@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { isEntitled, type Profile } from "@applyassistui/shared";
+import { isEntitled, type Profile } from "@jobassistui/shared";
 
 // Redirects to /login if there's no session; otherwise returns the client+user.
 export async function requireUser() {

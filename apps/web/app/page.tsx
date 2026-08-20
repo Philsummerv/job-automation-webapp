@@ -4,7 +4,7 @@ import {
   FREE_UNTIL_LABEL,
   MONTHLY_PRICE,
   isFreePeriod,
-} from "@applyassistui/shared";
+} from "@jobassistui/shared";
 
 export default function LandingPage() {
   const free = isFreePeriod();

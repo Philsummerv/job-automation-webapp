@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import type { SubscriptionStatus } from "@applyassistui/shared";
+import type { SubscriptionStatus } from "@jobassistui/shared";
 import { getStripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";
 

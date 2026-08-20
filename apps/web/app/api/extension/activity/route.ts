@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { reportingPeriodKey, parseISODate, toISODate } from "@applyassistui/shared";
+import { reportingPeriodKey, parseISODate, toISODate } from "@jobassistui/shared";
 import { createClient } from "@/lib/supabase/server";
 
 // Record a Guided application to the user's activity log. The extension's

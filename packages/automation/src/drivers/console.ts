@@ -109,7 +109,7 @@ async function onPrompt(question: string, meta?: PromptMeta): Promise<string> {
 
 // ─── Run ────────────────────────────────────────────────────────────────────────
 
-console.log("ApplyAssistUI Guided — console driver (M2 Stage A go/no-go)");
+console.log("JobAssistUI Guided — console driver (M2 Stage A go/no-go)");
 console.log(`Search: ${config.searchQuery} ${config.searchLocation ? `in ${config.searchLocation}` : "(nationwide)"}; cap: ${config.maxApplications}`);
 console.log("Free-tier sessions cap out around 15 minutes — have your Indeed login ready.\n");
 

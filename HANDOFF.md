@@ -1,17 +1,123 @@
-# 👉 START HERE (2026-08-19) — beta framing + feedback inbox shipped; next job is MARKETING
+# 👉 START HERE (2026-08-20) — shipping is done; the job is now POSTING
 
-> **STATUS 2026-08-20:** all three manual dashboard steps below are **DONE**
-> (Supabase migration `0004_feedback.sql` applied, `ADMIN_EMAILS` set in Vercel
-> + redeployed, Vercel Web Analytics enabled). **There is nothing left to build
-> or configure before users.** The feedback loop is verified end-to-end on prod
-> (row on /admin *and* an email), and the "why I built this" block on the
-> landing page is now the owner's own story, dictated by him. **Nothing is left
-> but posting.** The Facebook channel is written up
-> step-by-step in **`docs/marketing/facebook-playbook.md`**.
->
-> (A PC crash on the evening of 2026-08-19 ended that session mid-answer. It
-> cost nothing: `0563c1d` was already committed and pushed, and the playbook
-> that was lost with the chat is now the file named above.)
+**The product is finished for this stage. Nothing is left to build or configure
+before users.** The only thing standing between JobAssistUI and its first users
+is the owner spending 15 minutes a day in Facebook groups. Everything below is
+context for when that produces feedback.
+
+## The one live workstream: Facebook groups
+
+Read **`docs/marketing/facebook-playbook.md`** — it is the whole channel plan,
+operationally. Track the groups in **`docs/marketing/groups.md`**.
+
+Where the owner actually is, as of **Thursday 2026-08-20**:
+
+| When | What |
+|---|---|
+| Thu Aug 20 | **DONE** — joined the groups |
+| Fri 21 – Sun 23 | Be a member. 15 min/day, comment on 2–3 posts, **zero mentions of the site**. NY certifies Sundays, so the groups spike then. |
+| Sun Aug 23 | DM the admins asking permission to post (highest-leverage move in the plan) |
+| Mon Aug 24 | First post. One group per day, weekday 9–11am, plain text, stay on it for the first hour. |
+
+**The number to watch** is not signups. It is the `/admin` funnel gap between
+*Onboarded* and *Logged ≥1 activity*. If ten people sign up and one logs
+anything, stop posting and fix the product — more traffic does not fix that, it
+burns the audience.
+
+**A hard rule that came up and will come up again:** no bot, no automation, no
+scheduled commenting on the personal Facebook profile. It violates Meta's terms
+and the penalty is losing the profile, which is the entire trust asset the plan
+rests on — and generated answers about somebody's benefit eligibility can be
+confidently wrong in a way that costs a stranger money. The legitimate version
+is automating the *drafting* (paste a post, get a draft, post it yourself).
+**Not yet written but agreed as a good idea: a canned-answers file** in
+`docs/marketing/` covering the ~12 questions that recur in these groups, in the
+owner's voice, with New York specifics. Build it from real saved posts, not
+from guesses.
+
+## What shipped 2026-08-20
+
+- **Feedback now emails the owner** the moment it arrives, and this is
+  **verified working end-to-end on production** — the row lands on `/admin`
+  *and* an email arrives at `prs.educ01@gmail.com`. `apps/web/lib/notify.ts`
+  POSTs to the Resend REST API (raw `fetch`, no new dependency; the domain was
+  already verified there for the Supabase sign-in mail). `reply_to` is the
+  reporting user, so Reply answers them directly.
+  **The table stays the source of truth**: `notifyFeedback` never throws, aborts
+  after 5s, and runs *after* the insert commits, so any mail failure costs an
+  alert and never a report. Unset `RESEND_API_KEY` = a `console.warn` in the
+  Vercel logs and nothing else. It is `await`ed, not fired-and-forgotten,
+  because serverless freezes the function on return. Needs `RESEND_API_KEY` in
+  Vercel — **already set**.
+- **The landing "why is this free" block is the owner's own story now.** He
+  dictated it: New York, claiming since March 2026, never missed a week, wanted
+  to be 100% sure he hadn't. The previous version was a placeholder that
+  invented a spreadsheet he never kept. One thing from the dictation was
+  deliberately NOT used — he said he wanted the export format to be "state
+  compliant", which as public copy promises that a state accepts the document.
+  Nobody can warrant that; it became "print a clean copy of what you did if you
+  ever need one". **Do not reintroduce that claim anywhere.**
+- **`@applyassistui/*` → `@jobassistui/*` across the whole repo.** Every
+  workspace package, every import, the root package name, both READMEs, the
+  automation console banner and two migration header comments. All five
+  workspaces typecheck and both the web and extension builds pass. The lock
+  file was regenerated. **Two files deliberately still say `ApplyAssistUI`** —
+  `HANDOFF.md` and `docs/email/README.md` — because they record the *history*
+  of the SMTP sender-name bug ("the sender name was ApplyAssistUI until
+  2026-08-19"). Rewriting those would destroy the record of a real bug. That is
+  intentional, not a missed rename.
+
+## Dead-code sweep 2026-08-20 — findings
+
+The repo is small and clean. `apps/web` has **no unused components, no unused
+lib files, no TODO/FIXME markers, and every npm dependency is imported** — with
+one exception:
+
+- **`packages/db/src/index.ts` exports a `Database` type that nothing imports.**
+  The Supabase client is untyped on purpose (a long-standing decision), so the
+  hand-written type has no consumer. `apps/web` still declares `@jobassistui/db`
+  as a dependency and lists it in `transpilePackages`. **Left in place
+  deliberately** — it is the readable schema documentation, it costs nothing at
+  runtime, and it is what you would type the client against if you ever do.
+  Delete it only if you decide the schema doc is not worth keeping.
+- `packages/db/migrations/` is of course essential — the package stays
+  regardless.
+- **`packages/automation` (20 files) and `apps/extension` (13 files) are PARKED,
+  not dead.** `apps/web` imports nothing from either, so neither is in the
+  production build. The extension was un-phased-out on 2026-08-09 and the
+  automation package holds the ported Indeed scout logic for a future Guided
+  feature. **Do not delete them** without an explicit decision.
+- `indeed_html/` (1.4MB scraped fixture) is **gitignored and not in the repo** —
+  a local scratch file. Safe to delete off disk, irrelevant to the codebase.
+
+## Designed but NOT built: weekly activity reminders
+
+The owner's idea on 2026-08-20, and it is a good one — opt-in email reminders
+telling you how many searches you have left this period. ~70% of it already
+exists: `weekly_target` and `reporting_period_start_day` are already on
+`profiles`, the period math (`startOfReportingPeriod`, `endOfReportingPeriod`,
+`reportingPeriodKey`) is already in `packages/shared`, the "X of Y" count is
+already computed at `dashboard/page.tsx:29-35`, and sending email now works.
+
+Missing: a Vercel cron (none configured anywhere), a user timezone (not
+stored), and a notification-preference column.
+
+**The risk that must be designed in from the start:** reminder mail is
+recurring and unasked, which is what people mark as spam. Those complaints land
+on `jobassistui.com` — the same domain and shared IP that delivers the
+**sign-in codes**. The failure mode is not "reminders stop working", it is
+"nobody can log in", on a domain with almost no reputation to absorb it.
+Mitigations agreed: opt-in with a visible checkbox at onboarding; **never mail
+anyone who has logged zero activities ever**; one-click unsubscribe honored
+without login; and a `last_reminded_period` column so a buggy hourly cron
+cannot send the same person eleven emails.
+
+Recommended send: the day before the period closes, ~9am local, with different
+copy for "0 logged" than for partial progress. Timezone should be captured from
+the browser at onboarding (`Intl`, no extra question) defaulting to
+`America/New_York`.
+
+---
 
 ## What changed 2026-08-19
 
@@ -494,7 +600,7 @@ now and gather user feedback. Mechanics:
 
 **Strategic decisions locked on 2026-08-06:**
 - Product renamed **JobAssistUI** (was ApplyAssistUI) to match the domain.
-  Internal package names are still `@applyassistui/*` — cosmetic only, not
+  Internal package names are still `@jobassistui/*` — cosmetic only, not
   worth the churn.
 - **The Chrome extension was phased out on 2026-08-06** (user decision: "all
   functionality migrated out of a chrome extension and into a web

@@ -4,7 +4,7 @@ import {
   ACTIVITY_METHODS,
   ACTIVITY_RESULTS,
   toISODate,
-} from "@applyassistui/shared";
+} from "@jobassistui/shared";
 import SubmitButton from "@/components/SubmitButton";
 import { createEntry } from "./actions";
 

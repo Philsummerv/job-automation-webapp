@@ -6,7 +6,7 @@ import {
   FREE_UNTIL_LABEL,
   isFreePeriod,
   type SubscriptionStatus,
-} from "@applyassistui/shared";
+} from "@jobassistui/shared";
 import SubmitButton from "@/components/SubmitButton";
 import { saveSettings } from "./actions";
 

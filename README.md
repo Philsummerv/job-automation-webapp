@@ -1,4 +1,4 @@
-# ApplyAssistUI — web app
+# JobAssistUI — web app
 
 A job-search **activity documentation tool for unemployment compliance**, with
 optional Guided browser assistance. Users log every job-search activity, track
@@ -62,7 +62,7 @@ evidence capture polish.
    `http://localhost:3000/auth/callback` to the allowed redirect URLs.
 
 5. **Stripe (billing).** In the Stripe dashboard (test mode first):
-   - Create a product **ApplyAssistUI** with a recurring **$12/month** price;
+   - Create a product **JobAssistUI** with a recurring **$12/month** price;
      paste the price id into `STRIPE_PRICE_ID`.
    - Copy the secret key into `STRIPE_SECRET_KEY`.
    - Enable the **customer portal** (Settings → Billing → Customer portal) with

@@ -1,5 +1,5 @@
 {
-  "name": "@applyassistui/web",
+  "name": "@jobassistui/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@applyassistui/db": "*",
-    "@applyassistui/shared": "*",
+    "@jobassistui/db": "*",
+    "@jobassistui/shared": "*",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.10",
     "@vercel/analytics": "^2.0.1",

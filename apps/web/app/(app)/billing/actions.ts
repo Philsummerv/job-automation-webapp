@@ -1,7 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { isEntitled, isFreePeriod } from "@applyassistui/shared";
+import { isEntitled, isFreePeriod } from "@jobassistui/shared";
 import { requireOnboarded } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase/service";

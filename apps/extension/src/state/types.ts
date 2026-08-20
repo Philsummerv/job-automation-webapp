@@ -4,7 +4,7 @@
 // and the effects the controller executes — nothing here imports `chrome`, so
 // the reducer (state/machine.ts) is a pure function testable without a browser.
 
-import type { FormField } from "@applyassistui/automation/types";
+import type { FormField } from "@jobassistui/automation/types";
 
 // ── Status lifecycle ───────────────────────────────────────────────────────────
 // starting → scanning → filling → review → advancing ─┐

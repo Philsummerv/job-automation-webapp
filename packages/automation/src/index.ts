@@ -1,4 +1,4 @@
-// @applyassistui/automation — Guided-mode automation core (ported from the
+// @jobassistui/automation — Guided-mode automation core (ported from the
 // desktop app's automation/scout.js). Consumed by the Stage A console driver
 // now and the worker service (Stage B) later.
 

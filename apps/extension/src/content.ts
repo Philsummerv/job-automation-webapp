@@ -11,12 +11,12 @@
 // Fills use the user's answer template (synced from the web app; local editor is
 // the offline fallback), with intent-aware matching for options (scoreOption).
 
-import { collectFormQuestions } from "@applyassistui/automation/forms";
-import { buildIndeedSearchUrl, collectIndeedJobs } from "@applyassistui/automation/indeed-search";
-import { makeAutoFillAnswer } from "@applyassistui/automation/autofill";
-import { DEFAULT_CONFIG } from "@applyassistui/automation/config";
-import type { ScoutConfig } from "@applyassistui/automation/config";
-import type { FormField } from "@applyassistui/automation/types";
+import { collectFormQuestions } from "@jobassistui/automation/forms";
+import { buildIndeedSearchUrl, collectIndeedJobs } from "@jobassistui/automation/indeed-search";
+import { makeAutoFillAnswer } from "@jobassistui/automation/autofill";
+import { DEFAULT_CONFIG } from "@jobassistui/automation/config";
+import type { ScoutConfig } from "@jobassistui/automation/config";
+import type { FormField } from "@jobassistui/automation/types";
 import { sendToWorker as rawSendToWorker } from "./messages";
 import type { ContentBoundMsg, ResponseMap, WorkerBoundMsg } from "./messages";
 import { getItem, onChange, setItem } from "./storage";

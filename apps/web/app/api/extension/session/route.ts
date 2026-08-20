@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isEntitled, type Profile } from "@applyassistui/shared";
+import { isEntitled, type Profile } from "@jobassistui/shared";
 import { createClient } from "@/lib/supabase/server";
 import { isCompedEmail } from "@/lib/auth";
 

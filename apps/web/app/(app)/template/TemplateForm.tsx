@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TEMPLATE_FIELDS, type AnswerTemplate, type CustomRule } from "@applyassistui/shared";
+import { TEMPLATE_FIELDS, type AnswerTemplate, type CustomRule } from "@jobassistui/shared";
 import { saveTemplate } from "./actions";
 
 const INPUT =

@@ -1,4 +1,4 @@
--- ApplyAssistUI — M-B4: per-user answer template for the Guided extension.
+-- JobAssistUI — M-B4: per-user answer template for the Guided extension.
 -- Apply with the Supabase CLI (`supabase db push`) or paste into the SQL editor.
 
 -- The user's saved autofill template: standard field overrides + custom

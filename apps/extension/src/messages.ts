@@ -10,7 +10,7 @@
 // Wire messages carry NO timestamps — the controller stamps `at` when it turns a
 // message into a reducer Action, so the clock stays out of the protocol.
 
-import type { FormField } from "@applyassistui/automation/types";
+import type { FormField } from "@jobassistui/automation/types";
 import type { ContentCommand, JobMeta, ReviewDecision } from "./state/types";
 import type { AnswerTemplate, PendingActivity } from "./storage";
 

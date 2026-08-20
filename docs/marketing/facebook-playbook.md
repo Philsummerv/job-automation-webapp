@@ -51,14 +51,49 @@ Many will ask join questions like "are you currently claiming benefits?" Answer
 honestly and briefly. **Do not mention your website in the join questions** —
 that's an instant reject.
 
+## Day 1, before you close the tab — capture what you'll need
+
+Two things, both cheap now and expensive later.
+
+1. **Fill in `groups.md`** (next to this file) while each group's About page is
+   still open: member count, what the Rules tab says about promotion, and the
+   name of at least one admin. Day 4 and Day 5 both read off that table.
+2. **Look at your own profile the way a stranger will.** Your profile → the
+   three dots → **View As**. An admin vets you in about eight seconds: photo,
+   some ordinary history, not obviously an account made last week.
+
 ## Days 2–4 — Be a member, not a marketer
 
 This part is not optional, and it's where people skip ahead and get banned.
 
-- Read the group daily. Comment on 2–3 posts a day.
-- Answer questions you actually know: how work-search logging works, what counts
-  as an activity, what to keep as proof.
-- **Post no links. Mention your site zero times.**
+**Fifteen minutes a day, split in two passes** — one in the morning, one in the
+evening. These groups are busiest when people are certifying and when they get
+bad news, which is most of the day.
+
+**Comment on 2–3 posts a day.** What to answer:
+
+- Mechanics questions you genuinely know — what counts as an activity, whether
+  contacts count, what to keep as proof, how to record something.
+- Anything where the honest answer is "here's how I keep track of mine",
+  described in words, with no link.
+- **Say when you don't know**, and say it plainly. "I'd call the office on that
+  one, I don't want to guess about your money" earns more trust than an answer,
+  and it is the correct thing to say about somebody's benefits.
+
+What to stay out of:
+
+- Political threads and rants about the state agency. There is no version of
+  that where you come out ahead.
+- Arguments already in progress.
+- Anything where being right matters more to you than the person being helped.
+
+**Post no links. Mention your site zero times.** Not once, not in a comment, not
+in a DM to someone who seemed interested.
+
+**Save the recurring questions.** Facebook's Save feature, or paste them in a
+file. The questions that come up over and over are, in order: your canned
+answers, your FAQ page, and eventually your per-state SEO pages. Three days of
+reading these groups is the cheapest customer research you will ever do.
 
 Two reasons this matters. Group members can see you're a real participant. And
 Facebook's own spam detection treats "joined 4 hours ago, posted an external
@@ -114,6 +149,9 @@ Write it in your own words. The shape that works:
 >
 > Happy to answer anything about it.
 
+**Post on a weekday morning**, roughly 9–11am local. Weekend posts get buried
+under the certification-day traffic.
+
 Rules for the post itself:
 - **No graphics, no logo, no marketing formatting.** Plain text like a person
   typing. Anything that looks designed reads as an ad.
@@ -124,6 +162,11 @@ Rules for the post itself:
   a scam to get your info" is doing you a favor — answer them calmly and in
   public, and other readers trust you more than if nobody had asked.
 - Do not delete critical comments.
+
+**Stay on the post for the first hour.** Early comments decide whether Facebook
+shows it to anyone else, and a post the author abandoned reads as a drive-by ad.
+Answering three comments in the first hour is worth more than anything else you
+do that day.
 
 ## The reply play (works even where you can't post)
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import type { Profile } from "@applyassistui/shared";
+import type { Profile } from "@jobassistui/shared";
 import { createClient } from "@/lib/supabase/server";
 
 // The user's saved answer template, for the extension's same-origin bridge to

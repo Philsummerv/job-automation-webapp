@@ -5,7 +5,7 @@ import {
   isEntitled,
   isFreePeriod,
   type Profile,
-} from "@applyassistui/shared";
+} from "@jobassistui/shared";
 import { isCompedEmail, requireOnboarded } from "@/lib/auth";
 import { syncFromCustomer } from "@/lib/billing";
 import SubmitButton from "@/components/SubmitButton";

@@ -1,4 +1,4 @@
-import { FREE_UNTIL_LABEL, MONTHLY_PRICE, isFreePeriod } from "@applyassistui/shared";
+import { FREE_UNTIL_LABEL, MONTHLY_PRICE, isFreePeriod } from "@jobassistui/shared";
 
 // Site-wide announcement of the free launch period. Mounted in the root layout
 // so it covers the landing page, /login, the legal pages and the whole

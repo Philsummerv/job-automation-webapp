@@ -1,7 +1,7 @@
 // Contracts for the Guided automation core. Ported from the desktop app's
 // implicit shapes (automation/scout.js) and made explicit for the web stack.
 
-import type { GuidedActivityEvent } from "@applyassistui/shared";
+import type { GuidedActivityEvent } from "@jobassistui/shared";
 import type { BrowserProvider } from "./providers/types.js";
 import type { ScoutConfig } from "./config.js";
 

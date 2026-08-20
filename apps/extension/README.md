@@ -1,4 +1,4 @@
-# ApplyAssistUI extension POC
+# JobAssistUI extension POC
 
 Answers one question before committing Stage B to the extension architecture:
 **can a content script scan and fill Indeed's Easy-Apply form and advance the
@@ -22,7 +22,7 @@ after code changes.)
 
 1. Log into Indeed normally in your own Chrome.
 2. Open any **Easily apply** job posting → click **Apply**.
-3. The dark ApplyAssistUI panel appears top-right on every indeed.com page.
+3. The dark JobAssistUI panel appears top-right on every indeed.com page.
 4. On each form page: **Scan** (detected questions get outlined in blue and
    listed with proposed answers — edit any answer box; `#` picks an option;
    blank = skip) → **Fill** → check the ✓/✗ log → **Continue**.

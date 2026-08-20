@@ -15,7 +15,7 @@ import {
   US_STATES,
   type ActivityLogEntry,
   type Profile,
-} from "@applyassistui/shared";
+} from "@jobassistui/shared";
 
 export const runtime = "nodejs";
 

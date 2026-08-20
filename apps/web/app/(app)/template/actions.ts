@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { TEMPLATE_FIELDS, type AnswerTemplate, type CustomRule } from "@applyassistui/shared";
+import { TEMPLATE_FIELDS, type AnswerTemplate, type CustomRule } from "@jobassistui/shared";
 import { requireUser } from "@/lib/auth";
 
 // Persist the user's answer template to their profile (JSONB). Read back by the

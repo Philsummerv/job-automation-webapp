@@ -1,8 +1,8 @@
 // Minimal typed surface for Supabase. We hand-write the Database type instead of
 // generating it, so the schema stays legible and reviewable. Keep in sync with
-// migrations/*.sql. Row shapes are re-exported from @applyassistui/shared.
+// migrations/*.sql. Row shapes are re-exported from @jobassistui/shared.
 
-import type { Profile, ActivityLogEntry } from "@applyassistui/shared";
+import type { Profile, ActivityLogEntry } from "@jobassistui/shared";
 
 export type Database = {
   public: {
@@ -26,4 +26,4 @@ export type Database = {
   };
 };
 
-export type { Profile, ActivityLogEntry } from "@applyassistui/shared";
+export type { Profile, ActivityLogEntry } from "@jobassistui/shared";
