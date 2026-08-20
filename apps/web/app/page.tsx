@@ -124,24 +124,34 @@ export default function LandingPage() {
               Early beta
             </span>
             <h2 className="mt-4 text-xl font-semibold text-slate-900">
-              I built this because I&apos;m job searching too
+              I built this because I wanted to be sure about my own claim
             </h2>
             <div className="mt-3 space-y-3 text-sm leading-relaxed text-slate-700">
               <p>
-                I kept my work-search log in a spreadsheet and spent every
-                reporting week worried I&apos;d miscounted something and would
-                lose a payment over it. So I built the thing I wanted.
+                I&apos;ve been claiming unemployment in New York since March
+                2026. Every week you certify the same things: that you looked
+                for work, that you had no other income and no holiday pay, that
+                you were ready and able to take a job.
+              </p>
+              <p>
+                I never missed a week. I just spent a lot of time wanting to be{" "}
+                <em>100% sure</em> I hadn&apos;t — so I built something to keep
+                the record for me. You log each application or contact as you go,
+                see where you stand for the week, and print a clean copy of what
+                you did if you ever need one.
               </p>
               <p>
                 It&apos;s free for everyone until {FREE_UNTIL_LABEL} — no card,
                 no trial countdown, nothing to cancel. After that it&apos;s{" "}
-                {MONTHLY_PRICE}/month and you decide then.
+                {MONTHLY_PRICE}/month. I&apos;d rather people just use it through
+                the rest of the year and decide then.
               </p>
               <p>
-                It&apos;s also genuinely early. If something breaks, or the
-                export doesn&apos;t look how your state wants it, I want to hear
-                about it — there&apos;s a Feedback link inside the app, and it
-                comes straight to me.
+                It&apos;s early and I built it myself, so there will be things
+                wrong with it. If something breaks or reads wrong, tell me —
+                there&apos;s a Feedback link inside the app and it comes straight
+                to me. Mostly I hope it takes some of the anxiety out of staying
+                eligible while you&apos;re trying to find a job.
               </p>
             </div>
           </div>

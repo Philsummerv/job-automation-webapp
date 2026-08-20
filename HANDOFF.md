@@ -3,9 +3,10 @@
 > **STATUS 2026-08-20:** all three manual dashboard steps below are **DONE**
 > (Supabase migration `0004_feedback.sql` applied, `ADMIN_EMAILS` set in Vercel
 > + redeployed, Vercel Web Analytics enabled). **There is nothing left to build
-> or configure before users.** The remaining list is: verify the feedback loop
-> once on production, rewrite the "why I built this" block on the landing page
-> in the owner's own words, then post. The Facebook channel is written up
+> or configure before users.** The feedback loop is verified end-to-end on prod
+> (row on /admin *and* an email), and the "why I built this" block on the
+> landing page is now the owner's own story, dictated by him. **Nothing is left
+> but posting.** The Facebook channel is written up
 > step-by-step in **`docs/marketing/facebook-playbook.md`**.
 >
 > (A PC crash on the evening of 2026-08-19 ended that session mid-answer. It
@@ -44,6 +45,14 @@ in /terms).
 - Landing page: Beta badges, a first-person "why is this free / it's early"
   block before pricing, and a `mailto:` "Report a bug" link in the footer for
   people who cannot sign in.
+- **(2026-08-20) The landing "why is this free" block is now the owner's own
+  words** (New York, claiming since March 2026, never missed a week, wanted to
+  be 100% sure). Claude's placeholder invented a spreadsheet he never kept. One
+  thing from his dictation was deliberately NOT used: he said he wanted the
+  format to be "state compliant" — as public copy that promises a state accepts
+  the export, which is the exact claim softened out of the hero the day before.
+  It became "print a clean copy of what you did if you ever need one". Source
+  dictation is `Answered_four_questions.txt` (untracked, in the repo root).
 - **Copy claim softened**: the hero said "Export a report your state accepts"
   — that warrants something no one can warrant for 50 states, and it
   contradicted the footer disclaimer. Now "ready for your claim". Same fix in
