@@ -1,5 +1,17 @@
 # 👉 START HERE (2026-08-19) — beta framing + feedback inbox shipped; next job is MARKETING
 
+> **STATUS 2026-08-20:** all three manual dashboard steps below are **DONE**
+> (Supabase migration `0004_feedback.sql` applied, `ADMIN_EMAILS` set in Vercel
+> + redeployed, Vercel Web Analytics enabled). **There is nothing left to build
+> or configure before users.** The remaining list is: verify the feedback loop
+> once on production, rewrite the "why I built this" block on the landing page
+> in the owner's own words, then post. The Facebook channel is written up
+> step-by-step in **`docs/marketing/facebook-playbook.md`**.
+>
+> (A PC crash on the evening of 2026-08-19 ended that session mid-answer. It
+> cost nothing: `0563c1d` was already committed and pushed, and the playbook
+> that was lost with the chat is now the file named above.)
+
 ## What changed 2026-08-19
 
 The site now says **Beta** and there is finally a way for a user to report a
@@ -7,12 +19,22 @@ bug. Built because the marketing push was about to send people to a product
 with no feedback channel at all (the only contact was a personal Gmail buried
 in /terms).
 
-- **`packages/db/migrations/0004_feedback.sql` — MUST BE APPLIED TO SUPABASE
-  BY HAND** (SQL editor → paste → run). Until it is, the Feedback form errors
-  and tells the user to email instead. Nothing else breaks.
+- **`packages/db/migrations/0004_feedback.sql` — APPLIED to Supabase by hand
+  2026-08-20.** (It had to be pasted into the SQL editor; nothing applies
+  migrations automatically. If the Feedback form ever errors and tells the user
+  to email instead, this table is why.)
 - New `/feedback` page + server action under `(app)`. Gated on `requireUser`,
   **not** `requireEntitled` — someone locked out by the paywall or by a bug
   still needs to be able to report it.
+- **(2026-08-20) Feedback is now emailed to `SUPPORT_EMAIL` as it arrives**, not
+  just parked in the table. `apps/web/lib/notify.ts` POSTs to the Resend REST
+  API (raw `fetch`, no new dependency) and sets `reply_to` to the reporting
+  user, so hitting Reply answers them directly. Needs `RESEND_API_KEY` in
+  Vercel. **The table stays the source of truth**: `notifyFeedback` never
+  throws, times out after 5s, and runs *after* the insert commits, so a mail
+  outage costs an alert and never a report. Unset key = a `console.warn` in the
+  Vercel logs and no email; nothing user-visible breaks. It is `await`ed rather
+  than fired-and-forgotten because serverless freezes the function on return.
 - `components/BetaBar.tsx`: dismissible (localStorage `jaui.betaBarDismissed`)
   sky-blue bar in the authenticated shell with a report-a-bug link carrying
   `?from=<pathname>`. Distinct from `FreePeriodBanner`, which is a pricing
@@ -68,8 +90,9 @@ in /terms).
     to Gmail before it renders anything; at current volume it would be empty
     charts. Revisit once there are real users.
 - **Vercel Web Analytics** added (`@vercel/analytics` → `<Analytics />` in the
-  root layout). Cookieless, no banner needed. Turn it on in the Vercel
-  dashboard: project → **Analytics** tab → Enable, or it collects nothing.
+  root layout). Cookieless, no banner needed. **Enabled in the Vercel dashboard
+  2026-08-20** (project → **Analytics** tab → Enable) — it collects nothing
+  until that switch is on, so it was dead code until that date.
 
 **Marketing plan agreed 2026-08-19** (channels, in priority order): Facebook
 state unemployment groups first, then Reddit state subs (r/Unemployment, r/EDD
@@ -92,10 +115,11 @@ both pushed to `main`. Working tree is clean; nothing is half-finished in code.
 
 ---
 
-## ⚠️ ONE THING TO DO BEFORE `/admin` WORKS IN PRODUCTION
+## ✅ (DONE 2026-08-20) `ADMIN_EMAILS` — what made `/admin` work in production
 
-The admin dashboard is deployed but **fails closed** until you add its env var.
-Right now `/admin` returns 404 in production — including for you.
+The admin dashboard **fails closed** without this env var: with it unset,
+`/admin` returns 404 in production, including for the owner. It was set on
+2026-08-20. Kept here because a new Vercel environment needs it again.
 
 1. vercel.com → project `job-automation-webapp` → **Settings** → **Environment Variables**
 2. Key `ADMIN_EMAILS`, value `prs.educ01@gmail.com`
@@ -489,7 +513,7 @@ now and gather user feedback. Mechanics:
 | Email | Resend custom SMTP in Supabase; sender `login@jobassistui.com`. Fully authenticated as of 2026-08-08: SPF (`send.jobassistui.com` → amazonses.com), DKIM (`resend._domainkey`, aligned to the root From: domain), and DMARC (`_dmarc` → `v=DMARC1; p=none; rua=mailto:psommerville3@gmail.com`) all verified live via DNS. First post-DMARC send landed in the Gmail **inbox** |
 | Auth | **Typed email code only — no sign-in links anywhere.** Code length 6. Both the "Confirm signup" AND "Magic Link" templates in Supabase hold identical code-only bodies containing `{{ .Token }}` and no `{{ .ConfirmationURL }}` |
 | Stripe | LIVE mode: product JobAssistUI $12/mo, webhook `https://www.jobassistui.com/api/stripe/webhook` (4 events: checkout.session.completed + customer.subscription.created/updated/deleted), portal config saved. Secret key is a named key `vercel-production` (the original was expired after a copy mix-up) |
-| Vercel env (Production) | `STRIPE_SECRET_KEY` (sk_live), `STRIPE_PRICE_ID` (price_), `STRIPE_WEBHOOK_SECRET` (whsec_), `NEXT_PUBLIC_SITE_URL=https://www.jobassistui.com`, `COMPED_EMAILS=psommerville3@gmail.com,prs.educ01@gmail.com`, `ADMIN_EMAILS=prs.educ01@gmail.com`, plus the three Supabase vars |
+| Vercel env (Production) | `STRIPE_SECRET_KEY` (sk_live), `STRIPE_PRICE_ID` (price_), `STRIPE_WEBHOOK_SECRET` (whsec_), `NEXT_PUBLIC_SITE_URL=https://www.jobassistui.com`, `COMPED_EMAILS=psommerville3@gmail.com,prs.educ01@gmail.com`, `ADMIN_EMAILS=prs.educ01@gmail.com`, `RESEND_API_KEY` (re_, feedback email alerts — optional, feedback still saves without it), plus the three Supabase vars |
 | Supabase | Site URL + redirect allowlist include the www domain; rate limits raised for email |
 
 ## Launch-night gotchas worth remembering
