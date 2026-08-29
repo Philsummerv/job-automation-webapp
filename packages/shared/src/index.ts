@@ -320,3 +320,10 @@ export interface GuidedActivityEvent {
   /** Stage A: local screenshot file path; later: evidence-bucket path. */
   screenshotPath?: string | null;
 }
+
+// ─── Rules Assistant ────────────────────────────────────────────────────────
+// Jurisdiction directory, topic->lane table, and hand-checked state facts.
+// NOTE: this exports JURISDICTIONS separately rather than extending US_STATES —
+// US_STATES feeds the settings dropdown and the PDF export header, so adding
+// territories to it would silently change two shipped features.
+export * from "./rules";
