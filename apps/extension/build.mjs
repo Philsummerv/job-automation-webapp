@@ -1,7 +1,7 @@
 // Bundles the extension into dist/ (content scripts can't use ES modules, so
 // everything is bundled to IIFE). Load dist/ unpacked in chrome://extensions.
 import { build } from "esbuild";
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 
 // Type-check FIRST. esbuild strips types without checking them, so a type-only
@@ -15,6 +15,13 @@ try {
   process.exit(1);
 }
 
+// Wipe dist/ first. cpSync and esbuild both overwrite but neither removes, so
+// without this every file that has ever been in icons/ or every output that has
+// ever been emitted stays in dist/ forever. That is not theoretical: a stray
+// "icon128 - Copy.png" was deleted from icons/ on 2026-08-30 and was still
+// sitting in the Chrome Web Store zip afterwards, an unreferenced duplicate
+// about to be uploaded to Google.
+rmSync("dist", { recursive: true, force: true });
 mkdirSync("dist", { recursive: true });
 
 // Stamp the build time into the bundle so the panel can show which build a tab
