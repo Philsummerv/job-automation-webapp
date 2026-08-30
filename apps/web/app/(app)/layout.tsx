@@ -22,15 +22,20 @@ export default async function AppLayout({
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <div className="flex items-center gap-6">
+        {/* flex-wrap + gap-x, not plain justify-between. With seven nav links
+            and the signed-in email on one row, justify-between puts ZERO space
+            between the two groups the moment they fill the width — "Feedback"
+            ended up touching the email address. gap-x guarantees the gutter
+            even when the row is full, and wrapping handles narrow windows. */}
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-3 px-6 py-3">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
             <Link href="/dashboard" className="flex items-baseline gap-1.5">
               <span className="text-lg font-bold text-brand">JobAssistUI</span>
               <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
                 Beta
               </span>
             </Link>
-            <nav className="flex items-center gap-4 text-sm">
+            <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               <Link href="/dashboard" className="text-slate-600 hover:text-slate-900">
                 Activity Log
               </Link>
@@ -59,12 +64,16 @@ export default async function AppLayout({
               )}
             </nav>
           </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="hidden text-slate-500 sm:inline">{user.email}</span>
+          <div className="flex shrink-0 items-center gap-3 text-sm">
+            {/* max-w + truncate: a long address should shorten, never shove the
+                nav off the row or wrap "Sign out" onto two lines. */}
+            <span className="hidden max-w-[16rem] truncate text-slate-500 sm:inline">
+              {user.email}
+            </span>
             <form action="/auth/signout" method="post">
               <button
                 type="submit"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+                className="whitespace-nowrap rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
               >
                 Sign out
               </button>

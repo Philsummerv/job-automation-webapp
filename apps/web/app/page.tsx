@@ -65,8 +65,9 @@ export default function LandingPage() {
         <p className="mt-3 text-xs text-slate-500">
           {free ? (
             <>
-              Free for everyone until {FREE_UNTIL_LABEL} — no credit card
-              required. {MONTHLY_PRICE}/month starts {FREE_UNTIL_LABEL}.
+              Your job-search log is free forever — no credit card, ever. Guided
+              assist, the extension that fills the forms in for you, is free
+              until {FREE_UNTIL_LABEL}, then {MONTHLY_PRICE}/month.
             </>
           ) : (
             <>
@@ -177,10 +178,11 @@ export default function LandingPage() {
                 you did if you ever need one.
               </p>
               <p>
-                It&apos;s free for everyone until {FREE_UNTIL_LABEL} — no card,
-                no trial countdown, nothing to cancel. After that it&apos;s{" "}
-                {MONTHLY_PRICE}/month. I&apos;d rather people just use it through
-                the rest of the year and decide then.
+                The log itself is free, and it stays free — no card, no trial
+                countdown, nothing to cancel. If you want the extension that
+                fills the applications in for you, that part is free until{" "}
+                {FREE_UNTIL_LABEL} and {MONTHLY_PRICE}/month after. I&apos;d
+                rather people just use it and decide then.
               </p>
               <p>
                 It&apos;s early and I built it myself, so there will be things
