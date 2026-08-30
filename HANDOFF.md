@@ -1,4 +1,194 @@
-# 👉 START HERE (2026-08-30) — Guided assist WORKS; it is the paid feature now
+# ⏯️ RESUME HERE — everything is committed, nothing is deployed
+
+**Written 2026-08-30 ~03:00 after a long session. This block is self-contained:
+you should not need to remember anything or re-derive anything. Work top to
+bottom.**
+
+Git: branch `rules-assistant`, two commits (`c7e3984`, `5e2afe7`), **working
+tree clean, nothing pushed.** `main` is untouched, production is untouched.
+
+---
+
+## TASK 1 — Supabase email templates (5 minutes, unblocks nothing else but is quick)
+
+The live sign-in email is still the old one. The file is right; only you can
+update Supabase.
+
+1. Open `docs/email/otp-code.html`, select all, copy
+2. Supabase → project → **Authentication** → **Emails**
+3. Open **Magic link or OTP**
+4. Set the **subject** to exactly:
+   `{{ .Token }} is your JobAssistUI sign-in code`
+5. Replace the body with the file contents. Save.
+6. Open **Confirm sign up**. Same subject, same body. Save.
+7. Both. Supabase picks by account state; doing one strands half your users.
+
+The code now leads the subject and the body so it shows on an iPhone lock
+screen without opening Mail.
+
+---
+
+## TASK 2 — Deploy the web app (blocks Task 3)
+
+The Chrome listing points at `jobassistui.com/guided`. **That page only exists
+on this branch.** A reviewer clicking it today gets a 404.
+
+1. `git checkout main`
+2. `git merge rules-assistant`
+3. `git push`
+4. Vercel deploys automatically. Confirm `https://jobassistui.com/guided` loads.
+
+What goes live with it: the free-tracker pricing split, `/guided`, the homepage
+rewrite, the nav link, the login redirect fix, the Notes column on Guided logs.
+
+---
+
+## TASK 3 — Chrome Web Store submission
+
+**Where you got to:** the Privacy tab, partway down.
+
+### 3a. Fix this — it is currently wrong
+
+**"Are you using remote code?" is set to YES. Change it to
+"No, I am not using remote code."** Verified 2026-08-30: the bundle has no
+`eval`, no `new Function`, no `importScripts`, and no external script URLs.
+esbuild inlines everything. Answering Yes invites scrutiny you don't need.
+
+### 3b. Permission justifications — paste each verbatim
+
+**storage**
+```
+Stores the user's saved answer template locally so application fields can be filled without a network request for every field.
+```
+
+**tabs**
+```
+Detects when the user has opened a job application page so the extension panel can offer to fill that form.
+```
+
+**webNavigation**
+```
+Job applications are multi-step forms. This detects when a new step has finished rendering so the correct fields are read before filling.
+```
+
+**scripting**
+```
+Reads the fields of the job application form and fills them with the user's saved answers. Required because the form is hosted on indeed.com, not on a page we control.
+```
+
+**Host permission**
+```
+indeed.com is where the job application forms are; the extension reads those form fields and fills them with the user's saved answers. jobassistui.com is our own site, where the extension reads the signed-in user's saved answer template and records each submitted application to their activity log.
+```
+
+**Single purpose**
+```
+Fill job application forms with the user's saved answers and record submitted applications to the user's job-search log.
+```
+
+**Privacy policy URL**
+```
+https://www.jobassistui.com/privacy
+```
+
+### 3c. Data usage — tick exactly these four
+
+Personally identifiable information · Location · User activity · Website content
+
+Leave unticked: Health, Financial, Authentication, Personal communications.
+Then tick the three certification checkboxes at the bottom.
+
+### 3d. Screenshots — already done
+
+Two, at 1280×800, at
+`apps/extension/screenshots_ext/store/`:
+- `01-job-browser.png` — the job card and "Apply to this job"
+- `02-review-gate.png` — the review gate and "press Submit yourself". **This is
+  the important one** — it is the whole human-in-the-loop argument in one image.
+
+Twelve other screenshots were deleted: error states from bugs since fixed, or
+they showed your name, your address, or your bookmark bar.
+
+### 3e. Reviewer access — THE MOST LIKELY REJECTION, not yet solved
+
+A Google reviewer installs the extension and tries it. **It does nothing
+without a JobAssistUI login, and they cannot log in** — the 6-digit code is
+emailed to you, not them. They will see a dead extension and reject it.
+
+Fix, before submitting:
+
+1. Sign up at jobassistui.com with `jobassistui-review@mailinator.com`
+   (mailinator inboxes need no password — anyone with the address can read them)
+2. Fill that account's Answer Template with fake details
+3. Paste this into **Test instructions**:
+
+```
+This extension requires a free JobAssistUI account.
+
+Test account: jobassistui-review@mailinator.com
+
+Sign-in uses a 6-digit code sent by email. To get the code:
+1. Go to https://jobassistui.com and enter jobassistui-review@mailinator.com
+2. Open https://www.mailinator.com and search the inbox "jobassistui-review"
+3. The email arrives within a minute; the code is in the subject line
+
+Then:
+4. Open the Answer Template page (answers are already saved on this account)
+5. Go to indeed.com and open any job marked "Easy Apply"
+6. Click Apply, then click "Find jobs" in the JobAssistUI panel
+7. The panel fills the form. It stops at the submit step — you press Submit yourself.
+```
+
+### 3f. Package to upload
+
+`apps/extension/jobassistui-store.zip` — gitignored, so **regenerate it** rather
+than looking for it in a fresh clone:
+
+```
+cd apps/extension
+node build.mjs --store      # strips localhost from the manifest
+# then zip the CONTENTS of dist/ (not the folder itself)
+```
+
+Includes the icons. `node build.mjs` without `--store` keeps localhost for
+local development — don't upload that one.
+
+### 3g. Listing fields already filled
+
+Title and summary come from the package. Description, category
+(Workflow & Planning) and language were set. Store icon was picked up from
+`icons/icon128.png` automatically.
+
+### 3h. The decision you are holding
+
+Reviewers check whether an extension violates the target site's terms. **Indeed
+prohibits automating the apply process** — the *process*, not just the submit.
+The extension presses Apply and advances pages on its own.
+
+A fill-only version was built on 2026-08-29 (user clicks Apply, extension fills
+only, user advances) and **you rolled it back deliberately.** That is recorded,
+not re-argued. Know that it is the most likely flag, and a rejection restarts
+the review clock.
+
+---
+
+## What is NOT done and is not blocking the above
+
+- The `notes` default on Guided logs is committed but unverified — no Guided
+  application has successfully logged yet end to end. Worth checking after
+  Task 2 deploys.
+- `packages/db/migrations/0005_assistant.sql` is not applied to Supabase. Only
+  the Rules Assistant needs it, and that is admin-gated and dark.
+- **Revoke the Browserbase API key** in `packages/automation/.env`. It is live,
+  usage-billed, and sitting on disk. See `docs/services.md`.
+- Marketing has not moved: one DM to Sydnee Gerstel, no posts, `groups.md`
+  still empty. Drafts are ready in `docs/marketing/admin-dm-drafts.md` and
+  `post-drafts.md`. You can now truthfully say **"the tracker is free, forever,
+  no card"**, which you could not say yesterday.
+
+---
+
+# (2026-08-30) — Guided assist WORKS; it is the paid feature now
 
 **Read this block, then the 2026-08-29 one below for the Indeed-ToS findings,
 then 2026-08-20 for the rest.**
