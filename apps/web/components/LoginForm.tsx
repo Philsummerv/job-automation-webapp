@@ -4,9 +4,25 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
+/**
+ * Only ever send someone to a path on this site after signing in.
+ *
+ * `redirect` comes off the query string, and it ends up in
+ * `window.location.assign()`, so an unchecked value is an open redirect: a
+ * crafted `?redirect=//evil.com` or `?redirect=https://evil.com` would hand a
+ * freshly-authenticated user to somebody else's site. Require a single leading
+ * slash and reject protocol-relative `//host` and backslash variants.
+ */
+function safeRedirect(raw: string | null): string {
+  if (!raw) return "/dashboard";
+  if (!raw.startsWith("/")) return "/dashboard";
+  if (raw.startsWith("//") || raw.startsWith("/\\")) return "/dashboard";
+  return raw;
+}
+
 export default function LoginForm() {
   const params = useSearchParams();
-  const redirect = params.get("redirect") || "/dashboard";
+  const redirect = safeRedirect(params.get("redirect"));
   const linkFailed = params.get("error") === "auth";
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(

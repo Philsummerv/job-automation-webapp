@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireEntitled } from "@/lib/auth";
+import { requireOnboarded } from "@/lib/auth";
 import {
   groupByReportingPeriod,
   reportingPeriodKey,
@@ -15,7 +15,7 @@ export default async function DashboardPage({
 }: {
   searchParams: Promise<{ added?: string }>;
 }) {
-  const { supabase, profile } = await requireEntitled();
+  const { supabase, profile } = await requireOnboarded();
   const sp = await searchParams;
 
   const { data } = await supabase
@@ -76,6 +76,35 @@ export default async function DashboardPage({
           </Link>
         </div>
       </div>
+
+      {/* Guided assist pointer. Shown only on an empty log — a new user has no
+          idea the extension exists, and this is the one screen everybody lands
+          on. It disappears the moment they log anything, so it never nags
+          somebody who has already decided they don't want it. */}
+      {entries.length === 0 && (
+        <div className="mt-6 rounded-xl border border-sky-200 bg-sky-50 p-5">
+          <h2 className="text-sm font-semibold text-sky-900">
+            Applying on Indeed? Let it fill the forms for you.
+          </h2>
+          <p className="mt-2 text-sm text-sky-900">
+            Save your answers once and Guided assist drops them into Indeed
+            applications, then logs the application here automatically. You
+            still read every page and press submit yourself.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <Link
+              href="/guided"
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+            >
+              Set up Guided assist
+            </Link>
+            <span className="text-xs text-sky-800">
+              Chrome extension, on a computer. Everything else works on your
+              phone.
+            </span>
+          </div>
+        </div>
+      )}
 
       {sp.added && (
         <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">

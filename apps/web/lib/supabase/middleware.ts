@@ -49,6 +49,15 @@ export async function updateSession(request: NextRequest) {
 
   const path = request.nextUrl.pathname;
   // Segment-exact prefixes: "/log".startsWith would also capture "/login".
+  // Signed-out visitors hitting these get bounced to /login with ?redirect=,
+  // so they land back where they were headed after signing in. That matters
+  // most for /guided and /template, which are linked from the public landing
+  // page — without it, someone clicking "Get the Chrome extension" signs in
+  // and arrives on the dashboard wondering what happened.
+  //
+  // /assistant is deliberately NOT here: it gates with notFound() so a
+  // non-admin learns nothing about it existing, and a login bounce would leak
+  // that it does.
   const isAppRoute = [
     "/dashboard",
     "/log",
@@ -56,6 +65,9 @@ export async function updateSession(request: NextRequest) {
     "/export",
     "/billing",
     "/admin",
+    "/guided",
+    "/template",
+    "/feedback",
   ].some(
     (p) => path === p || path.startsWith(`${p}/`),
   );

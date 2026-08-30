@@ -102,16 +102,52 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
-          <div className="mx-auto mt-10 max-w-2xl rounded-xl border border-slate-200 bg-white p-6 text-center">
-            <h3 className="font-semibold text-slate-900">
-              Coming soon: Guided assist
+          {/* Guided assist, explained concretely. The old copy said "Guided
+              mode will streamline the form" without ever saying it is a Chrome
+              extension that works on Indeed — so nobody could tell what they
+              were being offered, or that it needs a computer. Say both. */}
+          <div className="mx-auto mt-10 max-w-2xl rounded-xl border border-slate-200 bg-white p-6">
+            <h3 className="text-center font-semibold text-slate-900">
+              Guided assist — early access
             </h3>
-            <p className="mt-2 text-sm text-slate-600">
-              When you&apos;re applying online, Guided mode will streamline the
-              form and capture your confirmation as evidence automatically —
-              but <strong>you stay in control and confirm every submission.</strong>{" "}
-              JobAssistUI never applies to anything without you present.
+            <p className="mt-2 text-center text-sm text-slate-600">
+              Fill in your answers once here. Then, when you&apos;re applying on
+              Indeed, they drop into the application form for you — so you
+              aren&apos;t retyping your address and work history for the
+              hundredth time.
             </p>
+
+            <div className="mt-5 space-y-2 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
+              <p>
+                <strong>How it works:</strong> it&apos;s a{" "}
+                <strong>Chrome extension</strong>. You install it once, open a
+                job on <strong>Indeed</strong>, and click Apply yourself. The
+                form comes up already filled in.
+              </p>
+              <p>
+                <strong>You submit it, not us.</strong> You read every page and
+                press the button. JobAssistUI never applies to anything without
+                you there, and never submits on your behalf.
+              </p>
+              <p>
+                <strong>Needs a computer.</strong> Chrome extensions don&apos;t
+                run on phones. Everything else here — logging activities,
+                tracking your week, exporting your record — works on any device.
+              </p>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <Link
+                href="/guided"
+                className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-dark"
+              >
+                Get the Chrome extension
+              </Link>
+              <span className="text-xs text-slate-500">
+                Free until {FREE_UNTIL_LABEL}, then {MONTHLY_PRICE}/month.
+                You&apos;ll sign in first.
+              </span>
+            </div>
           </div>
         </div>
       </section>
@@ -162,27 +198,32 @@ export default function LandingPage() {
       <section id="pricing" className="border-t border-slate-100">
         <div className="mx-auto max-w-md px-6 py-16 text-center">
           <h2 className="text-2xl font-semibold">
-            {free ? "Free right now" : "Simple pricing"}
+            The tracker is free. Always.
           </h2>
           <p className="mx-auto mt-3 max-w-sm text-sm text-slate-600">
-            Protect the benefits you rely on for less than a coffee a week. One
-            missed reporting week can cost you far more.
+            You&apos;re on unemployment. Paying to prove you looked for work is
+            the last thing you need, so logging your activities, tracking your
+            week and exporting your record don&apos;t cost anything and
+            won&apos;t start to.
           </p>
           <div className="mt-8 rounded-2xl border border-slate-200 p-8 shadow-sm">
             {free ? (
               <>
-                <div className="text-4xl font-bold">
-                  Free
-                  <span className="text-base font-normal text-slate-500">
-                    {" "}
-                    until {FREE_UNTIL_LABEL}
-                  </span>
-                </div>
+                <div className="text-4xl font-bold">Free</div>
                 <p className="mt-1 text-sm text-slate-600">
-                  No credit card required. Starting {FREE_UNTIL_LABEL} it&apos;s{" "}
-                  {MONTHLY_PRICE}/month — you&apos;ll be asked to subscribe then,
-                  and nothing is charged before that.
+                  No credit card, ever, for the tracker.
                 </p>
+                <div className="mt-5 border-t border-slate-200 pt-5 text-left text-sm text-slate-600">
+                  <p>
+                    <strong className="text-slate-900">
+                      Guided assist is the one paid part
+                    </strong>{" "}
+                    — the Chrome extension that fills Indeed applications for
+                    you. It&apos;s free for everyone until {FREE_UNTIL_LABEL},
+                    then {MONTHLY_PRICE}/month. Nothing is charged before that,
+                    and skipping it costs you nothing else.
+                  </p>
+                </div>
               </>
             ) : (
               <>
@@ -198,13 +239,16 @@ export default function LandingPage() {
               </>
             )}
             <ul className="mt-6 space-y-2 text-left text-sm text-slate-700">
-              <li>✓ Unlimited activity logging</li>
-              <li>✓ Weekly compliance tracking</li>
-              <li>✓ PDF &amp; CSV exports</li>
-              <li>✓ Evidence storage</li>
+              <li>✓ Unlimited activity logging <span className="text-slate-400">— free</span></li>
+              <li>✓ Weekly compliance tracking <span className="text-slate-400">— free</span></li>
+              <li>✓ PDF &amp; CSV exports <span className="text-slate-400">— free</span></li>
+              <li>✓ Evidence storage <span className="text-slate-400">— free</span></li>
               <li>
-                ✓ Guided application assist{" "}
-                <span className="text-slate-400">(coming soon)</span>
+                ✓ Guided application assist on Indeed{" "}
+                <span className="text-slate-400">
+                  — {MONTHLY_PRICE}/month from {FREE_UNTIL_LABEL}. Chrome
+                  extension, on a computer. Early access.
+                </span>
               </li>
             </ul>
             <Link

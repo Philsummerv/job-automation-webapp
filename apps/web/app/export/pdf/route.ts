@@ -6,7 +6,7 @@ import {
   type PDFFont,
   type PDFPage,
 } from "pdf-lib";
-import { requireEntitled } from "@/lib/auth";
+import { requireOnboarded } from "@/lib/auth";
 import { getPeriodEntries, periodRange } from "@/lib/export";
 import {
   formatPeriodRange,
@@ -194,7 +194,7 @@ async function buildPdf(
 }
 
 export async function GET(request: NextRequest) {
-  const { supabase, user, profile } = await requireEntitled();
+  const { supabase, user, profile } = await requireOnboarded();
   const period = request.nextUrl.searchParams.get("period");
   if (!period || !/^\d{4}-\d{2}-\d{2}$/.test(period)) {
     return NextResponse.json({ error: "Missing or invalid ?period" }, { status: 400 });

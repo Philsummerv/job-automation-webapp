@@ -18,26 +18,52 @@
 -->
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;padding:24px;color:#0f172a;line-height:1.6;font-size:15px;">
 
-  <p style="font-size:18px;font-weight:600;margin:0 0 16px;">Your JobAssistUI sign-in code</p>
+  <!--
+    THE CODE COMES FIRST, ON PURPOSE.
+
+    A phone's lock-screen notification shows the subject and then however much
+    of the body fits — on an iPhone that is roughly the first 100 characters.
+    This body used to open with "Someone asked to sign in to JobAssistUI — the
+    job-search log people use to document their weekly work-search
+    activities…", which is 180 characters of preamble, so the code was never
+    visible in the notification and the user had to open the mail app to read
+    six digits.
+
+    Leading with "Your sign-in code is 123456" also gives iOS what it needs to
+    recognise a one-time code and offer it in the keyboard's autofill bar.
+
+    Keep the code within the first line of body text. The explanation and the
+    security note still follow, so the message is not thin — that mattered for
+    spam scoring (see the note at the top of this file) — they just come after
+    the thing the reader actually opened the mail for.
+  -->
+  <p style="font-size:18px;font-weight:600;margin:0 0 8px;">Your sign-in code is {{ .Token }}</p>
+
+  <p style="font-size:30px;font-weight:700;letter-spacing:6px;font-family:ui-monospace,Menlo,Consolas,monospace;margin:16px 0;color:#0f172a;">{{ .Token }}</p>
+
+  <p style="margin:0 0 16px;">
+    The code works once and expires in about an hour. Type it into the box on the
+    page where you asked for it &mdash; there is nothing you need to click to
+    sign in.
+  </p>
 
   <p style="margin:0 0 16px;">
     Someone asked to sign in to JobAssistUI &mdash; the job-search log people use to
     document their weekly work-search activities for an unemployment claim.
-    Enter this code on the sign-in page to continue:
-  </p>
-
-  <p style="font-size:30px;font-weight:700;letter-spacing:6px;font-family:ui-monospace,Menlo,Consolas,monospace;margin:24px 0;color:#0f172a;">{{ .Token }}</p>
-
-  <p style="margin:0 0 16px;">
-    The code works once and expires in about an hour. Type it into the box on the
-    page where you asked for it &mdash; there is nothing in this email you need to
-    click.
   </p>
 
   <p style="margin:0 0 16px;">
     If you didn't ask to sign in, you can ignore this message and nothing will
-    happen: your account can't be opened without this code. If these keep arriving
-    and it isn't you, email <strong>prs.educ01@gmail.com</strong> and I'll look into it.
+    happen: your account can't be opened without this code.
+  </p>
+
+  <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e2e8f0;font-size:14px;color:#334155;">
+    <strong>You will also need this.</strong> Guided assist fills your saved
+    answers into Indeed applications, so you're not retyping your address and work
+    history every single time. You read every page and press submit yourself. It's
+    a Chrome extension, so you'll need a computer.<br>
+    <strong>Free until January 1, 2027.</strong><br>
+    <a href="https://www.jobassistui.com/guided" style="color:#2563eb;">Get it at jobassistui.com/guided</a>
   </p>
 
   <p style="margin:24px 0 0;padding-top:16px;border-top:1px solid #e2e8f0;font-size:13px;color:#64748b;">

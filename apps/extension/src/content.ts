@@ -80,12 +80,72 @@ const FORM_CONTROL_SEL =
   'input[type="number"], input[type="tel"], input[type="email"], [role="combobox"], [role="radiogroup"]';
 
 /**
+ * Is this control part of the APPLICATION, or is it site furniture?
+ *
+ * `hadControls` used to be a bare document query, which meant Indeed's own
+ * header search box — a plain input[type=text] — counted as an application
+ * control. On the commute-check step ("this job looks a little far from you")
+ * that page has zero questions and one search box, so the run refused to step
+ * past it and stalled with "found form controls but couldn't read any
+ * questions". Our own review-gate inputs had the same problem.
+ *
+ * Excluded: our panel, anything in the page header/nav/search landmarks, and
+ * inputs whose id or name marks them as Indeed's job search.
+ */
+function isApplicationControl(el: Element): boolean {
+  if (el.closest("[data-aaui-ignore]")) return false;
+  if (el.closest('header, nav, [role="search"], [role="banner"], [role="navigation"]')) {
+    return false;
+  }
+  const ident = `${el.id} ${(el as HTMLInputElement).name || ""}`.toLowerCase();
+  if (/search|text-input-what|text-input-where/.test(ident)) return false;
+  if ((el as HTMLInputElement).type === "search") return false;
+  return true;
+}
+
+/**
+ * Is this scraped question part of the employer's application, or is it
+ * Indeed's own marketing?
+ *
+ * The final review page has no application questions on it — its only control
+ * is the "Get email updates for the latest <job> jobs in <city>" opt-in. The
+ * scraper reported that as a question needing an answer, so the review gate
+ * opened on the submit page asking the user about a newsletter.
+ *
+ * These are never auto-answered either way: opting somebody into marketing on
+ * their behalf is not ours to do. They are simply not treated as part of the
+ * application, so the page reads as "nothing to fill here". The checkbox is
+ * still on the page in its default state if the user wants it.
+ */
+function isRealApplicationQuestion(q: { text: string }): boolean {
+  const t = (q.text || "").toLowerCase();
+  if (/get email updates|email updates for the latest|create a job alert|job alerts?\b/.test(t)) {
+    return false;
+  }
+  if (/receiving (calls|texts|messages) from employers/.test(t)) return false;
+  return true;
+}
+
+/** First control on the page that actually belongs to the application, if any. */
+function findApplicationControl(): Element | null {
+  return (
+    Array.from(document.querySelectorAll(FORM_CONTROL_SEL)).find(
+      isApplicationControl,
+    ) ?? null
+  );
+}
+
+/**
  * What the page looks like to the scraper when it comes back empty. Logged so a
  * failed scan says WHY: "5 radios, 0 questions" is a parser bug, everything at
  * zero is just an empty page. Without this the panel's only clue was the count.
  */
 function domSummary(): string {
-  const n = (sel: string) => document.querySelectorAll(sel).length;
+  // Counts only application controls, for the same reason hadControls does —
+  // otherwise the summary reports Indeed's search box as "text:1" and sends
+  // whoever is debugging looking for a form field that was never there.
+  const n = (sel: string) =>
+    Array.from(document.querySelectorAll(sel)).filter(isApplicationControl).length;
   return `labels:${n("label")} radios:${n('input[type="radio"]')} checks:${n('input[type="checkbox"]')}` +
     ` fieldsets:${n("fieldset")} selects:${n("select")} text:${n('input[type="text"], textarea')}` +
     ` combos:${n('[role="combobox"]')} iframes:${n("iframe")}`;
@@ -224,14 +284,16 @@ function init() {
     "box-shadow:0 8px 30px rgba(0,0,0,.45)",
   ].join(";");
   panel.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+    <div id="aaui-head" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;cursor:move;user-select:none">
       <strong style="font-size:13px">JobAssistUI</strong>
       <span style="display:flex;gap:8px;align-items:center">
         <button id="aaui-template" title="Edit answer template" style="border:0;background:transparent;color:#e2e8f0;cursor:pointer;font-size:14px;padding:0">⚙ Template</button>
         <button id="aaui-resume" title="Choose the resume to attach on applications" style="border:0;background:transparent;color:#e2e8f0;cursor:pointer;font-size:14px;padding:0">📄 Resume</button>
-        <span style="opacity:.6">${isTop ? "top frame" : "iframe"}</span>
+        <span style="opacity:.6" title="Build this tab is running. If it doesn't match your latest build, reload the extension AND reload the page — reloading the extension alone leaves open tabs on the old content script.">${isTop ? "top" : "iframe"} · ${__BUILD_TIME__}</span>
+        <button id="aaui-min" title="Minimize" style="border:0;background:transparent;color:#e2e8f0;cursor:pointer;font-size:16px;line-height:1;padding:0 2px">–</button>
       </span>
     </div>
+    <div id="aaui-body">
     <div style="display:flex;gap:6px;margin-bottom:6px">
       <button id="aaui-find" style="flex:1;padding:12px 8px;font-size:14px;font-weight:600;border:0;border-radius:6px;background:#7c3aed;color:#fff;cursor:pointer">🔎 Find jobs</button>
     </div>
@@ -241,8 +303,109 @@ function init() {
     </div>
     <div id="aaui-review"></div>
     <div id="aaui-log" style="margin-top:8px;border-top:1px solid #334155;padding-top:6px;opacity:.85"></div>
+    </div>
   `;
   document.documentElement.appendChild(panel);
+
+  // ─── Minimize ─────────────────────────────────────────────────────────────
+  // The panel is fixed to the top-right and covers Indeed's own controls on
+  // narrower windows. Collapsing hides the body and shrinks the panel to its
+  // title bar; the run keeps going underneath, so minimizing mid-application is
+  // safe. The choice is remembered per tab (sessionStorage, not chrome.storage)
+  // because it is a "get out of my way right now" preference, not a setting.
+  const bodyEl = panel.querySelector("#aaui-body") as HTMLElement;
+  const minBtn = panel.querySelector("#aaui-min") as HTMLButtonElement;
+  const MIN_KEY = "aaui.minimized";
+
+  const setMinimized = (min: boolean) => {
+    bodyEl.style.display = min ? "none" : "";
+    panel.style.width = min ? "auto" : "340px";
+    panel.style.maxHeight = min ? "none" : "80vh";
+    panel.style.overflow = min ? "visible" : "auto";
+    minBtn.textContent = min ? "+" : "–";
+    minBtn.title = min ? "Expand" : "Minimize";
+    try {
+      sessionStorage.setItem(MIN_KEY, min ? "1" : "0");
+    } catch {
+      // Storage blocked — the toggle still works, it just won't persist.
+    }
+  };
+
+  minBtn.addEventListener("click", () =>
+    setMinimized(bodyEl.style.display !== "none"),
+  );
+
+  try {
+    if (sessionStorage.getItem(MIN_KEY) === "1") setMinimized(true);
+  } catch {
+    /* non-fatal */
+  }
+
+  // ─── Drag ─────────────────────────────────────────────────────────────────
+  // Drag by the title bar. The panel is pinned top-right by default, which sits
+  // on top of Indeed's own controls on narrower windows — minimizing helps, but
+  // sometimes you need to see what's underneath while still using the panel.
+  //
+  // Dragging switches the panel from right/top anchoring to left/top, because
+  // you cannot meaningfully drag something anchored to the right edge. Position
+  // is clamped so it can never be dropped off-screen and lost, and remembered
+  // per tab like the minimize state.
+  const headEl = panel.querySelector("#aaui-head") as HTMLElement;
+  const POS_KEY = "aaui.pos";
+
+  const placeAt = (left: number, top: number) => {
+    const maxLeft = Math.max(0, window.innerWidth - panel.offsetWidth);
+    const maxTop = Math.max(0, window.innerHeight - 40); // keep the title bar reachable
+    const l = Math.min(Math.max(0, left), maxLeft);
+    const t = Math.min(Math.max(0, top), maxTop);
+    panel.style.left = `${l}px`;
+    panel.style.top = `${t}px`;
+    panel.style.right = "auto";
+    try {
+      sessionStorage.setItem(POS_KEY, JSON.stringify({ l, t }));
+    } catch {
+      /* non-fatal */
+    }
+  };
+
+  let dragOffX = 0;
+  let dragOffY = 0;
+
+  const onDragMove = (e: MouseEvent) => {
+    e.preventDefault();
+    placeAt(e.clientX - dragOffX, e.clientY - dragOffY);
+  };
+
+  const onDragEnd = () => {
+    document.removeEventListener("mousemove", onDragMove);
+    document.removeEventListener("mouseup", onDragEnd);
+  };
+
+  headEl.addEventListener("mousedown", (e) => {
+    // Let the header's own buttons work — only bare header area starts a drag.
+    if ((e.target as HTMLElement).closest("button")) return;
+    const r = panel.getBoundingClientRect();
+    dragOffX = e.clientX - r.left;
+    dragOffY = e.clientY - r.top;
+    document.addEventListener("mousemove", onDragMove);
+    document.addEventListener("mouseup", onDragEnd);
+    e.preventDefault();
+  });
+
+  try {
+    const saved = sessionStorage.getItem(POS_KEY);
+    if (saved) {
+      const { l, t } = JSON.parse(saved) as { l: number; t: number };
+      placeAt(l, t);
+    }
+  } catch {
+    /* no saved position, or storage blocked — leave it pinned top-right */
+  }
+
+  // A window resize can leave a dragged panel off-screen. Pull it back.
+  window.addEventListener("resize", () => {
+    if (panel.style.left) placeAt(parseInt(panel.style.left, 10), parseInt(panel.style.top, 10));
+  });
 
   const logEl = panel.querySelector("#aaui-log") as HTMLElement;
   const reviewEl = panel.querySelector("#aaui-review") as HTMLElement;
@@ -275,14 +438,14 @@ function init() {
    * being asked" — two very different situations for the caller.
    */
   async function scanWhenReady(): Promise<{ found: FormField[]; hadControls: boolean }> {
-    const hadControls = !!(await waitFor(() => document.querySelector(FORM_CONTROL_SEL), 2500));
+    const hadControls = !!(await waitFor(() => findApplicationControl(), 2500));
     if (!hadControls) {
       questions = [];
       log("scanned: 0 question(s) — no form controls on this page");
       return { found: [], hadControls: false };
     }
     const found = await waitFor(() => {
-      const qs = collectFormQuestions();
+      const qs = collectFormQuestions().filter(isRealApplicationQuestion);
       return qs.length ? qs : null;
     }, 6000, 250);
     questions = found ?? [];
@@ -343,6 +506,48 @@ function init() {
 
   function stopBusy(): void {
     if (busyTimer) { clearInterval(busyTimer); busyTimer = null; }
+  }
+
+  function hideBusy(): void {
+    stopBusy();
+    reviewEl.innerHTML = "";
+  }
+
+  /**
+   * The gate between "I picked this job" and "start filling it in".
+   *
+   * Choosing a job in the browser is a decision about the listing. Filling and
+   * advancing an application is a different decision, and the run used to make
+   * it automatically — by the time the panel was readable it had already
+   * answered questions and clicked Continue twice. Nothing touches the form
+   * until this is confirmed.
+   */
+  function renderStartConfirm(job: JobMeta): void {
+    reviewEl.innerHTML = "";
+    reviewEl.appendChild(hHeader(
+      "Ready when you are",
+      "Nothing has been filled in or clicked yet.",
+    ));
+
+    const card = mkEl(
+      "div",
+      "margin:6px 0;padding:12px;background:#1e293b;border-radius:6px;display:flex;flex-direction:column;gap:4px",
+    );
+    card.appendChild(mkEl("div", "font-weight:700;font-size:15px;line-height:1.3", job.title || "This application"));
+    if (job.company) card.appendChild(mkEl("div", "font-size:13px;opacity:.9", job.company));
+    reviewEl.appendChild(card);
+
+    const row = mkEl("div", "display:flex;flex-direction:column;gap:6px;margin-top:6px");
+    row.appendChild(makePrimary(mkBtn("Fill this application", "#059669", () => {
+      log("starting — you confirmed this one");
+      void startRun();
+    })));
+    row.appendChild(makePrimary(mkBtn("Not this one — go back", "#475569", () => {
+      hideBusy();
+      log("skipped — nothing was filled in");
+      history.back();
+    })));
+    reviewEl.appendChild(row);
   }
 
   /** Replace the spinner with a reason it stopped, so a stall is never silent. */
@@ -589,14 +794,50 @@ function init() {
     picker.click();
   }
 
-  /** Click the visible Continue/Submit button. Returns whether one was found. */
-  function advancePage(): boolean {
-    const btn = findAdvanceDom();
+  /**
+   * Click the visible Continue button. Returns whether one was found.
+   *
+   * NEVER clicks a button that submits. On 2026-08-29 this function pressed
+   * "Submit your application" and sent a real application to a real employer:
+   * the submit guard lived only in the review gate's auto-advance timer, and
+   * this path walked around it. The guard belongs HERE, at the single place a
+   * click happens, so no caller can bypass it however the run got here.
+   *
+   * Advancing a form page is reversible. Sending an application is not, and
+   * Terms §2 promises the user confirms every submission themselves. That
+   * promise is only true if this function refuses.
+   */
+  async function advancePage(): Promise<boolean> {
+    // Wait for the button, don't just look once. Clicking Continue navigates to
+    // the next step, and that step renders asynchronously — asking for its
+    // button the instant the fill pass finishes reliably found nothing and the
+    // run died with "no visible Continue/Submit button found" while a large
+    // blue "Submit your application" sat on screen. scanWhenReady already
+    // retries for the same reason; this is the same wait on the other half.
+    const btn = await waitFor(() => findAdvanceDom(), 6000, 250);
     if (!btn) {
       log("no visible Continue/Submit button found", false);
       return false;
     }
-    log(`clicking "${(btn.textContent || "").trim().slice(0, 40)}"`);
+
+    // Breathe before clicking. Filling a page and pressing Continue in the same
+    // instant is faster than any person and Indeed noticed: a run on
+    // 2026-08-29 reached 100% and got "Something went wrong — our systems are
+    // having some trouble". Their backend is rate-limiting or racing its own
+    // validation. A short pause costs the user a second per page and keeps the
+    // application from failing at the end.
+    await sleep(PACE_MS);
+
+    const label = (btn.textContent || "").trim();
+    if (/\b(submit|send)\b/i.test(label)) {
+      log(
+        `all filled in — read it over and press “${label.slice(0, 40)}” yourself. I don't send applications for you.`,
+        true,
+      );
+      return false;
+    }
+
+    log(`clicking "${label.slice(0, 40)}"`);
     btn.click();
     return true;
   }
@@ -1072,8 +1313,13 @@ function init() {
         () => document.querySelector('input[type="radio"], input[type="checkbox"], select, textarea, input[type="text"]'),
         8000,
       );
-      log("starting the application automatically");
-      await startRun();
+      // Confirm before touching the form. Picking a job in the browser said
+      // "this one looks interesting"; it did not say "start filling it in".
+      // The run used to begin here on its own, so by the time the panel was
+      // readable it had already answered questions and clicked Continue twice.
+      // Now the application sits untouched until the user says go.
+      hideBusy();
+      renderStartConfirm(captureJobMeta());
       return;
     }
 
@@ -1149,13 +1395,28 @@ function init() {
         for (let hop = 0; !found.length && !hadControls && hop < 4 && isApplyContext(); hop++) {
           const next = findAdvanceDom();
           if (!next) break; // nothing to advance with — genuinely the end
+
+          // Same rule as advancePage(): never press a button that submits.
+          // Indeed's LAST step is usually a review page with no questions on it
+          // and a "Submit your application" button — exactly the shape this
+          // hop loop is built to step past, which is how a real application got
+          // sent on 2026-08-29. A page with no questions is safe to skip only
+          // when skipping it does not submit.
+          const nextLabel = (next.innerText || "").trim();
+          if (/\b(submit|send)\b/i.test(nextLabel)) {
+            log(
+              `all filled in — read it over and press “${nextLabel.slice(0, 40)}” yourself. I don't send applications for you.`,
+              true,
+            );
+            break;
+          }
           // Each step costs a click plus a render. Tell the controller we're
           // still working or its no-form window closes mid-step and everything
           // we report afterwards is discarded.
           sendToWorker({ type: "scan-progress", runId: msg.runId });
           log(`no questions here — ${(next.innerText || "continuing").trim().slice(0, 24)}`);
           next.click();
-          await sleep(1000);
+          await sleep(PACE_MS);
           ({ found, hadControls } = await scanWhenReady());
         }
         // Report job identity from EVERY page, form or not. The step naming the
@@ -1213,9 +1474,16 @@ function init() {
         return false;
       }
       case "advance": {
-        const ok = advancePage();
-        if (!ok) sendToWorker({ type: "run-error", runId: msg.runId, reason: "no advance button" });
-        sendResponse({ ok });
+        // advancePage now waits for the button to render, so this has to be
+        // async. Reply immediately and report the outcome to the worker when it
+        // resolves — returning true here would hold the port open for up to the
+        // full retry window.
+        sendResponse({ ok: true });
+        void advancePage().then((ok) => {
+          if (!ok) {
+            sendToWorker({ type: "run-error", runId: msg.runId, reason: "no advance button" });
+          }
+        });
         return false;
       }
     }
@@ -1887,6 +2155,16 @@ function findIndeedApplyDom(): HTMLElement | null {
 // say Continue / Review / Submit, while "Apply with Indeed" is the button that
 // STARTS an application. Matching it meant a stray scan could begin applying to
 // whatever job was on screen.
+/**
+ * Pause between finishing a page and clicking Continue.
+ *
+ * The assist fills a form far faster than a person can, and Indeed's backend
+ * reacts badly to it: a run on 2026-08-29 sailed to 100% and then returned
+ * "Something went wrong — our systems are having some trouble." Pacing the
+ * clicks costs about a second per page and makes the run finish.
+ */
+const PACE_MS = 1500;
+
 const POSITIVE_RE = /\b(review|continue|submit|next|proceed|advance|finish|send)\b/i;
 const NEGATIVE_RE = /\b(back|cancel|withdraw|close|skip|dismiss|report|feedback|help|sign in|sign out|log in|log out|delete|remove|edit|undo)\b/i;
 
@@ -1904,8 +2182,16 @@ function findAdvanceDom(): HTMLElement | null {
   for (const el of document.querySelectorAll<HTMLElement>('button[data-testid="continue-button"]')) {
     if (isVisibleEnabled(el)) return el;
   }
+  // Anchors count, not just buttons. Indeed's commute-check step ("this job
+  // looks a little far from you") renders its "Continue applying" action as an
+  // <a>, so a button-only query found nothing and the run stalled on that page
+  // with "no visible Continue/Submit button found".
+  //
+  // Widening is safe because POSITIVE_RE/NEGATIVE_RE still gate every
+  // candidate: the "Return to job search" link sitting directly underneath
+  // matches neither, so it is never a candidate.
   let best: { el: HTMLElement; score: number } | null = null;
-  for (const el of document.querySelectorAll<HTMLElement>('button, [role="button"]')) {
+  for (const el of document.querySelectorAll<HTMLElement>('button, [role="button"], a')) {
     if (!isVisibleEnabled(el)) continue;
     const text = (el.innerText || el.getAttribute("aria-label") || "").trim();
     if (!text || text.length >= 80 || NEGATIVE_RE.test(text) || !POSITIVE_RE.test(text)) continue;

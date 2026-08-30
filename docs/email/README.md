@@ -23,8 +23,21 @@ Supabase → Authentication → Emails. Paste `otp-code.html` into **both**:
 
 | Template | Subject |
 | --- | --- |
-| Confirm signup | `Your JobAssistUI sign-in code` |
-| Magic Link | `Your JobAssistUI sign-in code` |
+| Confirm signup | `{{ .Token }} is your JobAssistUI sign-in code` |
+| Magic Link | `{{ .Token }} is your JobAssistUI sign-in code` |
+
+
+### Why the subject starts with the code
+
+A phone notification shows the subject first and truncates it. `{{ .Token }} is
+your JobAssistUI sign-in code` puts the six digits where they survive
+truncation, so the code is readable on the lock screen without opening the mail
+app. Putting the code at the END of the subject defeats the whole point — that
+half is what gets cut.
+
+The body leads with the code for the same reason: iOS shows roughly the first
+100 characters of body text under the subject, and it also lets iOS recognise a
+one-time code and offer it in the keyboard's autofill bar.
 
 Supabase chooses between them by account state (new address vs. existing user),
 so both must carry the same body or half of all users get the wrong experience.

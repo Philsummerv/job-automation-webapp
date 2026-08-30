@@ -1,4 +1,314 @@
-# 👉 START HERE (2026-08-20) — shipping is done; the job is now POSTING
+# 👉 START HERE (2026-08-30) — Guided assist WORKS; it is the paid feature now
+
+**Read this block, then the 2026-08-29 one below for the Indeed-ToS findings,
+then 2026-08-20 for the rest.**
+
+## The headline: the extension works
+
+Verified live on Indeed the night of 2026-08-29. It scans the form, fills it,
+advances through the steps, and completes an application. The `86ee728` fix that
+sat untested for three weeks holds. **This is no longer an unknown.**
+
+Five real bugs were found and fixed in that session:
+
+1. **It submitted a real application to a real employer without asking.** The
+   submit guard lived only in the review gate's auto-advance timer; two other
+   paths (`advancePage()` and the question-less-page hop loop) clicked around
+   it, and Indeed's final review page is exactly the question-less-page-with-a-
+   Submit-button shape the hop loop exists to skip. **The guard now lives at the
+   click site in both paths**, so no future caller can bypass it. This
+   contradicted Terms §2, the landing copy and the store listing until it was
+   fixed — treat it as the most important thing in this file.
+2. **`hadControls` counted Indeed's own header search box.** A bare
+   `document.querySelector` for `input[type=text]` meant the commute-check step
+   ("this job looks a little far from you") looked like "has controls, no
+   questions", which the hop loop refuses to click through. Now filtered by
+   `isApplicationControl()` — excludes our own panel, header/nav/search
+   landmarks, and search-named inputs.
+3. **`findAdvanceDom` only matched `button` and `[role=button]`.** Indeed
+   renders "Continue applying" as an `<a>`. Anchors are now candidates;
+   POSITIVE_RE/NEGATIVE_RE still gate them, so "Return to job search" is never
+   picked.
+4. **`advancePage` looked for the button once.** The next step renders
+   asynchronously, so it reported "no visible Continue/Submit button found"
+   with a large blue Submit on screen. Now waits up to 6s, like
+   `scanWhenReady` already did.
+5. **Indeed's marketing checkboxes were scanned as application questions.** The
+   review gate opened on the submit page asking about a newsletter. Filtered by
+   `isRealApplicationQuestion()`. Never auto-answered either way — opting
+   someone into marketing is not ours to do.
+
+Also added: a **confirm step** before filling (picking a job and starting to
+fill it are two decisions; it used to make the second one itself), **pacing**
+(`PACE_MS = 1500` — filling and clicking in the same instant got "Something went
+wrong" from Indeed at 100%), and panel **minimize + drag**.
+
+### The build stamp — read this before debugging anything
+
+The panel header shows the build time it is running, e.g. `top · 00:13:31`.
+**Reloading the extension does NOT re-inject content scripts into already-open
+tabs.** That cost two debugging rounds before anyone noticed the tab was stale.
+If the stamp doesn't match your last build: reload the extension, **close the
+tab**, and open a fresh one. Nothing you observe on a stale tab is real.
+
+## Pricing changed: the tracker is free forever, Guided is the paid feature
+
+Owner's decision. Logging, dashboard, weekly tracking and both exports moved to
+`requireOnboarded` — free permanently. `/template` and `/guided` keep
+`requireEntitled`. No cutover to run: `isEntitled()` returns true until
+`FREE_UNTIL` (2027-01-01) and the gate closes by itself.
+
+You can now truthfully say **"the tracker is free, forever, no card"** in a
+Facebook group. That is a materially better sentence than "free until January".
+
+**Recorded risk:** this stakes all revenue on the least certain feature —
+ToS-sensitive, desktop-only, not yet in the Chrome Web Store. `docs/roadmap.md`
+floats per-state requirement data and audit mode as alternative paid tiers that
+work on a phone.
+
+## What is built and NOT yet live
+
+- `/guided` install page, extension zip, nav link, dashboard card, template
+  next-step card, homepage rewritten to "early access"
+- Chrome Web Store package: `apps/extension/jobassistui-store.zip` (icons
+  included, localhost stripped via `node build.mjs --store`). **Not submitted.**
+  Listing copy, permission justifications and test instructions are drafted —
+  search this conversation or rewrite from `docs/services.md`.
+- **Blocked on screenshots**, which need the extension running — now possible.
+- `docs/email/otp-code.html` rewritten: code first so it shows in an iPhone
+  lock-screen notification, Guided link under "You will also need this".
+  **NOT pasted into Supabase yet — that is a manual step and the live email is
+  still the old one.** Subject must become
+  `{{ .Token }} is your JobAssistUI sign-in code` in BOTH templates.
+- `docs/services.md` — every third-party account, what it does, what it costs.
+  Includes two ⚠️: a live Browserbase API key sitting in
+  `packages/automation/.env`, and the 2Captcha account that should be closed.
+
+## Everything from 2026-08-29/30 is UNCOMMITTED
+
+Branch `rules-assistant` holds one commit (the Rules Assistant). Everything
+else — the paywall split, `/guided`, the extension fixes, the email template,
+`docs/services.md` — is loose in the working tree. **Nothing is deployed.**
+
+## The thing that still has not moved
+
+One DM sent to Sydnee Gerstel. No posts. No users. `docs/marketing/groups.md`
+still empty. Every hour of 2026-08-29 went into product, and none of it into
+distribution. The product is not the bottleneck.
+
+---
+
+# (2026-08-29) — the marketing has not actually started yet
+
+**Read this block, then the 2026-08-20 block below it for the rest of the state.**
+
+## Where things really are, Saturday 2026-08-29
+
+Nine days after joining the groups, **`docs/marketing/groups.md` is still
+completely empty** — no group names, no admin names, nothing in the post log.
+No posts have gone out. The Aug 24–28 posting week in `campaign.md` did not
+happen. That is the honest baseline; the dates in the table further down are the
+plan, not the record.
+
+**The owner has decided not to fill in the group tracker.** His words: *"I am
+not going to fill in the table i am just going to keep commenting or posting."*
+That is fine and does not need re-arguing. The one thing that still has to
+happen per-group is checking that group's Rules tab **before posting a link**,
+because a link in a group that bans them is a removal and cannot be undone.
+
+### THE IMMEDIATE NEXT ACTION: send the message to Sydnee
+
+First group researched today (2026-08-29), live from the browser:
+
+| | |
+|---|---|
+| Group | **New York Unemployment/Updates And Help** |
+| URL | `facebook.com/groups/2722401454671089` |
+| Members | 4,693 (+13 last week) |
+| Admin | **Sydnee Gerstel — the only one** |
+| Promo? | **`no`** — Rule 4: *"Self-promotion, spam and irrelevant links aren't allowed."* |
+| Owner's status | Joined. **2 comments sitting in "Pending admin approval."** |
+
+Three things that follow from that:
+
+- **This group pre-moderates.** The owner's warm-up comments are invisible until
+  Sydnee approves them. She is the bottleneck for everything here, which makes
+  messaging her the highest-value move rather than an optional one.
+- **Never post a link here without her yes.** Rule 4 is explicit.
+- **Almost nobody comments.** ~1,600 posts last month against 29 comments. 42
+  posts today, 2 comments. Someone who actually answers questions will stand out
+  immediately — the reply play is unusually strong in this group.
+
+**A draft DM to Sydnee was written and is awaiting the owner's review. It was
+NOT sent.** It is in the conversation, not yet in a file. Its shape, if it needs
+rewriting: name Rule 4 in the first two lines (that is the whole trick — it
+proves he read the rules and chose to ask), lead with being on unemployment
+himself rather than with the product, say plainly that it is free with no card
+and no income until January, include **no link**, and end by making "no" easy
+and promising to keep helping in the comments either way.
+
+### Broken, needs one command to fix
+
+`docs/marketing/facebook-playbook.md` — the admin DM template (6 lines, around
+line 108) was accidentally overwritten in the editor and now reads just `5.`.
+The original is intact in git: `git diff docs/marketing/facebook-playbook.md`
+shows it, `git checkout -- docs/marketing/facebook-playbook.md` restores it —
+**but that would also discard any other edits to that file**, so check the diff
+first.
+
+### THE BIG FINDING 2026-08-29: Guided assist cannot be what we thought
+
+Three things came out of a full investigation of `packages/automation` and
+`apps/extension`, and together they reset what Guided can be.
+
+**1. Indeed prohibits it.** From Indeed's own partner docs: *"Indeed prohibits
+the use of any automation, scripting, or bots to automate the Indeed Apply
+process outside of Indeed's official vendors and tooling."* Their job-seeker
+guidelines separately tell applicants not to use third-party bots to apply.
+Note the wording is the **process**, not just the submit — so auto-pressing
+Apply and auto-advancing pages are inside what they prohibit, even with a
+review gate on the end.
+
+**The defensible line:** the user clicks Apply, the tool fills fields from
+saved answers, the user reads and submits. That is autofill, like a password
+manager. Navigating and submitting on their behalf is a bot.
+
+**Two files are liabilities and should be deleted from any shipped version:**
+`packages/automation/src/captcha.ts` (2Captcha integration solving Cloudflare
+Turnstile — circumventing a security measure) and
+`packages/automation/src/human.ts` (`humanEmulation()`, commented *"Intentional
+anti-detection behavior: DO NOT REMOVE"* — evading bot detection, in writing).
+
+**2. Both implementations work, neither works on a phone.**
+- **Cloud browser (Stage A, `packages/automation`)**: genuinely passed. Commit
+  `97fbf51`, 2026-07-05: real Indeed Easy-Apply completed end-to-end through
+  Browserbase in 8m45s, screenshot artifact on disk. Parked because Cloudflare
+  blocks the datacenter IP and the fix is ~$10/GB residential proxies — roughly
+  $1-3 per supervised session, which inverts the margin on a $12/mo plan. Also
+  it is **not** hands-off: it prompts a human for login, captcha, and every
+  ambiguous field.
+- **Extension (Stage B, `apps/extension`)**: 3,135 lines, typechecks, builds.
+  **Its core form scan is last-known-broken** — `scanned: 0 question(s)` then an
+  infinite spinner. Fix `86ee728` (2026-08-09) re-arms a 4s timeout that was
+  killing runs mid-scan; **it has never been run against a live Indeed page.**
+  Chrome extensions do not exist on mobile Chrome, so this can never serve phone
+  users.
+
+**3. `apps/extension/STAGE_B_STATUS.md` is WRONG and should be fixed or
+deleted.** It claims Guided is "verified end-to-end on Indeed." It is dated
+2026-07-18, six weeks stale, and contradicted by this file. That doc is why the
+owner believed the feature already worked.
+
+**Everything about Guided is blocked on one hour of work:** load the unpacked
+extension, open a real Easy Apply job, see whether the scan returns questions.
+It was loaded into Chrome on 2026-08-29 and the test still was not run.
+
+### PRICING CHANGED 2026-08-29: the tracker is free forever, Guided is paid
+
+Owner's decision. Logging, dashboard, weekly tracking and both exports moved
+from `requireEntitled` to `requireOnboarded` — free permanently. `/template`
+and `/guided` keep `requireEntitled`.
+
+No cutover to run: `isEntitled()` already returns true until `FREE_UNTIL`
+(2027-01-01), so everyone sees everything today and the gate closes by itself.
+
+**Why:** the audience is on unemployment; charging them to document a legal
+requirement is a weak business and a bad thing to say in a Facebook group.
+*"The tracker is free, forever, no card"* is now true and is a materially
+better sentence than "free until January." It also removes the Jan 1 cliff
+where every acquired user got billed on the same day.
+
+**The risk, recorded because it is real:** this stakes all revenue on the least
+certain feature — unverified, ToS-sensitive, desktop-only, pending a Chrome Web
+Store review that has not been submitted. The roadmap floats per-state
+requirement data and audit mode as alternative paid tiers that work on a phone
+and do not depend on Indeed's tolerance.
+
+### Built 2026-08-29, uncommitted: the Guided install path
+
+- `apps/web/app/(app)/guided/page.tsx` — install page. Six numbered steps for
+  developer-mode install, "what it does and doesn't do" block, entitlement-gated
+  download with a subscribe card for non-payers.
+- `apps/web/public/jobassistui-extension.zip` — the built extension, 25KB.
+  **Regenerate this whenever the extension changes**: `npm run build -w
+  apps/extension`, then zip the contents of `apps/extension/dist`.
+- Nav link, dashboard card (empty-log only), template next-step card with an
+  Indeed button built from the user's own saved `searchQuery`/`searchLocation`.
+- Landing page: "coming soon" → "early access"; Guided described concretely as
+  a Chrome extension for Indeed that needs a computer; pricing block rewritten
+  to "The tracker is free. Always."
+- `docs/email/otp-code.html` — support gmail removed, Guided link added under
+  "You'll also want this." **Must be pasted into BOTH Supabase templates**
+  (Confirm signup + Magic Link) — not yet done.
+
+**There is no Chrome Web Store listing.** Never submitted. Until there is,
+developer-mode install is the only way anyone can run it. Submission needs a $5
+developer account; a Google account hold blocked the attempt on 2026-08-29.
+
+### Built earlier 2026-08-29, deliberately NOT live: the Rules Assistant
+
+A guided chatbot answering state work-search questions. **Everything below is
+uncommitted in the working tree and nothing is deployed.**
+
+- Route `/assistant`, gated with `requireAdmin()` (returns a plain 404 to
+  everyone else), **not linked from the nav**. The API route
+  `/api/assistant/answer` carries the same gate. Safe to deploy alongside
+  unrelated changes without shipping the feature.
+- Funnel: gate → state → situation → exemption check → topic → answer.
+- **New York has three real quotes** read off `dol.ny.gov/services/ui/wsr` on
+  2026-08-29, each with source URL and date. Texas and Florida are `varies`
+  rows — the type has no number field, so a fake statewide count is
+  unrepresentable.
+- **Eligibility, benefit amounts, appeals, overpayments, fraud and
+  determination letters are hard-refused** to the state's phone number, before
+  any retrieval and before any model call.
+- Disclaimer in three places; the in-bubble watermark is built to survive a
+  screenshot (plain-text URL, no hover, no truncation). Copy lives in
+  **`docs/legal/chatbot-disclaimers.md`**, which also holds the Terms §3 insert.
+- `npm run build` passes. `npx esbuild scripts/check-assistant.mts --bundle
+  --platform=node --format=cjs --outfile=_t.cjs && node _t.cjs` → 52 checks pass.
+- **`packages/db/migrations/0005_assistant.sql` has NOT been applied** to
+  Supabase. Not needed to try the page: the log insert fails silently by design.
+- **Terms and privacy were deliberately NOT updated**, because the feature is
+  not live and Terms must not describe a page nobody can reach. Do that in the
+  same change that removes the admin gate.
+- `docs/roadmap.md`'s "AI that answers benefit-eligibility questions" bullet now
+  carries a sub-note recording what was built and that the line has not moved.
+
+**To go live later:** swap `requireAdmin()` → `requireUser()` in
+`app/(app)/assistant/page.tsx`, delete the `isAdminEmail` block in the API
+route, add the nav link, paste Terms §3, apply migration 0005. Costs money to
+run — see below.
+
+**Cost, if it ever goes live:** ~$0.12 per fresh web-search answer, $0 for
+cached ones and $0 for button paths. ~$10–30/month at expected volume, with a
+hard ceiling around **$71 to fill every state × topic cell once, ever**. **Plus
+Vercel Pro at $20/mo, which is a hard blocker** — search answers take 15–40s and
+the Hobby plan cuts functions off around 10s, so it works in dev and 504s in
+production. The full plan is at
+`C:\Users\tsupa\.claude\plans\wait-why-are-you-dynamic-valley.md`.
+
+**The owner's standing decision on all of this:** *"build it but lets not go
+live with it we should work on getting more users first for sure."*
+
+### Still not written, still a good idea
+
+The **canned-answers file** in `docs/marketing/`. It is now more valuable than
+before, because the owner is going to be commenting rather than tracking, and
+because three New York facts are verified with sources and quotable directly
+into a comment:
+
+- *"You must complete and record at least THREE work search activities each week to be eligible for benefits."*
+- The Career Center line + the nine accepted activity categories
+- *"If you choose to keep a paper Work Search Record, you must keep copies for one year."*
+
+All three: `dol.ny.gov/services/ui/wsr`, read 2026-08-29. **Note that the
+commonly repeated "activities must be on different days" claim does NOT appear
+on that page** — it was in a research summary, was checked, and was left out.
+
+---
+
+# (2026-08-20) — shipping is done; the job is now POSTING
 
 **The product is finished for this stage. Nothing is left to build or configure
 before users.** The only thing standing between JobAssistUI and its first users
@@ -7,8 +317,15 @@ context for when that produces feedback.
 
 ## The one live workstream: Facebook groups
 
-Read **`docs/marketing/facebook-playbook.md`** — it is the whole channel plan,
+Read **`docs/marketing/campaign.md`** first — it is the whole 19-week campaign
+across every channel, dated, from today to the Jan 1 paywall. Then
+**`docs/marketing/facebook-playbook.md`** — it is the whole channel plan,
 operationally. Track the groups in **`docs/marketing/groups.md`**.
+
+For what gets built after the marketing push starts, read **`docs/roadmap.md`**
+(month-by-month to the Jan 1 paywall, every item gated on the funnel number).
+Its first item is not a feature: **the mobile layout has never been tested on a
+real phone**, and every visitor from Facebook arrives in a phone browser.
 
 Where the owner actually is, as of **Thursday 2026-08-20**:
 

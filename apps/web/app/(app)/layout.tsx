@@ -40,6 +40,9 @@ export default async function AppLayout({
               <Link href="/template" className="text-slate-600 hover:text-slate-900">
                 Answer Template
               </Link>
+              <Link href="/guided" className="text-slate-600 hover:text-slate-900">
+                Guided Assist
+              </Link>
               <Link href="/settings" className="text-slate-600 hover:text-slate-900">
                 Settings
               </Link>

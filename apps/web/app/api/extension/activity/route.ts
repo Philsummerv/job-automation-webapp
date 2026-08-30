@@ -13,7 +13,13 @@ export async function POST(req: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ ok: false, error: "not-signed-in" }, { status: 401 });
 
-  let body: { employer_name?: string; job_title?: string; url?: string; date?: string };
+  let body: {
+    employer_name?: string;
+    job_title?: string;
+    url?: string;
+    date?: string;
+    notes?: string;
+  };
   try {
     body = await req.json();
   } catch {
@@ -43,6 +49,14 @@ export async function POST(req: Request) {
     url,
     result: "applied",
     source: "guided",
+    // Notes is the one CSV column Guided runs were leaving blank. A work-search
+    // record is more use to a caseworker with a line saying how the application
+    // was made, so default it rather than exporting an empty cell. The extension
+    // may override with something more specific (e.g. the job location).
+    notes:
+      typeof body.notes === "string" && body.notes.trim()
+        ? body.notes.trim().slice(0, 500)
+        : "Applied on Indeed using JobAssistUI Guided assist.",
     reporting_period,
   });
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });

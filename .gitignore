@@ -29,3 +29,15 @@ indeed_html/
 
 # Saved page dumps for debugging — contain session/tracking tokens
 *-html.txt
+
+# Personal UI claim documents — benefit amounts, address, financials, claim
+# correspondence. Never commit these; keep them outside the repo entirely.
+private/
+*-ui-summary.md
+*claim-summary*.md
+
+# Chrome Web Store upload package — a build artifact, regenerate with
+# `node build.mjs --store` in apps/extension and zip the contents of dist/.
+# NOTE: apps/web/public/jobassistui-extension.zip is NOT ignored — that one is
+# served by the website and has to ship with the deploy.
+apps/extension/jobassistui-store.zip
