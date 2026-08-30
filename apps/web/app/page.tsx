@@ -56,7 +56,7 @@ export default function LandingPage() {
             href="/login"
             className="rounded-lg bg-brand px-6 py-3 font-medium text-white hover:bg-brand-dark"
           >
-            {free ? "Get started free" : "Start 14-day free trial"}
+            Get started free
           </Link>
           <a href="#how" className="text-sm font-medium text-slate-600 hover:text-slate-900">
             See how it works →
@@ -71,8 +71,9 @@ export default function LandingPage() {
             </>
           ) : (
             <>
-              14-day free trial — card required, you won&apos;t be charged until
-              it ends. {MONTHLY_PRICE}/month after. Cancel anytime.
+              Your job-search log is free forever — no credit card, ever. Guided
+              assist, the extension that fills the forms in for you, is{" "}
+              {MONTHLY_PRICE}/month after a 14-day free trial.
             </>
           )}
         </p>
@@ -229,15 +230,20 @@ export default function LandingPage() {
               </>
             ) : (
               <>
-                <div className="text-4xl font-bold">
-                  {MONTHLY_PRICE}
-                  <span className="text-base font-normal text-slate-500">
-                    /month
-                  </span>
-                </div>
+                <div className="text-4xl font-bold">Free</div>
                 <p className="mt-1 text-sm text-slate-600">
-                  Start with a 14-day free trial (card required, cancel anytime).
+                  No credit card, ever, for the tracker.
                 </p>
+                <div className="mt-5 border-t border-slate-200 pt-5 text-left text-sm text-slate-600">
+                  <p>
+                    <strong className="text-slate-900">
+                      Guided assist is the one paid part
+                    </strong>{" "}
+                    — the Chrome extension that fills Indeed applications for
+                    you. It&apos;s {MONTHLY_PRICE}/month after a 14-day free
+                    trial, and skipping it costs you nothing else.
+                  </p>
+                </div>
               </>
             )}
             <ul className="mt-6 space-y-2 text-left text-sm text-slate-700">

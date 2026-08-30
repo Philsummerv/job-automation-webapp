@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of Service" updated="August 6, 2026">
+    <LegalPage title="Terms of Service" updated="August 30, 2026">
       <p>
         These Terms of Service (&quot;Terms&quot;) govern your use of
         JobAssistUI (the &quot;Service&quot;), a user-directed job-search
@@ -53,22 +53,33 @@ export default function TermsPage() {
         information and be at least 18 years old to use the Service.
       </p>
 
-      <h2>4. Subscription, trial, and billing</h2>
+      <h2>4. What is free, what is paid, and billing</h2>
       <ul>
         <li>
-          <strong>Launch free period.</strong> The Service is free to all users
-          through <strong>December 31, 2026</strong>. No payment card is
-          collected during that period and no charge of any kind is made.
-          Beginning <strong>January 1, 2027</strong>, continued use of the
-          Service requires a paid subscription. Your account and your saved
-          activity log are not deleted if you choose not to subscribe, and you
-          may export your records at any time.
+          <strong>The job-search log is free permanently.</strong> Creating an
+          account, logging activities, the dashboard, weekly requirement
+          tracking, evidence storage, and PDF and CSV exports are free to all
+          users and will remain free. No payment card is required for any of
+          them, at any time, and there is no date on which they begin to cost
+          money.
         </li>
         <li>
-          After the free period the Service costs <strong>$12 per month</strong>,
-          billed through Stripe, and begins with a{" "}
-          <strong>14-day free trial</strong>. A payment card is required to
-          start the trial; you are not charged until the trial ends.
+          <strong>Guided assist is the only paid feature.</strong> Guided assist
+          is the optional browser extension that fills job application forms
+          from your saved answers, together with the Answer Template page that
+          supplies those answers. It is free to all users through{" "}
+          <strong>December 31, 2026</strong>, with no payment card collected and
+          no charge of any kind made during that period.
+        </li>
+        <li>
+          Beginning <strong>January 1, 2027</strong>, continued use of Guided
+          assist costs <strong>$12 per month</strong>, billed through Stripe,
+          and begins with a <strong>14-day free trial</strong>. A payment card
+          is required to start that trial; you are not charged until it ends.
+          If you choose not to subscribe, you keep full free use of the
+          job-search log described above — your account and your saved
+          activities are not deleted, nothing is locked, and you may export
+          your records at any time.
         </li>
         <li>
           Your subscription renews automatically each month until you cancel.
@@ -83,7 +94,11 @@ export default function TermsPage() {
           Except where required by law, payments are non-refundable. If you
           believe you were charged in error, contact us and we will review it.
         </li>
-        <li>Prices may change with at least 30 days&apos; notice.</li>
+        <li>
+          The price of Guided assist may change with at least 30 days&apos;
+          notice. This does not apply to the job-search log, which is free
+          permanently and is not subject to a future price.
+        </li>
       </ul>
 
       <h2>5. Acceptable use</h2>

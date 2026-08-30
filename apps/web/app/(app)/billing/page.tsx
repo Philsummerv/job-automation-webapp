@@ -20,11 +20,14 @@ function formatDate(iso: string | null) {
   });
 }
 
+// What the subscription actually buys. Logging, tracking, exports and evidence
+// storage were listed here until 2026-08-30 — all four are free permanently, so
+// the checkout box was selling things nobody has to pay for while omitting the
+// only feature behind the paywall.
 const FEATURES = [
-  "Unlimited activity logging",
-  "Weekly compliance tracking",
-  "PDF & CSV exports",
-  "Evidence storage",
+  "Guided assist — fills Indeed applications from your saved answers",
+  "Answer Template — save your answers once, reuse them everywhere",
+  "Applications logged automatically as you submit them",
 ];
 
 export default async function BillingPage({
@@ -71,16 +74,19 @@ export default async function BillingPage({
       {free && (
         <div className="mt-6 rounded-2xl border border-emerald-200 bg-emerald-50 p-8">
           <h2 className="text-lg font-semibold text-emerald-900">
-            Free until {FREE_UNTIL_LABEL}
+            Nothing to pay
           </h2>
           <p className="mt-2 text-sm text-emerald-800">
-            You have full access and there is nothing to pay. We don&apos;t have
-            your card and won&apos;t ask for it during the free period.
+            Your job-search log, weekly tracking and exports are free
+            permanently. We don&apos;t have your card and will never need it for
+            those.
           </p>
           <p className="mt-2 text-sm text-emerald-800">
-            Starting {FREE_UNTIL_LABEL}, keeping your account active costs{" "}
-            {MONTHLY_PRICE}/month. We&apos;ll ask you to subscribe then — your
-            activity log stays yours either way, and you can always export it.
+            Guided assist — the extension that fills applications for you — is
+            also free right now. Starting {FREE_UNTIL_LABEL} that one feature
+            costs {MONTHLY_PRICE}/month, and we&apos;ll ask you then. If you
+            skip it, nothing else changes: your account stays open, your log
+            stays free, and you can always export it.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-emerald-900">
             {FEATURES.map((f) => (
@@ -111,11 +117,15 @@ export default async function BillingPage({
       {!free && !comped &&(status === "none" || status === "incomplete") && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">
-            Start your 14-day free trial
+            Add Guided assist
           </h2>
           <p className="mt-2 text-sm text-slate-600">
-            {MONTHLY_PRICE}/month after the trial. Card required — you
+            {MONTHLY_PRICE}/month after a 14-day free trial. Card required — you
             won&apos;t be charged until your trial ends. Cancel anytime.
+          </p>
+          <p className="mt-2 text-sm text-slate-600">
+            Your job-search log, weekly tracking and exports stay free whether
+            you subscribe or not. This only adds the form-filling extension.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-slate-700">
             {FEATURES.map((f) => (
