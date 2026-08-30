@@ -5,9 +5,15 @@ first, because they are the largest, most permissive gathering of exactly the
 people this is for, and the age demographic actually uses Facebook.
 
 **The pitch is the true one**, everywhere below: *I'm job searching too. I built
-the thing I wanted. It's free until Jan 2027 because I can't take income before
-then. Tell me what breaks.* That survives in communities that auto-delete SaaS
+the thing I wanted. Tracking your work search on it is free and stays free.
+Tell me what breaks.* That survives in communities that auto-delete SaaS
 promos, because it isn't one.
+
+**Never say "free until January" any more.** That was the pricing before
+2026-08-29 and it describes a worse offer than the real one. The log is free
+permanently; the January date applies only to Guided assist, the optional
+extension. In a group, lead with the free half and only mention the paid half
+if someone asks.
 
 ---
 
@@ -107,10 +113,12 @@ a short message:
 
 > Hi — I'm a member here and I'm on unemployment myself. I built a free website
 > for tracking work-search activities for the weekly claim, because I kept
-> messing up my own spreadsheet. It's free, there's no payment in it at all, and
-> I'm mostly looking for people to tell me what's broken. Is it alright if I post
-> about it, or would you rather I didn't? Happy either way, just didn't want to
-> break the rules.
+> messing up my own spreadsheet. The tracking side is free and stays free — no
+> card, nothing to cancel. There's one optional add-on I'll charge for next year,
+> and I'd rather tell you that up front than have you find it later. I'm mostly
+> looking for people to tell me what's broken. Is it alright if I post about it,
+> or would you rather I didn't? Happy either way, just didn't want to break the
+> rules.
 
 Admins say yes more often than you'd expect, because it's genuinely useful to
 their members and you asked. And if they say no, you've lost nothing — instead of
@@ -140,8 +148,9 @@ Write it in your own words. The shape that works:
 > as you do it, it tells you where you are for the week, and you can print out a
 > clean record if you ever have to show one.
 >
-> It's free. Not a trial, not a card — I'm on unemployment myself and I can't
-> take income until January anyway. It's new so there are probably things wrong
+> It's free and it stays free. Not a trial, not a card, no date where it flips
+> — I'm on unemployment myself and charging people to prove they looked for work
+> isn't something I'm going to do. It's new so there are probably things wrong
 > with it, and honestly that's why I'm posting: I want people to tell me what
 > breaks.
 >

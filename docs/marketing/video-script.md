@@ -132,9 +132,14 @@ get.
 
 ### 2:30–3:00 — Price, and the ask
 
-> It's free. Not a trial, no card, nothing to cancel — free for everyone until
-> January 1st. I'm on unemployment myself and I can't take income before then
-> anyway. After that it's twelve dollars a month, and you can decide then.
+> It's free. Not a trial, no card, nothing to cancel — and it stays free.
+> There's no date where it starts costing you. I'm on unemployment myself, and
+> charging people to prove they looked for work isn't something I'm going to do.
+>
+> There is one paid part later, and I'd rather say it than have you find it:
+> there's an optional extension that fills the applications in for you. That one
+> is free right now and twelve dollars a month from January. The tracking is
+> free either way, and you never have to install it.
 >
 > It's new and I built it on my own, so there are going to be things wrong with
 > it. There's a Feedback link inside the app and it comes straight to my inbox.

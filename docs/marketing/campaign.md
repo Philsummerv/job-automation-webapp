@@ -1,14 +1,20 @@
 # The campaign — getting users while JobAssistUI is free
 
-**Written 2026-08-22.** The free window runs until **2027-01-01**. That is
-**19 weeks**. This file is the whole plan across that window, in order, with
-dates. `facebook-playbook.md` is the operational detail for channel 1; this is
+**Written 2026-08-22. Pricing updated 2026-08-30.** The free window on **Guided
+assist** runs until **2027-01-01** — that is **19 weeks**. The job-search log
+itself is free permanently and has no window at all; phase 6 below is about
+converting people to Guided, not about keeping their account open. This file is
+the whole plan across that window, in order, with dates. `facebook-playbook.md` is the operational detail for channel 1; this is
 the map over the top of it. `reply-brief.md` is the context file to paste into
 a Claude chat when you want a reply drafted for a post you've been sent.
 
 **The pitch never changes, in any channel:** *I'm job searching too. I built the
-thing I wanted. It's free until January because I can't take income before then.
-Tell me what breaks.*
+thing I wanted. Tracking your work search on it is free and stays free. Tell me
+what breaks.*
+
+**Do not say "free until January."** That was the pre-2026-08-29 pricing and it
+describes a worse offer than the real one. Free permanently is the stronger
+sentence and it is the true one.
 
 **The rule that never changes:** never claim a state accepts the export, and
 never claim this protects anyone's benefits.
@@ -25,7 +31,7 @@ never claim this protects anyone's benefits.
 | 3 | Sep 7 – Oct 4 | Reddit (overlaps FB) | Second channel live. |
 | 4 | Oct 5 – Nov 1 | Job centers, offline | Highest conversion per hour. |
 | 5 | Oct → Dec | Per-state SEO pages | Slow, compounding, the only channel that outlives you. |
-| 6 | Dec 1–31 | Conversion runway | Turn free users into Jan 1 payers. |
+| 6 | Dec 1–31 | Conversion runway | Turn log users into Guided subscribers. Nobody loses access. |
 
 Everything before phase 6 is worth nothing if phase 6 isn't planned, so it is in
 here even though it isn't marketing.
@@ -263,10 +269,13 @@ year.
 
 # PHASE 6 — December: the runway to Jan 1
 
-The free window ends **2027-01-01** at **$12/mo**, and per the decision on
-record, **everyone pays — no grandfathering**. Spending 19 weeks acquiring users
-and then surprising them on January 1st would waste all of it, so December gets
-its own phase.
+Guided assist stops being free on **2027-01-01** at **$12/mo**, and per the
+decision on record, **everyone pays — no grandfathering**. Note what this is
+now: an upsell, not a cutoff. Nobody loses their log, their history or their
+exports on that date, so the December job is convincing Guided users it is worth
+paying for — not stopping people walking away. Spending 19 weeks acquiring users
+and then surprising them on January 1st would still waste all of it, so December
+gets its own phase.
 
 ### Dec 1 — decide, and write it down
 

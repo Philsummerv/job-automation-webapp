@@ -37,9 +37,16 @@ Checked against the live site 2026-08-23. Do not state anything about it that
 isn't on this list.
 
 - **Name:** JobAssistUI. **URL:** https://www.jobassistui.com
-- **Price:** free for everyone until **January 1, 2027** — no credit card, no
-  trial countdown, nothing to cancel. After that it's **$12/month**. It is
-  labeled Beta on the site.
+- **Price — two halves, do not blur them:**
+  - The **job-search log** (logging, dashboard, weekly tracking, PDF and CSV
+    exports, evidence storage) is **free permanently**. No credit card, no
+    trial countdown, nothing to cancel, and **no date on which it starts
+    costing money**.
+  - **Guided assist** — the optional Chrome extension that fills Indeed
+    applications from your saved answers — is the **only** paid feature. Free
+    to everyone until **January 1, 2027**, then **$12/month** after a 14-day
+    trial. Skipping it changes nothing else.
+  - It is labeled Beta on the site.
 - **What it does today:**
   - Log each job-search activity — employer, date, method (online application,
     in person, phone, email, job fair, networking) and result (applied,
@@ -173,9 +180,11 @@ copied word for word.
 - **"Does a contact count if they never replied?"** — Generally the activity is
   the contact, not the response, but say it's worth confirming with the state.
 - **"Is this a scam / why is it free?"** — Answer it head-on: I'm on
-  unemployment in New York, I can't take income until January anyway, so it's
-  free with no card until then and $12/month after. I built it for my own claim.
-  No defensiveness, no hurt feelings.
+  unemployment in New York and I built it for my own claim. The tracking side
+  is free permanently, no card — I'm not going to charge people to prove they
+  looked for work. There's one optional add-on that fills applications in for
+  you, $12/month from January, and you never have to touch it. No
+  defensiveness, no hurt feelings.
 
 If a post asks something not on this list and the honest answer is "I don't
 know," draft that as the reply. That's the correct answer, and it earns more

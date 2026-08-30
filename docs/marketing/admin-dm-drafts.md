@@ -9,7 +9,10 @@ The general shape that works, and why:
    proves you read the rules and chose to ask, which is the exact opposite of
    what a spammer does.
 2. **Lead with being on unemployment yourself**, not with the product.
-3. **Say plainly it's free** — no card, no payment, no income until January.
+3. **Say plainly the tracker is free and stays free** — no card, nothing to
+   cancel, no expiry date. Then name the one paid add-on (Guided assist,
+   $12/month from January) rather than letting them discover it. Volunteering
+   the paid half is what makes the free half believable.
 4. **No link.** You're asking permission, not sneaking a preview.
 5. **Make "no" easy**, and promise to keep helping in the comments either way.
    A refusal then costs you nothing and you stay welcome in the group.

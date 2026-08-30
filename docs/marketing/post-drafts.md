@@ -45,7 +45,7 @@ I was keeping mine in a spreadsheet. It worked until it didn't. I'd apply to som
 
 So I built a website to keep track of it. You add each application as you make it — where, when, how — and it shows you where you stand for the week. When you need a record, it exports the lot as a PDF or CSV.
 
-It's free. Not a trial, no card. I'm on unemployment myself and I can't take income until January anyway.
+It's free, and it stays free. Not a trial, no card, no date where it starts costing you. I'm on unemployment myself, and charging people to prove they looked for work isn't something I'm going to do.
 
 It's new, so there are things wrong with it. That's honestly why I'm posting — I want people to tell me what's broken.
 
