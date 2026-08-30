@@ -1,7 +1,7 @@
 # Admin DM drafts
 
-One section per group. Nothing here has been sent — these are drafts for the
-owner to review, edit, and send himself.
+One section per group. Each section says whether it was sent. Unsent entries are
+drafts for the owner to review, edit, and send himself.
 
 The general shape that works, and why:
 
@@ -26,7 +26,10 @@ Keep them short. Admins are volunteers reading this on a phone.
 - Promo rule: **`no`** — Rule 4, *"Self-promotion, spam and irrelevant links
   aren't allowed."*
 - Researched: 2026-08-29
-- Status: **draft written, NOT sent**
+- Status: **SENT 2026-08-30** by the owner. No reply yet as of writing.
+  ⚠️ The text below quotes the OLD pricing ("free until January 1st ... then
+  $12 a month"). Pricing changed 2026-08-29: the tracker is **free forever, no
+  card**; only Guided assist is paid. See "Follow-up owed" below.
 
 Notes that shaped this draft:
 
@@ -97,3 +100,31 @@ stronger play anyway given how few comments there are.
 **If she doesn't reply:** DMs from non-friends land in Message Requests and can
 sit for days. Don't chase it. Keep commenting — that's what makes your name
 familiar when she does read it.
+
+### Follow-up owed — the pricing in the sent DM is out of date
+
+The message sent 2026-08-30 said the tracker is free until January 1st and then
+$12 a month for everyone including early signups. **On 2026-08-29 the tracker
+became free permanently** — no card, ever. The paid tier is now only the Guided
+assist (the browser extension that fills the application form for you).
+
+That matters here for one reason: the sent DM promised *"I'm not going to tell
+your group it's free and quietly change that later."* The change runs in her
+favour, so saying so unprompted is the cheapest possible proof that the promise
+was real. It also gives a reason to appear in her inbox a second time without
+chasing an answer.
+
+Send this only after she has read the first one, or alongside it if she has not
+replied within a few days. Do not send both at once.
+
+```text
+Quick correction to what I sent you, and it's in the group's favour.
+
+I said the tracker would start costing $12 a month in January. I've since decided to leave it free permanently — no card, no trial, no expiry. If I ever charge for anything it'll be a separate optional add-on that fills the application forms for you, and the tracking side stays free either way.
+
+I told you I wouldn't say free and quietly change it later, so I'd rather flag it when it moves in the other direction too. Same question stands and no rush on it.
+```
+
+Why it is short: she has not agreed to anything yet, so this is a correction,
+not a second pitch. No link, no new argument, no ask beyond the one already
+made.

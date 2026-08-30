@@ -181,10 +181,16 @@ the review clock.
   the Rules Assistant needs it, and that is admin-gated and dark.
 - **Revoke the Browserbase API key** in `packages/automation/.env`. It is live,
   usage-billed, and sitting on disk. See `docs/services.md`.
-- Marketing has not moved: one DM to Sydnee Gerstel, no posts, `groups.md`
-  still empty. Drafts are ready in `docs/marketing/admin-dm-drafts.md` and
-  `post-drafts.md`. You can now truthfully say **"the tracker is free, forever,
-  no card"**, which you could not say yesterday.
+- Marketing: **the DM to Sydnee Gerstel was sent 2026-08-30.** No reply yet.
+  Still no posts and `groups.md` is still empty. Drafts are in
+  `docs/marketing/admin-dm-drafts.md` and `post-drafts.md`.
+  ⚠️ **The sent DM quotes the old pricing** ("free until January 1st, then $12
+  a month"). The tracker went free-forever on 2026-08-29, so that is now wrong
+  in her favour — a short correction is drafted under "Follow-up owed" in
+  `admin-dm-drafts.md`. Send it after she reads the first one, not alongside.
+  All other copy that says "free until January" needs the same fix before it
+  goes anywhere: you can now truthfully say **"the tracker is free, forever, no
+  card"**.
 
 ---
 
@@ -282,8 +288,8 @@ else — the paywall split, `/guided`, the extension fixes, the email template,
 
 ## The thing that still has not moved
 
-One DM sent to Sydnee Gerstel. No posts. No users. `docs/marketing/groups.md`
-still empty. Every hour of 2026-08-29 went into product, and none of it into
+One DM sent to Sydnee Gerstel (2026-08-30). No posts. No users.
+`docs/marketing/groups.md` still empty. Every hour of 2026-08-29 went into product, and none of it into
 distribution. The product is not the bottleneck.
 
 ---
@@ -329,8 +335,9 @@ Three things that follow from that:
   posts today, 2 comments. Someone who actually answers questions will stand out
   immediately — the reply play is unusually strong in this group.
 
-**A draft DM to Sydnee was written and is awaiting the owner's review. It was
-NOT sent.** It is in the conversation, not yet in a file. Its shape, if it needs
+**✅ SUPERSEDED — the DM was saved to `docs/marketing/admin-dm-drafts.md` and
+SENT by the owner on 2026-08-30.** The paragraphs below describe its shape and
+are kept only as a template for the next group. Its shape, if it needs
 rewriting: name Rule 4 in the first two lines (that is the whole trick — it
 proves he read the rules and chose to ask), lead with being on unemployment
 himself rather than with the product, say plainly that it is free with no card
