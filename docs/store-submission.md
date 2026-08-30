@@ -8,7 +8,7 @@ anyone until you press Submit.
 
 ---
 
-## Step 1 — publish the website first
+## Step 1 — publish the website first ✅ DONE 2026-08-30
 
 **Why this comes first:** the Store listing links to `jobassistui.com/guided`.
 That page exists only on the `rules-assistant` branch. A reviewer who clicks it
@@ -52,7 +52,11 @@ Anyone who reads the inbox can sign into the account.
 
 ---
 
-## Step 3 — build the package
+## Step 3 — build the package ✅ DONE 2026-08-30
+
+`apps/extension/jobassistui-store.zip` is built and verified: manifest at the
+root, localhost stripped, four icons, no stray files. Rebuild only if the
+extension source changes. The rest of this section is kept for that case.
 
 ```
 cd apps/extension
@@ -72,6 +76,11 @@ The icons are included by the build. Do not add them by hand.
 ---
 
 ## Step 4 — fix the one wrong answer
+
+**Re-verified 2026-08-30 against the actual built bundle:** zero matches for
+`eval(`, `new Function`, `importScripts` and `document.write` across all three
+bundled files, and the only external URL anywhere in the output is
+`https://www.indeed.com`. Answering "No" is provably correct, not a guess.
 
 In the Store console, open your draft → **Privacy** tab.
 
@@ -162,10 +171,13 @@ Then:
 7. The panel fills the form. It stops at the submit step — you press Submit yourself.
 ```
 
-Note line 3 says the code is in the subject line. That is only true once the
-Supabase email templates are updated. If they are not, change that line to
-"the code is in the body of the email" rather than leaving it wrong — a
-reviewer following a wrong instruction is a reviewer who files a rejection.
+**Check this before pasting.** Line 3 says the code is in the subject line,
+which is only true if the Supabase email templates were updated. You will find
+out for certain in step 2, when the first code arrives at mailinator. If the
+subject does not lead with the six digits, either update the templates first
+(`docs/email/otp-code.html` into BOTH "Magic link or OTP" and "Confirm sign
+up") or change that line to "the code is in the body of the email". A reviewer
+following a wrong instruction is a reviewer who files a rejection.
 
 ---
 

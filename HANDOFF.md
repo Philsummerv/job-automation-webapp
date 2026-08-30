@@ -1,11 +1,64 @@
-# ⏯️ RESUME HERE — everything is committed, nothing is deployed
+# ⏯️ RESUME HERE
 
-**Written 2026-08-30 ~03:00 after a long session. This block is self-contained:
-you should not need to remember anything or re-derive anything. Work top to
-bottom.**
+**Updated 2026-08-30 evening. Everything below TASK 1 is the older 03:00 block;
+read this header first, it supersedes the parts it names.**
 
-Git: branch `rules-assistant`, two commits (`c7e3984`, `5e2afe7`), **working
-tree clean, nothing pushed.** `main` is untouched, production is untouched.
+Git: on `main`, **working tree clean, everything pushed** through `0f0a17c`.
+Production is live and current.
+
+## Done today
+
+- **Deployed.** `rules-assistant` merged to `main` and pushed. `/guided`, the
+  free-tracker pricing split, the homepage rewrite and the Rules Assistant are
+  all live. `jobassistui.com/guided` confirmed loading.
+- **The DM to Sydnee Gerstel was sent.** No reply yet. It quotes the OLD
+  pricing; a correction is drafted in `docs/marketing/admin-dm-drafts.md` under
+  "Follow-up owed" — send it after she reads the first one, not alongside.
+- **Pricing copy fixed everywhere** (`8fcdd14`, `1520c0f`, `d11e60d`). The
+  2026-08-29 split had reached the gating but not the words. Terms §4 said the
+  whole Service becomes paid in January; the billing page told every user that
+  "keeping your account active" costs $12; the checkout box sold the four free
+  features and never mentioned Guided; and every post-January branch would have
+  flipped the site back to "14-day free trial, card required" on 2027-01-01
+  with no deploy. All now say: **log free permanently, Guided assist is the one
+  paid feature, $12/month from 2027-01-01.**
+- **Store package built and verified** (`0f0a17c`). Also fixed a build bug:
+  `dist/` was never cleaned, so a stray `icon128 - Copy.png` deleted from
+  `icons/` was still being packaged into the Store zip.
+
+## Next: the Chrome Web Store
+
+**Work `docs/store-submission.md`.** Steps 1 and 3 are done. What is left:
+
+1. **Step 2 — the reviewer's test account.** Sign up at jobassistui.com as
+   `jobassistui-review@mailinator.com` (public inbox, no password), fill its
+   Answer Template with FAKE details only. **This is the most likely rejection
+   reason if skipped** — the extension does nothing without a login and the
+   reviewer cannot get a code otherwise.
+2. **This also answers the Supabase email question.** If that first code
+   arrives with the six digits leading the subject line, the templates were
+   updated. If not, update them (`docs/email/otp-code.html` into BOTH "Magic
+   link or OTP" and "Confirm sign up") or fix line 3 of the test instructions.
+3. **Steps 4–7** — flip "remote code" to No (currently Yes, and No is
+   verifiably correct), paste the permission justifications, tick the four data
+   categories, paste the test instructions.
+4. **Step 8** — upload the two screenshots, then submit.
+
+Expect the Indeed-ToS flag (step 9). That decision is recorded, not reopened.
+
+## Still not done
+
+- **Revoke the Browserbase API key** in `packages/automation/.env`. Live,
+  usage-billed, sitting on disk.
+- `packages/db/migrations/0005_assistant.sql` not applied to Supabase. Only the
+  Rules Assistant needs it and that is admin-gated and dark.
+- The three Guided funnel holes found 2026-08-30 and **not yet fixed**: the
+  Answer Template page has no link to `/guided` at all (its primary button
+  sends people to Indeed, where nothing fills); the dashboard pitch disappears
+  after the first logged activity; and the web app cannot detect whether the
+  extension is installed (`web-bridge.ts` runs on the origin but leaves no
+  marker). Worth doing once the extension is in the Store.
+- Marketing: still no posts, `groups.md` still empty. One DM sent.
 
 ---
 
