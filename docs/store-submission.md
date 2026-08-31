@@ -170,35 +170,34 @@ from the package automatically; the store icon is picked up from
 
 ## Step 7 — test instructions
 
-Paste verbatim into the **Test instructions** box:
+**The box takes 500 characters.** The version below is 487. Paste verbatim:
 
 ```
-This extension requires a free JobAssistUI account.
+Free account required. Test login: jobassistui-review@mailinator.com
 
-Test account: jobassistui-review@mailinator.com
-
-Sign-in uses a 6-digit code sent by email. To get the code:
-1. Go to https://jobassistui.com and enter jobassistui-review@mailinator.com
-2. Open https://www.mailinator.com and search the inbox "jobassistui-review"
-3. The email arrives within a minute; the code is at the top of the email
+Sign-in is a 6-digit emailed code:
+1. At jobassistui.com, enter that address
+2. At mailinator.com, search the inbox "jobassistui-review"
+3. The code is at the top of the email (arrives in ~1 min)
 
 Then:
-4. Open the Answer Template page (answers are already saved on this account)
-5. Go to indeed.com and open any job marked "Easy Apply"
-6. Click Apply, then click "Find jobs" in the JobAssistUI panel
-7. The panel fills the form. It stops at the submit step — you press Submit yourself.
+4. On indeed.com open any job marked "Easy Apply" and click Apply
+5. In the JobAssistUI panel click "Fill this application"
+6. It fills from the saved answers and stops before submitting. You press Submit yourself.
 ```
 
-Line 3 says the code is at the top of the email, which is true of the body
-today — verified 2026-08-30 at mailinator. It does NOT say "in the subject
-line", because the subject was never updated in Supabase and still reads "Your
-JobAssistUI sign-in code" with no code in it.
+Two things that were wrong in the longer version and are fixed here:
 
-**Optional but worth 2 minutes:** fix the subject in Supabase → Authentication
-→ Emails, on BOTH "Magic link or OTP" and "Confirm sign up", to:
-`{{ .Token }} is your JobAssistUI sign-in code`. That is the whole reason the
-code leads the body — it puts the digits where a phone lock-screen
-notification will show them.
+- It said to click **"Find jobs"** after pressing Apply. That is the
+  job-SEARCH button (`aaui-find`, content.ts:298). On an application form the
+  button the panel actually shows is **"Fill this application"**
+  (content.ts:541). A reviewer following the old text would have clicked the
+  wrong control and concluded the extension did nothing.
+- It said the code is in the subject line. The subject was never updated in
+  Supabase; the code leads the BODY. Verified at mailinator 2026-08-30.
+
+If you edit this, re-count. The limit is characters, not words, and the two
+URLs are 40 of them.
 
 ---
 
