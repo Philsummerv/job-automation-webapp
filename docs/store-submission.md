@@ -31,8 +31,14 @@ until it does.
 Account created, code received at mailinator, template filled with fake
 details. **Finding: the email SUBJECT was never updated in Supabase.** It
 arrives as "Your JobAssistUI sign-in code" — the body is the new one (code
-first, Guided block) but the subject has no code in it. Either fix the subject
-in Supabase or use the corrected test instructions in step 7.
+first, Guided block) but the subject has no code in it.
+
+**Decided 2026-08-30: the subject stays as it is.** The body leads with the
+code, and the test instructions in step 7 say "at the top of the email" rather
+than naming the subject line, so nothing in the submission depends on it. The
+only thing given up is the phone-lock-screen case — a notification shows the
+subject and truncates it, so the digits are not readable without opening the
+mail app. Nice-to-have for real users, not a Store blocker. Do not re-raise.
 
 The extension does nothing without a JobAssistUI login. A reviewer cannot log
 in, because the 6-digit code is emailed. Without this step they see a dead

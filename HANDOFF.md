@@ -35,10 +35,12 @@ Production is live and current.
    Answer Template with FAKE details only. **This is the most likely rejection
    reason if skipped** — the extension does nothing without a login and the
    reviewer cannot get a code otherwise.
-2. **This also answers the Supabase email question.** If that first code
-   arrives with the six digits leading the subject line, the templates were
-   updated. If not, update them (`docs/email/otp-code.html` into BOTH "Magic
-   link or OTP" and "Confirm sign up") or fix line 3 of the test instructions.
+2. **Supabase email subject — SETTLED, leave it alone.** The body was updated
+   (code first, Guided block); the SUBJECT was not, and still reads "Your
+   JobAssistUI sign-in code" with no digits in it. Owner decided 2026-08-30 not
+   to change it: the body is enough to find the code, and the reviewer
+   instructions say "at the top of the email" rather than naming the subject.
+   Nothing in the submission depends on it. Do not re-raise it as a task.
 3. **Steps 4–7** — flip "remote code" to No (currently Yes, and No is
    verifiably correct), paste the permission justifications, tick the four data
    categories, paste the test instructions.
