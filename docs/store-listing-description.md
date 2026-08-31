@@ -5,58 +5,78 @@ Store strips formatting, so it is written to read without any.
 
 ## Why it is written this way
 
-A reviewer reads this before they read anything else, and the single most
-likely rejection for this extension is "automates a job site in a way the site
-prohibits". So the human-in-the-loop limits are not buried at the bottom as a
-caveat — they are the third paragraph, in plain words, before any feature list.
-It matches `02-review-gate.png`, which is the screenshot that shows the same
-thing.
+A reviewer reads this before anything else, and the most likely rejection for
+this extension is "automates a job site in a way the site prohibits". So the
+description is written to make the actual shape of the tool obvious in the
+first sentence: **it is a form-filler for a form you already opened.**
+
+Specific choices, all deliberate:
+
+- **It is described as autofill, not as applying to jobs.** "Fills in job
+  applications on Indeed" reads as an apply bot. "Fills in the form you have
+  already opened" reads as what it is. Same behaviour, accurate either way, but
+  only one of them invites the question.
+- **The user's actions are named as the user's** — you search, you choose, you
+  open, you click Apply, you submit. Every verb that touches the job site
+  belongs to a person.
+- **It never claims to find, search, browse or apply.** It does not do those
+  things, and words implying it would be the ones a reviewer catches on.
+- **"One application at a time, the one on your screen"** is stated outright.
+  Bulk or unattended applying is the thing job sites actually prohibit, and
+  saying plainly that it does not do that answers the objection before it is
+  raised.
+- **The limits come before the feature list**, not after it as a caveat.
 
 It also says a JobAssistUI account is required in the first section. A reviewer
-who installs it and sees nothing happen files a rejection; telling them up front
-that it needs a sign-in, and pairing that with the test account in Test
-Instructions, is what prevents it.
+who installs it and sees nothing happen files a rejection; saying so up front,
+paired with the test account in Test Instructions, is what prevents that.
 
-No marketing adjectives, no pricing. Pricing changes; a description that quotes
-it goes stale and has to be resubmitted.
+No pricing. Pricing changes, and a description quoting it goes stale and needs
+resubmitting.
 
 ---
 
 ```text
-JobAssistUI fills in job applications on Indeed using answers you have saved once, so you are not retyping your name, address and work history into every form.
+JobAssistUI is an autofill tool for job application forms. You save your standard answers once — contact details, work authorisation, the questions that come up on almost every application — and it types them into the form you are filling in, so you are not entering the same details by hand every time.
 
-It works with the JobAssistUI job-search log at jobassistui.com, where you save your answers and where your applications are recorded. A free account is required.
+It works alongside the JobAssistUI job-search log at jobassistui.com, where you save those answers and where your applications are recorded. A free account is required; without one the extension has nothing to fill from.
 
-WHAT IT DOES NOT DO
+YOU ARE THE ONE APPLYING
 
-You press Apply. You press Submit. The extension fills fields and stops — it never submits an application for you and never applies to anything on its own. Every page is shown to you before it moves on, and anything it could not answer is left blank for you to fill in yourself. You can stop it at any point.
+This is worth being exact about.
+
+You search for jobs. You decide which one to open. You click Apply. The extension does not find jobs, does not browse listings, and does not choose anything on your behalf — it activates on the application form that is already open on your screen, because you opened it.
+
+It fills the fields it recognises and then stops. It never presses Submit. You read the completed form, change anything you want to change, fill in anything it left blank, and submit it yourself. Nothing is ever sent without you.
+
+It works on one application at a time — the one in front of you. There is no queue, no bulk mode, and nothing that continues while you are away from the screen.
 
 HOW IT WORKS
 
-1. Save your answers once on the Answer Template page at jobassistui.com — contact details, work authorisation, the questions that come up on nearly every application.
-2. Open a job on Indeed marked "Easy Apply" and click Apply.
-3. The JobAssistUI panel appears and fills the form from your saved answers.
-4. You read the page, correct anything you want to change, and press Submit.
-5. Once you have submitted it, the application is recorded in your job-search log with the employer, job title and date.
+1. Save your answers once on the Answer Template page at jobassistui.com.
+2. Find a job yourself on Indeed and open it. Click Apply.
+3. The JobAssistUI panel appears on the application form. It fills the fields it can match to your saved answers.
+4. You check the form, edit anything you want, and press Submit.
+5. After you have submitted it, the application is recorded in your job-search log with the employer, job title and date.
 
 WHO IT IS FOR
 
 People claiming unemployment benefits, who have to document a set number of job-search activities every week and would rather that record built itself as they applied than be reconstructed from memory on the last day.
 
-It is also just useful if you are applying to a lot of jobs and are tired of typing the same answers.
+It is also useful if you are simply applying to a lot of jobs and are tired of typing the same answers.
 
 LIMITS, HONESTLY
 
-- Indeed only, and only jobs marked "Easy Apply". Jobs that say "Apply on company site" hand off to a different website that this cannot read.
-- It fills what it recognises. Application forms vary, and unusual questions are left blank rather than guessed at.
+- Application forms on Indeed, and only the ones marked "Easy Apply". Listings that say "Apply on company site" send you to a different website, which this cannot read.
+- It fills what it recognises. Forms vary, and anything unusual is left blank for you rather than guessed at.
 - Chrome extensions do not run on phones. The rest of JobAssistUI works on any device.
 - This is early software. If it gets something wrong, there is a feedback link inside the app.
 
 PRIVACY
 
-Your saved answers are stored in your JobAssistUI account and used to fill forms you have opened yourself. The extension reads the application form on the page in front of you in order to fill it. It does not collect browsing history and is not an advertising or tracking product. Full policy: https://www.jobassistui.com/privacy
+Your saved answers live in your JobAssistUI account and are used to fill forms you have opened yourself. The extension reads the application form on the page in front of you in order to fill it in. It does not collect browsing history, does not track you across sites, and is not an advertising product. Full policy: https://www.jobassistui.com/privacy
 
-JobAssistUI is not affiliated with, endorsed by, or connected to Indeed.
+JobAssistUI is an independent tool and is not affiliated with, endorsed by, or connected to Indeed.
 
 It is a documentation tool, not a legal or benefits advisor. It does not guarantee that any record will satisfy any agency's requirements, and it does not guarantee approval or continuation of any benefit. Job-search rules vary by state and change; you are responsible for knowing and meeting yours.
 ```
