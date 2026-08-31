@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "JobAssistUI",
   "version": "1.0.0",
-  "description": "Guided autofill for job-application forms, driven by your saved answer template.",
+  "description": "Template fill assist for job-application forms. Fills the form you opened, from answers you saved. You submit.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",

@@ -12,10 +12,15 @@ first sentence: **it is a form-filler for a form you already opened.**
 
 Specific choices, all deliberate:
 
-- **It is described as autofill, not as applying to jobs.** "Fills in job
-  applications on Indeed" reads as an apply bot. "Fills in the form you have
-  already opened" reads as what it is. Same behaviour, accurate either way, but
-  only one of them invites the question.
+- **It is described as template fill assist, not as applying to jobs.**
+  "Fills in job applications on Indeed" reads as an apply bot. "Fills in the
+  form you have already opened, from your template" reads as what it is. Same
+  behaviour, accurate either way, but only one of them invites the question.
+  The owner's wording, chosen 2026-08-30 over "autofill": *assist* says a
+  person is doing the applying, and *template* says the answers came from the
+  user rather than being generated. "Autofill" is a browser-automation word and
+  carries the wrong association for a reviewer scanning for that exact thing.
+  **Keep this phrase in sync with what is live in the Store console.**
 - **The user's actions are named as the user's** — you search, you choose, you
   open, you click Apply, you submit. Every verb that touches the job site
   belongs to a person.
@@ -37,7 +42,7 @@ resubmitting.
 ---
 
 ```text
-JobAssistUI is an autofill tool for job application forms. You save your standard answers once — contact details, work authorisation, the questions that come up on almost every application — and it types them into the form you are filling in, so you are not entering the same details by hand every time.
+JobAssistUI is a template fill assist tool for job application forms. You save your standard answers once — contact details, work authorisation, the questions that come up on almost every application — and it types them into the form you are filling in, so you are not entering the same details by hand every time.
 
 It works alongside the JobAssistUI job-search log at jobassistui.com, where you save those answers and where your applications are recorded. A free account is required; without one the extension has nothing to fill from.
 
