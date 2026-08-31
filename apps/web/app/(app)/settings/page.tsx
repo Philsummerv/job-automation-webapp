@@ -129,12 +129,20 @@ export default async function SettingsPage({
               required
               className="mt-0.5"
             />
+            {/* The LOG disclaimer only. This is shown at signup to everyone,
+                and most people never install the extension — so the sentences
+                about never submitting anything, which are specifically about
+                Guided assist, moved to the Guided install page where they are
+                accepted by the people they actually apply to. Mixing them here
+                meant the extension's promise was agreed to months before anyone
+                saw the extension, and by plenty of people who never would. */}
             <span className="text-slate-700">
               I understand JobAssistUI is a{" "}
-              <strong>user-directed job-search documentation tool</strong>. I am
-              responsible for the accuracy of my log and for meeting my state&apos;s
-              requirements. JobAssistUI never submits anything without me present,
-              and I initiate and confirm every action.
+              <strong>user-directed job-search documentation tool</strong>, not a
+              legal or benefits advisor. I am responsible for the accuracy of
+              everything in my log and for knowing and meeting my state&apos;s
+              requirements. A record kept here does not guarantee that any
+              agency will accept it.
             </span>
           </label>
         )}

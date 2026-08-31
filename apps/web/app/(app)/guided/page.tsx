@@ -147,6 +147,46 @@ export default async function GuidedPage() {
         </ul>
       </div>
 
+      {/* ── The Guided-assist disclaimer ──
+          Separate from the one accepted at signup, and deliberately so. That
+          one covers the log: you are responsible for its accuracy, it is not
+          legal advice. This one covers the thing that acts on a third-party
+          website on your behalf, which is a different promise to a different
+          person — most accounts never install this, and anyone who does is
+          reading it here, next to the download, rather than having agreed to it
+          at signup months earlier alongside something unrelated. */}
+      <div className="mt-8 rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
+        <h2 className="font-semibold">Before you install it — what you are agreeing to</h2>
+        <ul className="mt-3 space-y-2">
+          <li>
+            <strong>You are the applicant, not us.</strong> The extension fills
+            fields from answers you saved. You read every page and you press
+            Submit. Every application it touches is one you chose and confirmed.
+          </li>
+          <li>
+            <strong>You are responsible for what it fills in.</strong> The
+            answers come from your template. If one is out of date or wrong, it
+            goes onto a real application to a real employer under your name.
+            Check the form before you submit it.
+          </li>
+          <li>
+            <strong>It can get things wrong.</strong> Job sites change without
+            warning. It may fill a field incorrectly, miss one, or stop partway.
+            Anything it could not answer is left blank on purpose.
+          </li>
+          <li>
+            <strong>Indeed is not affiliated with us</strong> and does not
+            endorse this. You are responsible for using it in line with the
+            terms of any site you use it on.
+          </li>
+          <li>
+            <strong>It logs an application only after you submit it.</strong>{" "}
+            You are still responsible for the accuracy of your log, the same as
+            when you add an activity by hand.
+          </li>
+        </ul>
+      </div>
+
       <p className="mt-6 text-xs text-slate-500">
         Chrome may warn you about developer-mode extensions each time it starts.
         That warning is about unpacked extensions in general, not about this one

@@ -26,7 +26,13 @@ until it does.
 
 ---
 
-## Step 2 — the reviewer's test account
+## Step 2 — the reviewer's test account ✅ DONE 2026-08-30
+
+Account created, code received at mailinator, template filled with fake
+details. **Finding: the email SUBJECT was never updated in Supabase.** It
+arrives as "Your JobAssistUI sign-in code" — the body is the new one (code
+first, Guided block) but the subject has no code in it. Either fix the subject
+in Supabase or use the corrected test instructions in step 7.
 
 The extension does nothing without a JobAssistUI login. A reviewer cannot log
 in, because the 6-digit code is emailed. Without this step they see a dead
@@ -150,6 +156,18 @@ Then tick the three certification checkboxes at the bottom.
 
 ---
 
+## Step 6b — store listing fields
+
+The **Store listing** tab needs three things filled in. Title and summary come
+from the package automatically; the store icon is picked up from
+`icons/icon128.png`.
+
+- **Category:** Workflow & Planning
+- **Language:** English (United States)
+- **Description:** paste the block in `docs/store-listing-description.md`
+
+---
+
 ## Step 7 — test instructions
 
 Paste verbatim into the **Test instructions** box:
@@ -162,7 +180,7 @@ Test account: jobassistui-review@mailinator.com
 Sign-in uses a 6-digit code sent by email. To get the code:
 1. Go to https://jobassistui.com and enter jobassistui-review@mailinator.com
 2. Open https://www.mailinator.com and search the inbox "jobassistui-review"
-3. The email arrives within a minute; the code is in the subject line
+3. The email arrives within a minute; the code is at the top of the email
 
 Then:
 4. Open the Answer Template page (answers are already saved on this account)
@@ -171,13 +189,16 @@ Then:
 7. The panel fills the form. It stops at the submit step — you press Submit yourself.
 ```
 
-**Check this before pasting.** Line 3 says the code is in the subject line,
-which is only true if the Supabase email templates were updated. You will find
-out for certain in step 2, when the first code arrives at mailinator. If the
-subject does not lead with the six digits, either update the templates first
-(`docs/email/otp-code.html` into BOTH "Magic link or OTP" and "Confirm sign
-up") or change that line to "the code is in the body of the email". A reviewer
-following a wrong instruction is a reviewer who files a rejection.
+Line 3 says the code is at the top of the email, which is true of the body
+today — verified 2026-08-30 at mailinator. It does NOT say "in the subject
+line", because the subject was never updated in Supabase and still reads "Your
+JobAssistUI sign-in code" with no code in it.
+
+**Optional but worth 2 minutes:** fix the subject in Supabase → Authentication
+→ Emails, on BOTH "Magic link or OTP" and "Confirm sign up", to:
+`{{ .Token }} is your JobAssistUI sign-in code`. That is the whole reason the
+code leads the body — it puts the digits where a phone lock-screen
+notification will show them.
 
 ---
 
