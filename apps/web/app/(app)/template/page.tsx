@@ -1,4 +1,6 @@
 import { requireEntitled } from "@/lib/auth";
+import { NextStepActions } from "./NextStepActions";
+import { ExtensionMissingNote } from "@/components/ExtensionMissingNote";
 import { TemplateForm } from "./TemplateForm";
 import type { AnswerTemplate } from "@jobassistui/shared";
 
@@ -17,6 +19,8 @@ export default async function TemplatePage({
         Your saved answers drive Guided autofill when you&apos;re applying
         online. Blank fields fall back to a sensible default.
       </p>
+
+      <ExtensionMissingNote className="mt-4" />
 
       {saved && <NextStep template={profile.answer_template} />}
 
@@ -44,8 +48,6 @@ function indeedSearchUrl(template: AnswerTemplate | null): string {
 }
 
 function NextStep({ template }: { template: AnswerTemplate | null }) {
-  const hasSearch = Boolean(template?.config?.searchQuery?.trim());
-
   return (
     <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-5">
       <h2 className="text-sm font-semibold text-emerald-900">
@@ -58,26 +60,7 @@ function NextStep({ template }: { template: AnswerTemplate | null }) {
         yourself; nothing is ever sent without you.
       </p>
 
-      <div className="mt-4 flex flex-wrap items-center gap-3">
-        <a
-          href={indeedSearchUrl(template)}
-          target="_blank"
-          rel="noreferrer"
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
-        >
-          {hasSearch ? "Open my job search on Indeed →" : "Open Indeed →"}
-        </a>
-        <span className="text-xs text-emerald-800">
-          Look for jobs marked <strong>Easy Apply</strong> — those are the ones
-          it can fill.
-        </span>
-      </div>
-
-      <p className="mt-4 border-t border-emerald-200 pt-3 text-xs text-emerald-800">
-        Autofill needs the JobAssistUI browser extension, on a computer. Without
-        it, your answers are still saved here and ready for when you have it —
-        and you can log activities by hand on any device.
-      </p>
+      <NextStepActions indeedUrl={indeedSearchUrl(template)} />
     </div>
   );
 }

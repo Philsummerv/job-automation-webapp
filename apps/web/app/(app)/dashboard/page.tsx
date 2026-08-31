@@ -9,6 +9,7 @@ import {
 } from "@jobassistui/shared";
 import { deleteEntry } from "./actions";
 import { DeleteEntryForm } from "@/components/DeleteEntryForm";
+import { GuidedPitch } from "@/components/GuidedPitch";
 
 export default async function DashboardPage({
   searchParams,
@@ -26,6 +27,9 @@ export default async function DashboardPage({
 
   const startDay = profile.reporting_period_start_day;
   const groups = groupByReportingPeriod(entries, startDay);
+  // Someone who has logged a Guided application has plainly got it working, so
+  // the install pitch is finished for them regardless of browser.
+  const hasGuidedEntry = entries.some((e) => e.source === "guided");
 
   // Current-week progress badge.
   const currentKey = reportingPeriodKey(new Date(), startDay);
@@ -77,34 +81,17 @@ export default async function DashboardPage({
         </div>
       </div>
 
-      {/* Guided assist pointer. Shown only on an empty log — a new user has no
-          idea the extension exists, and this is the one screen everybody lands
-          on. It disappears the moment they log anything, so it never nags
-          somebody who has already decided they don't want it. */}
-      {entries.length === 0 && (
-        <div className="mt-6 rounded-xl border border-sky-200 bg-sky-50 p-5">
-          <h2 className="text-sm font-semibold text-sky-900">
-            Applying on Indeed? Let it fill the forms for you.
-          </h2>
-          <p className="mt-2 text-sm text-sky-900">
-            Save your answers once and Guided assist drops them into Indeed
-            applications, then logs the application here automatically. You
-            still read every page and press submit yourself.
-          </p>
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            <Link
-              href="/guided"
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
-            >
-              Set up Guided assist
-            </Link>
-            <span className="text-xs text-sky-800">
-              Chrome extension, on a computer. Everything else works on your
-              phone.
-            </span>
-          </div>
-        </div>
-      )}
+      {/* Guided assist pointer.
+          Was `entries.length === 0` — shown only on an empty log, gone the
+          moment anyone logged anything. The reasoning was that it should never
+          nag someone who had decided against it, but the effect was that the
+          people most likely to want autofill (the ones actively logging
+          applications by hand, one at a time) were the only ones who never saw
+          it again.
+          Now it hides on two real signals instead: whether the extension is
+          installed in this browser (checked client-side, inside), and whether
+          they have ever logged a Guided application. */}
+      <GuidedPitch hasGuidedEntry={hasGuidedEntry} />
 
       {sp.added && (
         <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">

@@ -77,7 +77,28 @@ async function flushActivities(): Promise<void> {
   }
 }
 
+// Leave a mark on the page so the web app can tell whether the extension is
+// installed. Without this the site cannot distinguish "needs to install" from
+// "already has it", so every prompt to install is shown to everyone — including
+// the people already running it, to whom it reads as broken.
+//
+// A data attribute on <html>, not a global: content scripts run in an isolated
+// world, so anything set on `window` here is invisible to the page's own
+// scripts. The DOM is the one thing both sides see.
+//
+// Set at document_idle, which can land after React has already rendered, so the
+// page also watches for it (see ExtensionDetect.tsx) rather than only reading
+// it once on mount.
+function markInstalled(): void {
+  try {
+    document.documentElement.dataset.jobassistuiExtension = __BUILD_TIME__;
+  } catch {
+    // Nothing here is worth breaking the bridge over.
+  }
+}
+
 function refresh(): void {
+  markInstalled();
   reportAuth();
   syncTemplate();
   flushActivities();
