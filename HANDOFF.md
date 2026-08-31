@@ -26,27 +26,24 @@ Production is live and current.
   `dist/` was never cleaned, so a stray `icon128 - Copy.png` deleted from
   `icons/` was still being packaged into the Store zip.
 
-## Next: the Chrome Web Store
+## ✅ SUBMITTED TO THE CHROME WEB STORE — 2026-08-30
 
-**Work `docs/store-submission.md`.** Steps 1 and 3 are done. What is left:
+Uploaded and submitted for review. Nothing further to do on it: review takes a
+few days and there is no way to speed it up. `docs/store-submission.md` is kept
+as the record of what was answered, and is what you re-read if it comes back
+rejected.
 
-1. **Step 2 — the reviewer's test account.** Sign up at jobassistui.com as
-   `jobassistui-review@mailinator.com` (public inbox, no password), fill its
-   Answer Template with FAKE details only. **This is the most likely rejection
-   reason if skipped** — the extension does nothing without a login and the
-   reviewer cannot get a code otherwise.
-2. **Supabase email subject — SETTLED, leave it alone.** The body was updated
-   (code first, Guided block); the SUBJECT was not, and still reads "Your
-   JobAssistUI sign-in code" with no digits in it. Owner decided 2026-08-30 not
-   to change it: the body is enough to find the code, and the reviewer
-   instructions say "at the top of the email" rather than naming the subject.
-   Nothing in the submission depends on it. Do not re-raise it as a task.
-3. **Steps 4–7** — flip "remote code" to No (currently Yes, and No is
-   verifiably correct), paste the permission justifications, tick the four data
-   categories, paste the test instructions.
-4. **Step 8** — upload the two screenshots, then submit.
+**If it is rejected**, the most likely reason is the Indeed ToS question —
+Indeed prohibits automating the apply *process*, and the extension presses Apply
+and advances pages. A fill-only version was built 2026-08-29 and rolled back
+deliberately. If the rejection names that, the decision is worth reopening; the
+code for it is in the history. Do not reopen it otherwise.
 
-Expect the Indeed-ToS flag (step 9). That decision is recorded, not reopened.
+**The distribution work does not depend on the listing.** The tracker is a
+website, it is free, and it works on a phone today. Nobody has to wait for
+Google to use it.
+
+---
 
 ## Still not done
 
