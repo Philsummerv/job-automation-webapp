@@ -76,6 +76,5 @@ export interface RunContext {
   askLower: AskFn;
   getAutoFillAnswer: (questionText: string) => string | null;
   suggestFromResume: (questionText: string) => string | null;
-  checkForCaptcha: (page: import("playwright-core").Page) => Promise<boolean>;
   config: ScoutConfig;
 }
