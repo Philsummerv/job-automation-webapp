@@ -3,83 +3,105 @@
 Paste the block below into **Store listing → Description**. Plain text; the
 Store strips formatting, so it is written to read without any.
 
-## Why it is written this way
+**Rewritten 2026-09-02.** The previous version said the extension "does not find
+jobs, does not browse listings, and does not choose anything on your behalf."
+That was not true of the bundle that was submitted, and a reviewer can see it in
+the package in about thirty seconds:
 
-A reviewer reads this before anything else, and the most likely rejection for
-this extension is "automates a job site in a way the site prohibits". So the
-description is written to make the actual shape of the tool obvious in the
-first sentence: **it is a form-filler for a form you already opened.**
+- `content.ts:298` renders a **🔎 Find jobs** button, and `findJobs()` navigates
+  to an Indeed search built from the user's saved query and scrapes the results
+  into a queue.
+- `background.ts:238` runs `pressApplyInPage()` in the main world — the
+  extension presses Apply.
+- `content.ts:~816` `advancePage()` clicks Continue to move between form pages.
 
-Specific choices, all deliberate:
+A listing that contradicts its own package is a "misleading listing" rejection
+on its own, separately from any Indeed question — and it poisons the one claim
+that actually matters, which is the submit guard.
 
-- **It is described as template fill assist, not as applying to jobs.**
-  "Fills in job applications on Indeed" reads as an apply bot. "Fills in the
-  form you have already opened, from your template" reads as what it is. Same
-  behaviour, accurate either way, but only one of them invites the question.
-  The owner's wording, chosen 2026-08-30 over "autofill": *assist* says a
-  person is doing the applying, and *template* says the answers came from the
-  user rather than being generated. "Autofill" is a browser-automation word and
-  carries the wrong association for a reviewer scanning for that exact thing.
-  **Keep this phrase in sync with what is live in the Store console.**
-- **The user's actions are named as the user's** — you search, you choose, you
-  open, you click Apply, you submit. Every verb that touches the job site
-  belongs to a person.
-- **It never claims to find, search, browse or apply.** It does not do those
-  things, and words implying it would be the ones a reviewer catches on.
-- **"One application at a time, the one on your screen"** is stated outright.
-  Bulk or unattended applying is the thing job sites actually prohibit, and
-  saying plainly that it does not do that answers the objection before it is
-  raised.
+## What is true, and is now what the description leads with
+
+**It never submits.** `advancePage()` refuses to click any button whose label
+matches `/\b(submit|send)\b/i`, and the guard sits at the single place a click
+happens so no caller can route around it. It logs "read it over and press it
+yourself. I don't send applications for you." That guard was added on 2026-08-29
+after this function pressed "Submit your application" and sent a real
+application to a real employer. It is the strongest and most checkable claim in
+the listing, so it is the headline.
+
+## The tradeoff, stated plainly
+
+This version is more likely to draw the Indeed question — automating the apply
+*process* is what job sites prohibit, and this now says it advances pages and
+presses Apply. It is much less likely to draw a misleading-listing rejection,
+and it is honest.
+
+If the rejection names Indeed's terms, the fill-only build from 2026-08-29 is in
+git history and that decision is worth reopening. Do not reopen it otherwise.
+
+## Other choices, unchanged and deliberate
+
+- **"Template fill assist"** is the owner's wording, chosen 2026-08-30 over
+  "autofill". *Assist* says a person is doing the applying; *template* says the
+  answers came from the user. Keep in sync with the Store console.
+- **A free account is required** is said in the first section. A reviewer who
+  installs it and sees nothing happen files a rejection.
 - **The limits come before the feature list**, not after it as a caveat.
+- **No pricing.** Pricing changes; a description quoting it goes stale and needs
+  resubmitting.
 
-It also says a JobAssistUI account is required in the first section. A reviewer
-who installs it and sees nothing happen files a rejection; saying so up front,
-paired with the test account in Test Instructions, is what prevents that.
-
-No pricing. Pricing changes, and a description quoting it goes stale and needs
-resubmitting.
+**Note:** this is the long **Description** field only. The one-line summary in
+search results comes from `description` in `manifest.json`, which needs a new
+package upload to change. The current one — "Template fill assist for
+job-application forms. Fills the form you opened, from answers you saved. You
+submit." — is accurate enough to leave alone.
 
 ---
 
 ```text
-JobAssistUI is a template fill assist tool for job application forms. You save your standard answers once — contact details, work authorisation, the questions that come up on almost every application — and it types them into the form you are filling in, so you are not entering the same details by hand every time.
+JobAssistUI fills in job application forms from answers you saved once, and records each application you send to your job-search log.
 
-It works alongside the JobAssistUI job-search log at jobassistui.com, where you save those answers and where your applications are recorded. A free account is required; without one the extension has nothing to fill from.
+You save your standard answers on the Answer Template page at jobassistui.com — contact details, work authorisation, the questions that come up on almost every application. The extension types them into Indeed application forms so you are not entering the same details by hand every time. A free JobAssistUI account is required; without one the extension has nothing to fill from.
 
-YOU ARE THE ONE APPLYING
+YOU PRESS SUBMIT. ALWAYS.
 
-This is worth being exact about.
+This is the part worth being exact about.
 
-You search for jobs. You decide which one to open. You click Apply. The extension does not find jobs, does not browse listings, and does not choose anything on your behalf — it activates on the application form that is already open on your screen, because you opened it.
+The extension will fill an application and move between its pages. It will not send one. When it reaches the final step it stops, tells you it is ready, and waits. You read the completed form, change anything you want, fill in anything it left blank, and press Submit yourself.
 
-It fills the fields it recognises and then stops. It never presses Submit. You read the completed form, change anything you want to change, fill in anything it left blank, and submit it yourself. Nothing is ever sent without you.
+That is enforced in the code, not just promised here: the function that clicks buttons refuses to click any button labelled Submit or Send, at the one place in the extension where a click can happen. There is no path around it and no setting that turns it off.
 
-It works on one application at a time — the one in front of you. There is no queue, no bulk mode, and nothing that continues while you are away from the screen.
+It works on one application at a time — the one in front of you. There is no bulk mode, and nothing continues while you are away from the screen.
 
-HOW IT WORKS
+WHAT IT ACTUALLY DOES
 
-1. Save your answers once on the Answer Template page at jobassistui.com.
-2. Find a job yourself on Indeed and open it. Click Apply.
-3. The JobAssistUI panel appears on the application form. It fills the fields it can match to your saved answers.
-4. You check the form, edit anything you want, and press Submit.
-5. After you have submitted it, the application is recorded in your job-search log with the employer, job title and date.
+Being straightforward about this, because it is more than a form-filler.
+
+- You save a job title and location in your answer template. When you press "Find jobs", it opens that search on Indeed and lists what came back in the panel, so you can work down the results without retyping the search.
+- You choose a job. It can open the application for you and begin filling it.
+- It fills the fields it recognises from your saved answers, and clicks Continue to move to the next page of a multi-step form.
+- At the final step it stops. You check it and submit it.
+- Once you have submitted, it records the employer, job title and date in your job-search log at jobassistui.com.
+
+You stay at the screen for all of it. It is an assistant working alongside you, not a bot you leave running.
 
 WHO IT IS FOR
 
-People claiming unemployment benefits, who have to document a set number of job-search activities every week and would rather that record built itself as they applied than be reconstructed from memory on the last day.
+People claiming unemployment benefits, who have to document a set number of job-search activities every week and would rather that record built itself as they applied than be reconstructed from memory on the last day of the week.
 
 It is also useful if you are simply applying to a lot of jobs and are tired of typing the same answers.
 
 LIMITS, HONESTLY
 
-- Application forms on Indeed, and only the ones marked "Easy Apply". Listings that say "Apply on company site" send you to a different website, which this cannot read.
+- Indeed only, and only applications marked "Easy Apply". Listings that say "Apply on company site" send you to a different website, which this cannot read.
 - It fills what it recognises. Forms vary, and anything unusual is left blank for you rather than guessed at.
-- Chrome extensions do not run on phones. The rest of JobAssistUI works on any device.
-- This is early software. If it gets something wrong, there is a feedback link inside the app.
+- It does not answer questions for you. If your template has no answer for something, that field stays empty until you type in it.
+- Chrome extensions do not run on phones. The rest of JobAssistUI works on any device, and the job-search log is the part most people use most.
+- This is early software. If it gets something wrong there is a feedback link inside the app.
 
 PRIVACY
 
-Your saved answers live in your JobAssistUI account and are used to fill forms you have opened yourself. The extension reads the application form on the page in front of you in order to fill it in. It does not collect browsing history, does not track you across sites, and is not an advertising product. Full policy: https://www.jobassistui.com/privacy
+Your saved answers live in your JobAssistUI account and are used to fill forms in front of you. The extension reads the application form on the page in order to fill it in, and reads the Indeed search results page when you ask it to find jobs. It does not collect browsing history, does not track you across sites, and is not an advertising product. Full policy: https://www.jobassistui.com/privacy
 
 JobAssistUI is an independent tool and is not affiliated with, endorsed by, or connected to Indeed.
 

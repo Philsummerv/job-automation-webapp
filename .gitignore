@@ -41,3 +41,6 @@ private/
 # NOTE: apps/web/public/jobassistui-extension.zip is NOT ignored — that one is
 # served by the website and has to ship with the deploy.
 apps/extension/jobassistui-store.zip
+
+# Local Claude Code settings (machine-specific)
+.claude/settings.local.json
