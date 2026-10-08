@@ -75,6 +75,17 @@ function dispatch(makeAction: (state: RunState | null) => Action | null): Promis
  * over anything outside itself.
  */
 function pressApplyInPage(): "handler" | "click" | "not-found" {
+  // Current layout: a plain "Apply now" link to smartapply. One real click in
+  // the page's world runs its own handler and follows the link — calling its
+  // onclick as well would open the application twice.
+  const link = Array.from(
+    document.querySelectorAll('[data-testid="viewjob-indeed-apply"], [data-testid*="indeed-apply"]'),
+  ).find((el) => (el as HTMLElement).getBoundingClientRect().width > 0) as HTMLElement | undefined;
+  if (link) {
+    link.click();
+    return "click";
+  }
+
   const matches = (el: Element | null) =>
     !!el && /apply with indeed/i.test((el as HTMLElement).innerText || "");
 
@@ -141,6 +152,9 @@ async function runEffect(effect: Effect): Promise<void> {
     case "arm-no-form-timeout":
       armNoFormTimeout(effect.tabId, effect.runId);
       return;
+    case "arm-advance-timeout":
+      armAdvanceTimeout(effect.runId);
+      return;
     case "confirm-log": {
       // Ask the tab's top frame to show the "log this application?" card.
       const msg: ConfirmLogMsg = { type: "confirm-log", job: effect.job };
@@ -169,6 +183,23 @@ function armNoFormTimeout(_tabId: number, forRunId: string): void {
     // The reducer ignores this unless the run is still scanning under forRunId.
     dispatch(() => ({ type: "no-form", runId: forRunId, at: Date.now() }));
   }, NO_FORM_TIMEOUT_MS);
+}
+
+// ── Advance timeout ──────────────────────────────────────────────────────────────
+// After Continue is pressed the run waits for a navigation. Not every step
+// produces one we can see, so this rescans regardless once the window passes.
+// It has to outlast advancePage's own wait: up to 6s for the button, then a
+// 1.5s pause before the click, then the next step's render.
+const ADVANCE_TIMEOUT_MS = 10000;
+let advanceTimer: ReturnType<typeof setTimeout> | null = null;
+
+function armAdvanceTimeout(forRunId: string): void {
+  if (advanceTimer != null) clearTimeout(advanceTimer);
+  advanceTimer = setTimeout(() => {
+    advanceTimer = null;
+    // The reducer ignores this unless the run is still advancing under forRunId.
+    dispatch(() => ({ type: "advance-timeout", runId: forRunId, at: Date.now() }));
+  }, ADVANCE_TIMEOUT_MS);
 }
 
 // ── content script ⇄ worker ────────────────────────────────────────────────────
@@ -319,8 +350,13 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 // next page has loaded after clicking Continue. The reducer only acts on it when
 // status is "advancing", so unrelated navigations are ignored.
 
-function onNav(details: { tabId: number; frameId: number }): void {
-  if (details.frameId !== 0) return; // top frame only
+function onNav(details: { tabId: number; frameId: number; url: string }): void {
+  // Top frame, or the apply iframe itself. On Indeed's overlay route the form
+  // lives in a smartapply iframe and each step navigates only THAT frame, so a
+  // top-frame-only filter never saw the next page and the run hung. Other
+  // iframes (ads, trackers) navigate constantly and are still ignored.
+  const isApplyFrame = /smartapply|indeedapply/i.test(details.url) && !/preload/i.test(details.url);
+  if (details.frameId !== 0 && !isApplyFrame) return;
   dispatch(() => ({ type: "nav-completed", tabId: details.tabId, at: Date.now() }));
 }
 

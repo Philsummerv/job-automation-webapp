@@ -46,6 +46,23 @@ function noChange(state: RunState | null): ReduceResult {
   return { state, effects: [] };
 }
 
+/** Leave "advancing" for the next page: broadcast a fresh scan. */
+function rescanNextPage(state: RunState, note: string, at: number): ReduceResult {
+  const nextPage = withStatus(state, "scanning", note, at, {
+    pageIndex: state.pageIndex + 1,
+    formFrameId: null,
+    questions: [],
+    reviewDecision: null,
+  });
+  return {
+    state: nextPage,
+    effects: [
+      { kind: "send-command", tabId: state.tabId, command: "scan", runId: state.runId },
+      { kind: "arm-no-form-timeout", tabId: state.tabId, runId: state.runId },
+    ],
+  };
+}
+
 /**
  * Merge job identity FIELD BY FIELD across the pages of a run. A whole-object
  * "first non-null wins" loses data: an early page often yields the job title
@@ -164,9 +181,14 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
       const advancing = withStatus(state, "advancing", `review ${action.decision} — advancing`, action.at, {
         reviewDecision: action.decision,
       });
+      // The advance timeout is the backstop for "Continue was pressed and no
+      // navigation we can see followed" — see the advance-timeout case.
       const effects: Effect[] =
         state.formFrameId != null
-          ? [{ kind: "send-command", tabId: state.tabId, frameId: state.formFrameId, command: "advance", runId: state.runId }]
+          ? [
+              { kind: "send-command", tabId: state.tabId, frameId: state.formFrameId, command: "advance", runId: state.runId },
+              { kind: "arm-advance-timeout", runId: state.runId },
+            ]
           : [];
       return { state: advancing, effects };
     }
@@ -218,19 +240,20 @@ export function reduce(state: RunState | null, action: Action): ReduceResult {
     case "nav-completed": {
       if (state == null || state.tabId !== action.tabId) return noChange(state);
       if (state.status !== "advancing") return noChange(state);
-      const nextPage = withStatus(state, "scanning", "next page loaded — rescanning", action.at, {
-        pageIndex: state.pageIndex + 1,
-        formFrameId: null,
-        questions: [],
-        reviewDecision: null,
-      });
-      return {
-        state: nextPage,
-        effects: [
-          { kind: "send-command", tabId: state.tabId, command: "scan", runId: state.runId },
-          { kind: "arm-no-form-timeout", tabId: state.tabId, runId: state.runId },
-        ],
-      };
+      return rescanNextPage(state, "next page loaded — rescanning", action.at);
+    }
+
+    // ── Continue pressed, no navigation seen ──────────────────────────────────
+    // Waiting ONLY for a top-frame navigation hung the run forever in three
+    // ordinary cases: the form lives in an iframe, Indeed swaps the step in
+    // place without touching the URL, or Indeed refused Continue because a
+    // required field was empty. Rescan regardless. In the refused case the scan
+    // finds the same page again and the review gate reappears, which is the
+    // right outcome — the user can see what still needs answering.
+    case "advance-timeout": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "advancing") return noChange(state);
+      return rescanNextPage(state, "no navigation seen after Continue — rescanning", action.at);
     }
 
     // ── Scan still in progress ────────────────────────────────────────────────

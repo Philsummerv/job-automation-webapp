@@ -22,10 +22,14 @@ export interface ScrapedJob {
 // beacons. Indeed paginates in steps of 10 via &start=; page 0 omits the param.
 // Reconstructing the URL per page is more reliable than clicking "Next",
 // because we navigate away to apply and would otherwise lose our place.
+//
+// &iafilter=1 is Indeed's own "Easily apply" filter (verified live 2026-10-08).
+// The assist can only complete Easy Apply jobs, so asking Indeed for those
+// alone means every page of results is usable instead of mostly skips.
 export function buildIndeedSearchUrl(query: string, loc: string, start = 0): string {
   const base = loc
-    ? `https://www.indeed.com/jobs?q=${encodeURIComponent(query)}&l=${encodeURIComponent(loc)}`
-    : `https://www.indeed.com/jobs?q=${encodeURIComponent(query)}`;
+    ? `https://www.indeed.com/jobs?q=${encodeURIComponent(query)}&l=${encodeURIComponent(loc)}&iafilter=1`
+    : `https://www.indeed.com/jobs?q=${encodeURIComponent(query)}&iafilter=1`;
   return start > 0 ? `${base}&start=${start}` : base;
 }
 

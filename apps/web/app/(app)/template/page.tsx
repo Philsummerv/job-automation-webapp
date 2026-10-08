@@ -43,8 +43,8 @@ function indeedSearchUrl(template: AnswerTemplate | null): string {
   const l = template?.config?.searchLocation?.trim() ?? "";
   if (!q) return "https://www.indeed.com/jobs";
   return l
-    ? `https://www.indeed.com/jobs?q=${encodeURIComponent(q)}&l=${encodeURIComponent(l)}`
-    : `https://www.indeed.com/jobs?q=${encodeURIComponent(q)}`;
+    ? `https://www.indeed.com/jobs?q=${encodeURIComponent(q)}&l=${encodeURIComponent(l)}&iafilter=1`
+    : `https://www.indeed.com/jobs?q=${encodeURIComponent(q)}&iafilter=1`;
 }
 
 function NextStep({ template }: { template: AnswerTemplate | null }) {

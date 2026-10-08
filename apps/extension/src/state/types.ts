@@ -78,6 +78,8 @@ export type Action =
   /** The scanning frame is still working (stepping past a question-less page). */
   | { type: "scan-progress"; runId: string; at: number }
   | { type: "no-form"; runId: string; at: number }
+  /** Continue was pressed but no navigation was seen in time — rescan anyway. */
+  | { type: "advance-timeout"; runId: string; at: number }
   | { type: "run-error"; runId: string; reason: string; at: number };
 
 // ── Effects ──────────────────────────────────────────────────────────────────────
@@ -100,6 +102,7 @@ export type Effect =
     }
   | { kind: "clear-run" }
   | { kind: "arm-no-form-timeout"; tabId: number; runId: string }
+  | { kind: "arm-advance-timeout"; runId: string }
   /** Flow completed (submitted): ask the content script to confirm logging it. */
   | { kind: "confirm-log"; tabId: number; job: JobMeta };
 

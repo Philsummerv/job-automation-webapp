@@ -100,6 +100,17 @@ function isApplicationControl(el: Element): boolean {
   const ident = `${el.id} ${(el as HTMLInputElement).name || ""}`.toLowerCase();
   if (/search|text-input-what|text-input-where/.test(ident)) return false;
   if ((el as HTMLInputElement).type === "search") return false;
+  // The resume preview's "Page 1 / Page 2" switcher (see isRealApplicationQuestion).
+  if (el instanceof HTMLInputElement && el.type === "radio") {
+    const label = [
+      el.getAttribute("aria-label") ?? "",
+      ...Array.from(el.labels ?? []).map((l) => l.innerText || ""),
+    ].join(" ").trim();
+    if (/^\d*\s*page\s*\d+$/i.test(label)) return false;
+    if (el.closest("fieldset")?.querySelector("legend")?.innerText.trim().toLowerCase().startsWith("select a page")) {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -117,12 +128,19 @@ function isApplicationControl(el: Element): boolean {
  * application, so the page reads as "nothing to fill here". The checkbox is
  * still on the page in its default state if the user wants it.
  */
-function isRealApplicationQuestion(q: { text: string }): boolean {
+function isRealApplicationQuestion(q: { text: string; options?: { label: string }[] }): boolean {
   const t = (q.text || "").toLowerCase();
   if (/get email updates|email updates for the latest|create a job alert|job alerts?\b/.test(t)) {
     return false;
   }
   if (/receiving (calls|texts|messages) from employers/.test(t)) return false;
+  // The "Review your resume" step shows a PDF preview with a page switcher —
+  // radios "Page 1 / Page 2 / Page 3" under "Select a page". It renders after
+  // the rest of the step, so it popped into the review gate as "needs you"
+  // and then vanished. It's a viewer control, not a question.
+  if (/^select a page\b/.test(t.trim())) return false;
+  const opts = q.options ?? [];
+  if (opts.length > 0 && opts.every((o) => /^\s*\d*\s*page\s*\d+\s*$/i.test(o.label || ""))) return false;
   return true;
 }
 
@@ -551,7 +569,7 @@ function init() {
   }
 
   /** Replace the spinner with a reason it stopped, so a stall is never silent. */
-  function failBusy(message: string): void {
+  function failBusy(message: string, retry?: () => void): void {
     stopBusy();
     reviewEl.innerHTML = "";
     const box = mkEl(
@@ -560,6 +578,7 @@ function init() {
       message,
     );
     reviewEl.appendChild(box);
+    if (retry) reviewEl.appendChild(makePrimary(mkBtn("↻ Try again", "#2563eb", retry)));
     log(message, false);
   }
 
@@ -670,10 +689,20 @@ function init() {
         log("“Skip titles matching” isn't a valid pattern — ignoring it", false);
       }
     }
-    jobs.sort((a, b) => Number(b.isIndeedApply) - Number(a.isIndeedApply));
+    const afterTitles = jobs.length;
+    // Easy Apply ONLY. The search URL already asks Indeed for these, but Indeed
+    // still mixes in sponsored cards that apply on the employer's site, and a
+    // user who lands on /jobs by hand has no filter at all. The assist can't
+    // finish those, so offering them just wastes a click.
+    jobs = jobs.filter((j) => j.isIndeedApply);
 
-    const dropped = scraped - jobs.length;
-    log(`found ${scraped} listing(s)${dropped > 0 ? `, skipped ${dropped} by title` : ""}`);
+    const byTitle = scraped - afterTitles;
+    const notEasy = afterTitles - jobs.length;
+    const skipped = [
+      byTitle > 0 ? `${byTitle} by title` : "",
+      notEasy > 0 ? `${notEasy} not Easy Apply` : "",
+    ].filter(Boolean).join(", ");
+    log(`found ${scraped} listing(s)${skipped ? `, skipped ${skipped}` : ""}`);
     return jobs;
   }
 
@@ -684,21 +713,24 @@ function init() {
     if (!Array.isArray(queue.jobs)) queue = { ...queue, jobs: [] };
     if (!Array.isArray(queue.seen)) queue = { ...queue, seen: [] };
 
-    if (!queue.jobs.length) {
-      reviewEl.appendChild(hHeader(
-        "No jobs found",
-        "Nothing scraped from this results page — it may still be loading, or everything was filtered out by “Skip titles matching”.",
-      ));
-      return;
-    }
-
     // Walking off the end of a page continues into Indeed's next 10 results
     // rather than dead-ending.
     const goNextPage = async () => {
-      // Keep `seen`; the jobs themselves get re-scraped on arrival.
+      // Keep `seen`; the jobs themselves get re-scraped on arrival. Flag
+      // autoBrowse so the next page lists itself without another press.
       await setItem("jobQueue", { ...queue, start: queue.start + 10 });
+      await setItem("autoBrowse", true);
       window.location.assign(buildIndeedSearchUrl(queue.query, queue.location, queue.start + 10));
     };
+
+    if (!queue.jobs.length) {
+      reviewEl.appendChild(hHeader(
+        "No jobs found",
+        "No Easy Apply jobs on this results page. It may still be loading, or everything was filtered out by “Skip titles matching”.",
+      ));
+      reviewEl.appendChild(makePrimary(mkBtn("Next page of results →", "#2563eb", goNextPage)));
+      return;
+    }
 
     const job = queue.jobs[queue.cursor];
     if (!job) {
@@ -707,6 +739,11 @@ function init() {
         `You've been through all ${queue.jobs.length}.`,
       ));
       reviewEl.appendChild(makePrimary(mkBtn("Next page of results →", "#2563eb", goNextPage)));
+      reviewEl.appendChild(makePrimary(mkBtn("← Previous job", "#475569", async () => {
+        const back: JobQueue = { ...queue, cursor: queue.jobs.length - 1 };
+        await setItem("jobQueue", back);
+        renderJobBrowser(back);
+      })));
       return;
     }
 
@@ -750,11 +787,27 @@ function init() {
       await setItem("autoApply", { at: Date.now(), link: job.link });
       window.location.assign(job.link);
     })));
-    row.appendChild(makePrimary(
+    // Previous and Next side by side. Going back only moves the cursor — the
+    // job stays in `seen`, which is fine: `seen` decides where a fresh scrape
+    // starts, not what you're allowed to look at.
+    const nav = mkEl("div", "display:flex;gap:6px");
+    if (queue.cursor > 0) {
+      const prev = makePrimary(mkBtn("← Previous job", "#475569", async () => {
+        const back: JobQueue = { ...queue, cursor: queue.cursor - 1 };
+        await setItem("jobQueue", back);
+        renderJobBrowser(back);
+      }));
+      prev.style.flex = "1";
+      nav.appendChild(prev);
+    }
+    const next = makePrimary(
       isLast
-        ? mkBtn("Next page of results →", "#2563eb", goNextPage)
+        ? mkBtn("Next page →", "#2563eb", goNextPage)
         : mkBtn("Next job →", "#475569", async () => renderJobBrowser(await advance())),
-    ));
+    );
+    next.style.flex = "1";
+    nav.appendChild(next);
+    row.appendChild(nav);
     reviewEl.appendChild(row);
   }
 
@@ -1326,14 +1379,27 @@ function init() {
     // Still on the job page: press Indeed's Apply button, which either navigates
     // to the form or drops it in as an iframe — this block re-runs there.
     if (/^\/jobs\b/.test(location.pathname)) return; // results page, not a job
+    await pressIndeedApply(stamp.link);
+  })();
+
+  /**
+   * Press Indeed's Apply button for the job the user picked. On failure the
+   * intent is KEPT, so pressing Apply by hand still hands over to the assist,
+   * and the failure box offers "Try again" — a captcha or a slow page can leave
+   * the button missing on the first look and present a moment later.
+   */
+  async function pressIndeedApply(link: string): Promise<void> {
     showBusy("Opening the application");
     // Let the page settle before reaching for the button: it renders before
     // Indeed's script wires it up, and pressing in that gap does nothing.
     await sleep(1200);
     const btn = await waitFor(findIndeedApplyDom, 8000);
     if (!btn) {
-      await setItem("autoApply", null);
-      failBusy("Couldn't find Indeed's Apply button on this page — press it yourself, then “↻ Rescan page”.");
+      await setItem("autoApply", { at: Date.now(), link });
+      failBusy(
+        "Couldn't find Indeed's Apply button. Press “Apply now” yourself — the assist takes over when the form opens — or try again.",
+        () => void pressIndeedApply(link),
+      );
       return;
     }
 
@@ -1359,9 +1425,12 @@ function init() {
     // to press Apply themselves, and the assist can only honour that promise if
     // the intent is still there when the form opens. The clock restarts so they
     // get the full window; the listing is already pinned to this job.
-    await setItem("autoApply", { at: Date.now(), link: stamp.link });
-    failBusy("Couldn't press Apply for you. Press “Apply with Indeed” yourself — the assist takes over as soon as the form opens.");
-  })();
+    await setItem("autoApply", { at: Date.now(), link });
+    failBusy(
+      "Couldn't press Apply for you. Press “Apply now” yourself — the assist takes over as soon as the form opens — or try again.",
+      () => void pressIndeedApply(link),
+    );
+  }
   panel.querySelector("#aaui-cancel")!.addEventListener("click", () => {
     sendToWorker({ type: "cancel-run" }).then(() => log("run cancelled"));
   });
@@ -2088,8 +2157,12 @@ async function fillFieldDom(field: FormField, answer: string): Promise<{ ok: boo
 
 // ─── Advance-button finder ─────────────────────────────────────────────────────
 
-/** How long an "Apply to this job" intent stays good for, across 2 navigations. */
-const AUTO_APPLY_TTL_MS = 120_000;
+/**
+ * How long an "Apply to this job" intent stays good for, across 2 navigations.
+ * Long enough to survive Indeed's captcha page in between, which can take a
+ * minute or two to solve. Still pinned to one job key, so it can't leak.
+ */
+const AUTO_APPLY_TTL_MS = 5 * 60_000;
 
 /** Indeed's per-listing id, used to check a pending apply belongs to THIS page. */
 function jobKeyOf(url: string): string | null {
@@ -2127,7 +2200,15 @@ function realClick(el: HTMLElement): void {
  * user explicitly chose a job, never while hunting for a way to advance a page.
  */
 function findIndeedApplyDom(): HTMLElement | null {
-  // Indeed attaches its click handler to a WRAPPER SPAN, not to the button:
+  // Current layout (seen live 2026-10-08): a plain link,
+  //   <a data-testid="viewjob-indeed-apply" role="link" href="https://smartapply…">Apply now</a>
+  // It says "Apply now", not "Apply with Indeed", and it's an <a>, so neither
+  // check below could ever match it and every auto-apply died here.
+  for (const el of document.querySelectorAll<HTMLElement>('[data-testid="viewjob-indeed-apply"], [data-testid*="indeed-apply"]')) {
+    if (isVisibleEnabled(el)) return el;
+  }
+
+  // Older layout: Indeed attaches its click handler to a WRAPPER SPAN, not to the button:
   //   <span class="… indeed-apply-status-not-applied" data-click-handler="attached">
   //     <button aria-label="Apply with Indeed"> … </button>
   //   </span>
