@@ -1,5 +1,5 @@
 // Shared types, enums, and reporting-period helpers used by both the web app
-// and (later) the Guided worker. Keep this dependency-free so it transpiles
+// and the AI job-search assistant. Keep this dependency-free so it transpiles
 // cleanly via Next's transpilePackages and is testable in plain Node.
 
 // ─── Enums (value + human label) ────────────────────────────────────────────
@@ -82,111 +82,11 @@ export interface Profile {
   subscription_status: SubscriptionStatus;
   trial_ends_at: string | null;
   current_period_end: string | null;
-  answer_template: AnswerTemplate | null;
+  /** Legacy: the old Indeed extension's autofill answers. Unused now; the
+   * column is kept so no migration is needed to drop it. */
+  answer_template: unknown;
   created_at: string;
 }
-
-// ─── Answer template (Guided extension autofill) ─────────────────────────────
-// The user's saved autofill answers. `config` overrides fields on the
-// extension's DEFAULT_CONFIG; `rules` are custom "if the question contains X,
-// answer Y" matches that take priority over the built-in ruleset. Edited in the
-// web app, read by the extension. Stored as JSONB on profiles.answer_template.
-
-export interface CustomRule {
-  /** Case-insensitive substring matched against the question text. */
-  match: string;
-  /** The answer to apply (plain text, or a Yes/No/option label). */
-  answer: string;
-}
-
-export interface AnswerTemplate {
-  config: Record<string, string>;
-  rules: CustomRule[];
-}
-
-/** A field shown in the template editor (both the web app and the extension). */
-export interface TemplateField {
-  key: string;
-  label: string;
-  type?: "yesno" | "select" | "list";
-  placeholder?: string;
-  /** For type "select": the choices. `value` is the phrase the extension
-   * matches against a form's live option labels at fill time. */
-  options?: { label: string; value: string }[];
-}
-
-/** The curated standard fields exposed in the template editor. */
-export const TEMPLATE_FIELDS: TemplateField[] = [
-  { key: "firstName", label: "First name" },
-  { key: "lastName", label: "Last name" },
-  { key: "phone", label: "Phone" },
-  { key: "zipCode", label: "ZIP code" },
-  { key: "city", label: "City" },
-  { key: "educationLevel", label: "Education", placeholder: "keywords to match the option, e.g. Bachelor" },
-  { key: "salary", label: "Desired salary" },
-  { key: "yearsExperience", label: "Years of experience" },
-  { key: "willingToRelocate", label: "Willing to relocate", type: "yesno" },
-  { key: "authorizedToWork", label: "Authorized to work in the US", type: "yesno" },
-  { key: "needsSponsorship", label: "Need visa sponsorship", type: "yesno" },
-  { key: "usCitizen", label: "US citizen", type: "yesno" },
-  { key: "is18OrOlder", label: "18 or older", type: "yesno" },
-  { key: "hasDiploma", label: "Have HS diploma / GED", type: "yesno" },
-  { key: "drivingLicense", label: "Have driver's license", type: "yesno" },
-  {
-    key: "veteranStatus",
-    label: "Veteran status",
-    type: "select",
-    options: [
-      { label: "Not a protected veteran", value: "not a protected veteran" },
-      { label: "I am a protected veteran", value: "i identify as a protected veteran" },
-      { label: "Prefer not to answer", value: "prefer not to answer" },
-    ],
-  },
-  {
-    key: "disabilityStatus",
-    label: "Disability status",
-    type: "select",
-    options: [
-      { label: "No, I don't have a disability", value: "no i do not have a disability" },
-      { label: "Yes, I have a disability", value: "yes i have a disability" },
-      { label: "Prefer not to answer", value: "prefer not to answer" },
-    ],
-  },
-  { key: "linkedin", label: "LinkedIn URL" },
-  // Prior-employment questions. The rule engine has matched these since the
-  // original port, but they were missing from the editor — so the answers could
-  // never be supplied and every "most recent employer" question fell through to
-  // the user by hand.
-  { key: "priorJobTitle", label: "Most recent job title" },
-  { key: "priorJobCompany", label: "Most recent employer" },
-  { key: "priorJobDuration", label: "Time at most recent job", placeholder: "e.g. 3 years" },
-  // Interview-availability questions.
-  { key: "timeZone", label: "Time zone", placeholder: "e.g. Eastern" },
-  { key: "preferredDay", label: "Preferred interview day", placeholder: "e.g. Monday" },
-  { key: "preferredTime", label: "Preferred interview time", placeholder: "e.g. Morning" },
-  // Job search — drives the "Find jobs" button, which builds Indeed's search
-  // URL rather than making the user type the same query every session.
-  { key: "searchQuery", label: "Search: job title or keywords", placeholder: "e.g. production technician" },
-  { key: "searchLocation", label: "Search: location", placeholder: "e.g. Syracuse, NY — blank searches everywhere" },
-  { key: "maxApplications", label: "Max applications per session", placeholder: "e.g. 5" },
-  { key: "exclusionTitleRegex", label: "Skip titles matching", placeholder: "e.g. senior|manager|intern" },
-  // Referral questions are answered per EMPLOYER, not per application: list the
-  // employers once here and the assist matches the job you're applying to
-  // against the list, answering Yes with the contact's name only where it
-  // actually applies.
-  {
-    key: "referralCompanies",
-    label: "Employers where someone referred you",
-    type: "list",
-    placeholder: "One per line — Byrne Dairy: Bob Jones",
-  },
-  {
-    key: "relativeCompanies",
-    label: "Employers where you know a relative or acquaintance",
-    type: "list",
-    placeholder: "One per line — Byrne Dairy: Jane Smith",
-  },
-];
 
 export interface ActivityLogEntry {
   id: string;
@@ -302,28 +202,12 @@ export function isEntitled(status: SubscriptionStatus): boolean {
   return status === "trialing" || status === "active";
 }
 
-/**
- * Emitted by the Guided automation core (packages/automation) on each verified
- * application submit. The worker (M2 Stage B) maps this to an ActivityLogEntry
- * insert; the Stage A console driver just prints it.
- */
-export interface GuidedActivityEvent {
-  employer_name: string;
-  job_title: string | null;
-  url: string | null;
-  /** YYYY-MM-DD */
-  date: string;
-  method: "online";
-  result: "applied";
-  source: "guided";
-  notes: string | null;
-  /** Stage A: local screenshot file path; later: evidence-bucket path. */
-  screenshotPath?: string | null;
-}
-
 // ─── Rules Assistant ────────────────────────────────────────────────────────
 // Jurisdiction directory, topic->lane table, and hand-checked state facts.
 // NOTE: this exports JURISDICTIONS separately rather than extending US_STATES —
 // US_STATES feeds the settings dropdown and the PDF export header, so adding
 // territories to it would silently change two shipped features.
 export * from "./rules";
+
+// ─── AI job-search assistant ────────────────────────────────────────────────
+export * from "./ai";

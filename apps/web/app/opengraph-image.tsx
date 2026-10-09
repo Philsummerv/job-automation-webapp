@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const alt = "JobAssistUI — Job Search Log for Unemployment Compliance";
+export const alt = "JobAssistUI: AI job search help for people on unemployment";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -33,10 +33,10 @@ export default function OgImage() {
             maxWidth: 950,
           }}
         >
-          Track your weekly job search. Export a report your state accepts.
+          Find jobs that fit. Apply faster. Your weekly log fills itself.
         </div>
         <div style={{ marginTop: 36, fontSize: 32, opacity: 0.85 }}>
-          Free forever · no credit card
+          Work-search log free forever · no credit card
         </div>
       </div>
     ),

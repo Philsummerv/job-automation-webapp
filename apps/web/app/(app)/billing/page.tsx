@@ -25,9 +25,10 @@ function formatDate(iso: string | null) {
 // the checkout box was selling things nobody has to pay for while omitting the
 // only feature behind the paywall.
 const FEATURES = [
-  "Guided assist — fills Indeed applications from your saved answers",
-  "Answer Template — save your answers once, reuse them everywhere",
-  "Applications logged automatically as you submit them",
+  "Resume help: upload your resume and get a clean profile",
+  "Job matches from company career sites, with a score for each",
+  "Apply kits: a tailored resume, cover letter and draft answers per job",
+  "One tap to log each application to your work-search log",
 ];
 
 export default async function BillingPage({
@@ -82,11 +83,11 @@ export default async function BillingPage({
             those.
           </p>
           <p className="mt-2 text-sm text-emerald-800">
-            Guided assist — the extension that fills applications for you — is
-            also free right now. Starting {FREE_UNTIL_LABEL} that one feature
-            costs {MONTHLY_PRICE}/month, and we&apos;ll ask you then. If you
-            skip it, nothing else changes: your account stays open, your log
-            stays free, and you can always export it.
+            The AI tools (we call them Guided) are also free right now.
+            Starting {FREE_UNTIL_LABEL} they cost {MONTHLY_PRICE}/month, and
+            we&apos;ll ask you then. If you skip them, nothing else changes:
+            your account stays open, your log stays free, and you can always
+            export it.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-emerald-900">
             {FEATURES.map((f) => (
@@ -117,7 +118,7 @@ export default async function BillingPage({
       {!free && !comped &&(status === "none" || status === "incomplete") && (
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">
-            Add Guided assist
+            Add Guided
           </h2>
           <p className="mt-2 text-sm text-slate-600">
             {MONTHLY_PRICE}/month after a 14-day free trial. Card required — you
@@ -125,7 +126,7 @@ export default async function BillingPage({
           </p>
           <p className="mt-2 text-sm text-slate-600">
             Your job-search log, weekly tracking and exports stay free whether
-            you subscribe or not. This only adds the form-filling extension.
+            you subscribe or not. This only adds the AI tools.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-slate-700">
             {FEATURES.map((f) => (
@@ -190,8 +191,8 @@ export default async function BillingPage({
         <div className="mt-6 rounded-2xl border border-slate-200 p-8">
           <h2 className="text-lg font-semibold">Your subscription has ended</h2>
           <p className="mt-2 text-sm text-slate-600">
-            Resubscribe for {MONTHLY_PRICE}/month to get back to your activity log. Your
-            existing entries are safe.
+            Resubscribe for {MONTHLY_PRICE}/month to get the AI tools back.
+            Your activity log is free and your entries are safe.
           </p>
           <form action={startCheckout} className="mt-6">
             <SubmitButton
@@ -210,10 +211,10 @@ export default async function BillingPage({
 function StartApplyingButton() {
   return (
     <Link
-      href="/dashboard"
+      href="/jobs"
       className="rounded-lg bg-brand px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-dark"
     >
-      Start applying
+      Find jobs
     </Link>
   );
 }

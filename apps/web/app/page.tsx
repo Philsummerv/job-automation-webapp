@@ -6,14 +6,37 @@ import {
   isFreePeriod,
 } from "@jobassistui/shared";
 
+const STEPS = [
+  {
+    title: "1. Add your resume",
+    body: "Upload a PDF or paste the text. We turn it into a clean profile: your jobs, skills and the titles you want.",
+  },
+  {
+    title: "2. See jobs that fit",
+    body: "We pull open jobs straight from company career sites. Each one gets a match score and a one-line reason.",
+  },
+  {
+    title: "3. Get an apply kit",
+    body: "Pick a job and get a resume tuned to it, a cover letter, and draft answers to common questions.",
+  },
+  {
+    title: "4. It's logged for you",
+    body: "Apply on the company's site. Then tap \"I applied\" and it goes into your work-search log for the week.",
+  },
+];
+
 export default function LandingPage() {
   const free = isFreePeriod();
+
+  const guidedPrice = free
+    ? `free until ${FREE_UNTIL_LABEL}, then ${MONTHLY_PRICE}/month`
+    : `${MONTHLY_PRICE}/month after a 14-day free trial`;
 
   return (
     <div className="min-h-screen bg-white">
       {/* Nav */}
       <header className="border-b border-slate-100">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <span className="flex items-baseline gap-1.5">
             <span className="text-lg font-bold text-brand">JobAssistUI</span>
             <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
@@ -21,10 +44,10 @@ export default function LandingPage() {
             </span>
           </span>
           <div className="flex items-center gap-4 text-sm">
-            <a href="#how" className="text-slate-600 hover:text-slate-900">
+            <a href="#how" className="hidden text-slate-600 hover:text-slate-900 sm:inline">
               How it works
             </a>
-            <a href="#pricing" className="text-slate-600 hover:text-slate-900">
+            <a href="#pricing" className="hidden text-slate-600 hover:text-slate-900 sm:inline">
               Pricing
             </a>
             <Link
@@ -38,20 +61,19 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="mx-auto max-w-3xl px-6 py-20 text-center">
+      <section className="mx-auto max-w-3xl px-4 py-16 text-center sm:px-6 sm:py-20">
         <p className="text-sm font-semibold uppercase tracking-wide text-brand">
-          Unemployment job-search compliance
+          For people on unemployment
         </p>
-        <h1 className="mt-3 text-4xl font-bold leading-tight text-slate-900 sm:text-5xl">
-          Track your weekly job search. Export a report ready for your claim.
+        <h1 className="mt-3 text-3xl font-bold leading-tight text-slate-900 sm:text-5xl">
+          Find jobs that fit. Apply faster. Your weekly log fills itself.
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-600">
-          Most states require you to document 3–5 job-search activities every
-          week to keep your benefits. JobAssistUI keeps a clean, exportable log of
-          every activity — with dates, employers, methods, and evidence — ready
-          for your reporting period.
+          Fix up your resume, see open jobs from real company career sites, and
+          get a resume and cover letter made for each job. Every application
+          you make lands in your work-search log, ready for your weekly claim.
         </p>
-        <div className="mt-8 flex items-center justify-center gap-4">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/login"
             className="rounded-lg bg-brand px-6 py-3 font-medium text-white hover:bg-brand-dark"
@@ -63,101 +85,48 @@ export default function LandingPage() {
           </a>
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          {free ? (
-            <>
-              Your job-search log is free forever — no credit card, ever. Guided
-              assist, the extension that fills the forms in for you, is free
-              until {FREE_UNTIL_LABEL}, then {MONTHLY_PRICE}/month.
-            </>
-          ) : (
-            <>
-              Your job-search log is free forever — no credit card, ever. Guided
-              assist, the extension that fills the forms in for you, is{" "}
-              {MONTHLY_PRICE}/month after a 14-day free trial.
-            </>
-          )}
+          The work-search log is free forever. No credit card. The AI tools are{" "}
+          {guidedPrice}.
         </p>
       </section>
 
       {/* How it works */}
       <section id="how" className="border-t border-slate-100 bg-slate-50">
-        <div className="mx-auto max-w-5xl px-6 py-16">
+        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6">
           <h2 className="text-center text-2xl font-semibold">How it works</h2>
-          <div className="mt-10 grid gap-8 sm:grid-cols-3">
-            {[
-              {
-                title: "1. Log each activity",
-                body: "Add every job-search activity — application, interview, job fair, networking — in seconds. Attach a screenshot as evidence.",
-              },
-              {
-                title: "2. Track your week",
-                body: "See a live count against your state's weekly requirement, grouped by your reporting period. Never come up short.",
-              },
-              {
-                title: "3. Export & submit",
-                body: "Download a formatted PDF or CSV for any week, ready to attach to your unemployment claim.",
-              },
-            ].map((c) => (
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((c) => (
               <div key={c.title} className="rounded-xl border border-slate-200 bg-white p-6">
                 <h3 className="font-semibold text-slate-900">{c.title}</h3>
                 <p className="mt-2 text-sm text-slate-600">{c.body}</p>
               </div>
             ))}
           </div>
-          {/* Guided assist, explained concretely. The old copy said "Guided
-              mode will streamline the form" without ever saying it is a Chrome
-              extension that works on Indeed — so nobody could tell what they
-              were being offered, or that it needs a computer. Say both. */}
-          <div className="mx-auto mt-10 max-w-2xl rounded-xl border border-slate-200 bg-white p-6">
-            <h3 className="text-center font-semibold text-slate-900">
-              Guided assist — early access
-            </h3>
-            <p className="mt-2 text-center text-sm text-slate-600">
-              Fill in your answers once here. Then, when you&apos;re applying on
-              Indeed, they drop into the application form for you — so you
-              aren&apos;t retyping your address and work history for the
-              hundredth time.
+
+          <div className="mx-auto mt-10 max-w-2xl space-y-3 rounded-xl border border-slate-200 bg-white p-6 text-sm text-slate-700">
+            <p>
+              <strong>It only uses what&apos;s true.</strong> The tailored resume
+              and cover letter reword what is already on your resume. They never
+              add jobs, degrees or skills you don&apos;t have. If a job asks for
+              something you don&apos;t list, we show it as a gap so you can decide.
             </p>
-
-            <div className="mt-5 space-y-2 rounded-lg bg-slate-50 p-4 text-sm text-slate-700">
-              <p>
-                <strong>How it works:</strong> it&apos;s a{" "}
-                <strong>Chrome extension</strong>. You install it once, open a
-                job on <strong>Indeed</strong>, and click Apply yourself. The
-                form comes up already filled in.
-              </p>
-              <p>
-                <strong>You submit it, not us.</strong> You read every page and
-                press the button. JobAssistUI never applies to anything without
-                you there, and never submits on your behalf.
-              </p>
-              <p>
-                <strong>Needs a computer.</strong> Chrome extensions don&apos;t
-                run on phones. Everything else here — logging activities,
-                tracking your week, exporting your record — works on any device.
-              </p>
-            </div>
-
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/guided"
-                className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-dark"
-              >
-                Get the Chrome extension
-              </Link>
-              <span className="text-xs text-slate-500">
-                Free until {FREE_UNTIL_LABEL}, then {MONTHLY_PRICE}/month.
-                You&apos;ll sign in first.
-              </span>
-            </div>
+            <p>
+              <strong>You apply, not us.</strong> We link you to the job on the
+              company&apos;s own site. You read it, fill it in and press submit.
+              Nothing is ever sent for you.
+            </p>
+            <p>
+              <strong>Works on a phone.</strong> Everything runs in the browser.
+              Nothing to install.
+            </p>
           </div>
         </div>
       </section>
 
-      {/* Beta note — the honest version of "why is this free?" */}
+      {/* Founder note */}
       <section className="border-t border-slate-100">
-        <div className="mx-auto max-w-2xl px-6 py-16">
-          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-8">
+        <div className="mx-auto max-w-2xl px-4 py-16 sm:px-6">
+          <div className="rounded-2xl border border-sky-200 bg-sky-50 p-6 sm:p-8">
             <span className="rounded bg-sky-600 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
               Early beta
             </span>
@@ -172,25 +141,20 @@ export default function LandingPage() {
                 you were ready and able to take a job.
               </p>
               <p>
-                I never missed a week. I just spent a lot of time wanting to be{" "}
-                <em>100% sure</em> I hadn&apos;t — so I built something to keep
-                the record for me. You log each application or contact as you go,
-                see where you stand for the week, and print a clean copy of what
-                you did if you ever need one.
+                I never missed a week. I just wanted to be <em>100% sure</em> I
+                hadn&apos;t. So I built something to keep the record for me.
+                Then I wanted the applying part to take less time too, so I
+                added that.
               </p>
               <p>
-                The log itself is free, and it stays free — no card, no trial
-                countdown, nothing to cancel. If you want the extension that
-                fills the applications in for you, that part is free until{" "}
-                {FREE_UNTIL_LABEL} and {MONTHLY_PRICE}/month after. I&apos;d
-                rather people just use it and decide then.
+                The log is free, and it stays free. No card, no trial, nothing
+                to cancel. The AI tools are {guidedPrice}. I&apos;d rather
+                people just use it and decide then.
               </p>
               <p>
-                It&apos;s early and I built it myself, so there will be things
-                wrong with it. If something breaks or reads wrong, tell me —
-                there&apos;s a Feedback link inside the app and it comes straight
-                to me. Mostly I hope it takes some of the anxiety out of staying
-                eligible while you&apos;re trying to find a job.
+                It&apos;s early and I built it myself, so some things will be
+                wrong. If something breaks or reads wrong, tell me. There&apos;s
+                a Feedback link inside the app and it comes straight to me.
               </p>
             </div>
           </div>
@@ -199,63 +163,39 @@ export default function LandingPage() {
 
       {/* Pricing */}
       <section id="pricing" className="border-t border-slate-100">
-        <div className="mx-auto max-w-md px-6 py-16 text-center">
-          <h2 className="text-2xl font-semibold">
-            The tracker is free. Always.
-          </h2>
+        <div className="mx-auto max-w-md px-4 py-16 text-center sm:px-6">
+          <h2 className="text-2xl font-semibold">The log is free. Always.</h2>
           <p className="mx-auto mt-3 max-w-sm text-sm text-slate-600">
-            You&apos;re on unemployment. Paying to prove you looked for work is
-            the last thing you need, so logging your activities, tracking your
-            week and exporting your record don&apos;t cost anything and
-            won&apos;t start to.
+            You&apos;re on unemployment. You shouldn&apos;t have to pay to prove
+            you looked for work. Logging, weekly tracking and exports cost
+            nothing and never will.
           </p>
-          <div className="mt-8 rounded-2xl border border-slate-200 p-8 shadow-sm">
-            {free ? (
-              <>
-                <div className="text-4xl font-bold">Free</div>
-                <p className="mt-1 text-sm text-slate-600">
-                  No credit card, ever, for the tracker.
-                </p>
-                <div className="mt-5 border-t border-slate-200 pt-5 text-left text-sm text-slate-600">
-                  <p>
-                    <strong className="text-slate-900">
-                      Guided assist is the one paid part
-                    </strong>{" "}
-                    — the Chrome extension that fills Indeed applications for
-                    you. It&apos;s free for everyone until {FREE_UNTIL_LABEL},
-                    then {MONTHLY_PRICE}/month. Nothing is charged before that,
-                    and skipping it costs you nothing else.
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-4xl font-bold">Free</div>
-                <p className="mt-1 text-sm text-slate-600">
-                  No credit card, ever, for the tracker.
-                </p>
-                <div className="mt-5 border-t border-slate-200 pt-5 text-left text-sm text-slate-600">
-                  <p>
-                    <strong className="text-slate-900">
-                      Guided assist is the one paid part
-                    </strong>{" "}
-                    — the Chrome extension that fills Indeed applications for
-                    you. It&apos;s {MONTHLY_PRICE}/month after a 14-day free
-                    trial, and skipping it costs you nothing else.
-                  </p>
-                </div>
-              </>
-            )}
+          <div className="mt-8 rounded-2xl border border-slate-200 p-6 shadow-sm sm:p-8">
+            <div className="text-4xl font-bold">Free</div>
+            <p className="mt-1 text-sm text-slate-600">
+              No credit card, ever, for the log.
+            </p>
+            <div className="mt-5 border-t border-slate-200 pt-5 text-left text-sm text-slate-600">
+              <p>
+                <strong className="text-slate-900">
+                  The AI tools are the one paid part
+                </strong>{" "}
+                (we call it Guided). Resume help, job matches and apply kits are{" "}
+                {guidedPrice}.{" "}
+                {free
+                  ? "Nothing is charged before then, and skipping it costs you nothing else."
+                  : "Skipping it costs you nothing else."}
+              </p>
+            </div>
             <ul className="mt-6 space-y-2 text-left text-sm text-slate-700">
-              <li>✓ Unlimited activity logging <span className="text-slate-400">— free</span></li>
-              <li>✓ Weekly compliance tracking <span className="text-slate-400">— free</span></li>
-              <li>✓ PDF &amp; CSV exports <span className="text-slate-400">— free</span></li>
-              <li>✓ Evidence storage <span className="text-slate-400">— free</span></li>
+              <li>✓ Unlimited activity logging <span className="text-slate-400">· free</span></li>
+              <li>✓ Weekly target tracking <span className="text-slate-400">· free</span></li>
+              <li>✓ PDF and CSV exports <span className="text-slate-400">· free</span></li>
+              <li>✓ Evidence screenshots <span className="text-slate-400">· free</span></li>
               <li>
-                ✓ Guided application assist on Indeed{" "}
+                ✓ Resume help, job matches and apply kits{" "}
                 <span className="text-slate-400">
-                  — {MONTHLY_PRICE}/month from {FREE_UNTIL_LABEL}. Chrome
-                  extension, on a computer. Early access.
+                  · Guided, {free ? `free until ${FREE_UNTIL_LABEL}` : `${MONTHLY_PRICE}/month`}
                 </span>
               </li>
             </ul>
@@ -263,18 +203,19 @@ export default function LandingPage() {
               href="/login"
               className="mt-8 block rounded-lg bg-brand px-6 py-3 font-medium text-white hover:bg-brand-dark"
             >
-              {free ? "Get started free" : "Start free trial"}
+              Get started free
             </Link>
           </div>
         </div>
       </section>
 
       <footer className="border-t border-slate-100">
-        <div className="mx-auto max-w-5xl px-6 py-8 text-center text-xs text-slate-500">
+        <div className="mx-auto max-w-5xl px-4 py-8 text-center text-xs text-slate-500 sm:px-6">
           <p>
-            JobAssistUI is a user-directed job-search documentation tool. It does not
-            provide legal advice; requirements vary by state. You are responsible
-            for the accuracy of your records and for meeting your state&apos;s rules.
+            JobAssistUI helps you search for jobs and keep a record of it. It is
+            not legal advice, and rules vary by state. You are responsible for
+            what you submit and for meeting your state&apos;s rules. AI writing
+            can be wrong, so check it before you use it.
           </p>
           <div className="mt-4 flex flex-wrap items-center justify-center gap-6">
             <a

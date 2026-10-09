@@ -1,8 +1,10 @@
 # JobAssistUI — web app
 
-A job-search **activity documentation tool for unemployment compliance**, with
-optional Guided browser assistance. Users log every job-search activity, track
-their weekly requirement, and export a clean PDF or CSV record they can print.
+An AI job-search assistant for people on unemployment, built on a free
+work-search log. Users upload a resume, get matched jobs from public company
+job boards, build an apply kit (tailored resume, cover letter, draft answers)
+for one job, and log the application in one click. The log tracks the weekly
+requirement and exports a clean PDF or CSV record they can print.
 
 > **Never describe the export as "DOL-ready", "DOL-approved", or as something a
 > state accepts.** Nobody can warrant that for 50 states, and it is the fastest
@@ -34,9 +36,10 @@ and both exports run on `requireOnboarded` and are never gated. The audience is
 people on unemployment; charging them to document a legal requirement is the
 wrong business.
 
-**Guided assist is the only paid feature** — `/template` and `/guided` gate on
-`requireEntitled`. It is free to everyone until `FREE_UNTIL` (2027-01-01), then
-$12/month.
+**Guided (the AI tools) is the only paid feature.** `/resume` AI parsing,
+`/jobs` match scores and `/apply` kits gate on `requireAiAccess()`
+(`apps/web/lib/ai/guard.ts`). It is free to everyone until `FREE_UNTIL`
+(2027-01-01), then $12/month. The job feed itself is free.
 
 No cutover to run: `isEntitled()` short-circuits to `true` during the free
 period and `startCheckout` refuses to run, so no subscription — and no revenue —
@@ -44,21 +47,20 @@ can be created before that date. Every gate and every piece of pricing copy
 reads `isFreePeriod()` at request time, so the paywall arrives on its own with
 no deploy.
 
-### Guided assist — read before touching it
+### AI assistant — read before touching it
 
-Two parked implementations, one shared answer-template model. **Neither is in
-the web build.** See `HANDOFF.md` for the full picture, including:
-
-- **Indeed prohibits automating the apply process** — the *process*, not just
-  the submit. The defensible shape is: the user clicks Apply, the tool fills
-  fields from saved answers, the user reads and submits.
-- `packages/automation/src/captcha.ts` and `human.ts` are ToS liabilities
-  (2Captcha solving, anti-detection jitter). Delete them from anything shipped.
-- `apps/extension`'s form scan is last-known-broken; the fix in `86ee728` has
-  never been run against a live Indeed page.
-- Chrome extensions do not run on mobile, so Guided is desktop-only by nature.
-
-Deferred: resume management, evidence-capture polish.
+- Jobs come from public Greenhouse, Lever and Ashby boards
+  (`apps/web/lib/jobs/companies.ts`), plus USAJOBS and Adzuna only when their
+  keys are set. Nothing is scraped from job sites, and nothing is submitted for
+  the user. They apply on the company site themselves.
+- Tailored text may only reword facts already in the resume. Each kit has a
+  "check these" list. Missing keywords are shown as gaps, never added.
+- Resume and job text are untrusted data and are wrapped in tags in prompts.
+- Pasted job URLs go through `safeFetchJobPage` (SSRF checks).
+- 40 AI calls per user per day, counted in `ai_usage`.
+- Needs `ANTHROPIC_API_KEY` in `apps/web/.env.local` and migration
+  `0006_ai_assistant.sql`. Without either, the pages show a notice instead of
+  crashing.
 
 ## Stack
 
@@ -77,7 +79,8 @@ Deferred: resume management, evidence-capture polish.
 1. **Create a Supabase project** at https://supabase.com.
 
 2. **Apply the schema.** In the Supabase SQL editor, paste and run
-   `packages/db/migrations/0001_init.sql`, then `0002_billing.sql` (or use the
+   `packages/db/migrations/0001_init.sql`, then each later file in order through
+   `0006_ai_assistant.sql` (or use the
    Supabase CLI: `supabase db push`). This creates `profiles`, `activity_log`,
    RLS policies, the signup trigger, the private `evidence` / `resumes` storage
    buckets, the subscription-column protection trigger, and the
@@ -122,5 +125,5 @@ Deferred: resume management, evidence-capture polish.
 onboard, log an activity, start and cancel a Stripe subscription with a real
 card — was verified end-to-end against production on 2026-08-06/07.
 
-**Not verified:** the mobile layout on a real device, and the Guided extension's
-form scan against a live Indeed page. Both are open items in `HANDOFF.md`.
+**Not verified:** the mobile layout on a real device, and any real AI call
+(resume parse, match scores, apply kit) on the `ai-revamp` branch.

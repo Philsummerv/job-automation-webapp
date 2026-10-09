@@ -8,12 +8,14 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="August 6, 2026">
+    <LegalPage title="Privacy Policy" updated="October 8, 2026">
       <p>
         This policy explains what information JobAssistUI collects, why, and
         what your choices are. The short version: we store the job-search
         records you create so we can show them back to you and export them,
-        we use a payment processor for billing, and we do not sell your data.
+        if you use the AI tools we send your resume and job posts to Anthropic
+        to process them, we use a payment processor for billing, and we do
+        not sell your data.
       </p>
 
       <h2>1. Information we collect</h2>
@@ -28,9 +30,17 @@ export default function PrivacyPage() {
           — and any evidence screenshots you upload.
         </li>
         <li>
-          <strong>Settings:</strong> your state, weekly target, reporting
-          period start day, and (if you use Guided assist) the answer
-          template you fill out.
+          <strong>Settings:</strong> your state, weekly target, and
+          reporting period start day.
+        </li>
+        <li>
+          <strong>Resume (if you use the AI tools):</strong> the resume file
+          name, its text, and the profile built from it (name, contact
+          details, work history, education and skills).
+        </li>
+        <li>
+          <strong>AI usage:</strong> a count of AI requests per day, used
+          to enforce the daily limit.
         </li>
         <li>
           <strong>Billing:</strong> subscription status and billing history
@@ -43,14 +53,21 @@ export default function PrivacyPage() {
         </li>
       </ul>
 
-      <h2>2. Guided assist</h2>
+      <h2>2. AI tools (Guided)</h2>
       <p>
-        The optional Guided assist feature reads the job-application page you
-        are working on in order to suggest form values. It uses your
-        JobAssistUI account only to fetch your answer template, check your
-        subscription, and record an activity-log entry when you confirm an
-        application. It never submits an application without you present and
-        confirming.
+        When you use the AI tools, we send your resume (the PDF or text you
+        give us) and the job posting you pick or paste to Anthropic, which
+        runs the AI model. Anthropic processes it to return the result and
+        does not use it to train its models. If you paste a job link, our
+        server fetches that page to read the posting. Job lists come from
+        public company career sites and job boards.
+      </p>
+      <p>
+        We save your resume profile so you don&apos;t have to upload it each
+        time. The tailored resume, cover letter and answers are drafts made
+        for you to copy and edit. When you tap &quot;I
+        applied&quot;, we add that job to your activity log. We never submit
+        an application for you.
       </p>
 
       <h2>3. How we use information</h2>
@@ -65,8 +82,9 @@ export default function PrivacyPage() {
       <h2>4. Service providers</h2>
       <p>
         We rely on a small number of processors to run the Service: Supabase
-        (database, authentication, and file storage), Stripe (payments), and
-        Vercel (hosting). Each receives only what it needs to perform its
+        (database, authentication, and file storage), Anthropic (AI
+        processing of resumes and job posts), Stripe (payments), and Vercel
+        (hosting). Each receives only what it needs to perform its
         role and is bound by its own privacy and security commitments.
       </p>
 
@@ -74,7 +92,8 @@ export default function PrivacyPage() {
       <p>
         Your records are kept for as long as your account exists so your
         compliance history stays available to you. If you want your account
-        and all associated data (records, screenshots, settings) deleted,
+        and all associated data (records, screenshots, resume, settings)
+        deleted,
         email us at the address below and we will delete them within 30 days.
         Billing records required for tax and accounting purposes are retained
         as required by law.

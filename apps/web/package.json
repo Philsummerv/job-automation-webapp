@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.132.1",
     "@jobassistui/db": "*",
     "@jobassistui/shared": "*",
     "@supabase/ssr": "^0.5.2",

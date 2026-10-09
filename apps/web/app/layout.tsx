@@ -4,9 +4,9 @@ import { Analytics } from "@vercel/analytics/next";
 import { SITE_URL } from "@/lib/site";
 import FreePeriodBanner from "@/components/FreePeriodBanner";
 
-const title = "JobAssistUI — Job Search Log for Unemployment Compliance";
+const title = "JobAssistUI: AI job search help for people on unemployment";
 const description =
-  "Document your weekly job-search activities and export a clean report for your unemployment claim. A user-directed job-search documentation tool.";
+  "Fix your resume, see jobs from real company career sites, and get a tailored resume and cover letter for each one. Every application lands in your free work-search log.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),

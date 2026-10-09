@@ -1,22 +1,27 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { requireOnboarded } from "@/lib/auth";
+import { isMissingTableError, MIGRATION_NEEDED_MESSAGE } from "@/lib/ai/usage";
+import { isAiConfigured, AI_NOT_CONFIGURED_MESSAGE } from "@/lib/ai/client";
+import ShellTopJobs, { ShellTopJobsLoading } from "@/components/ShellTopJobs";
 import {
   groupByReportingPeriod,
   reportingPeriodKey,
   methodLabel,
   resultLabel,
   type ActivityLogEntry,
+  type ResumeProfileRow,
 } from "@jobassistui/shared";
 import { deleteEntry } from "./actions";
 import { DeleteEntryForm } from "@/components/DeleteEntryForm";
-import { GuidedPitch } from "@/components/GuidedPitch";
 
+// Home: three next steps (resume, jobs, this week), then the activity log.
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ added?: string }>;
 }) {
-  const { supabase, profile } = await requireOnboarded();
+  const { supabase, profile, user } = await requireOnboarded();
   const sp = await searchParams;
 
   const { data } = await supabase
@@ -25,13 +30,24 @@ export default async function DashboardPage({
     .order("date", { ascending: false });
   const entries = (data ?? []) as ActivityLogEntry[];
 
+  // Resume status. The table comes from migration 0006; if it isn't in the
+  // database yet, say so instead of crashing.
+  const resumeRes = await supabase
+    .from("resume_profiles")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  const migrationMissing = isMissingTableError(resumeRes.error);
+  const resume = (resumeRes.data ?? null) as ResumeProfileRow | null;
+  const resumeProfile = resume?.profile ?? null;
+  const titles = (resumeProfile?.titles ?? []).filter(Boolean);
+  const jobLocation = resumeProfile?.locations?.[0] ?? "";
+  const aiReady = isAiConfigured();
+
   const startDay = profile.reporting_period_start_day;
   const groups = groupByReportingPeriod(entries, startDay);
-  // Someone who has logged a Guided application has plainly got it working, so
-  // the install pitch is finished for them regardless of browser.
-  const hasGuidedEntry = entries.some((e) => e.source === "guided");
 
-  // Current-week progress badge.
+  // Current-week progress.
   const currentKey = reportingPeriodKey(new Date(), startDay);
   const currentCount = entries.filter(
     (e) => reportingPeriodKey(new Date(e.date + "T00:00:00"), startDay) === currentKey,
@@ -55,43 +71,10 @@ export default async function DashboardPage({
 
   return (
     <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Activity Log</h1>
-          <p className="mt-1 text-sm text-slate-600">
-            Your job-search activities, grouped by reporting week.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <span
-            className={`rounded-full px-3 py-1.5 text-sm font-medium ${
-              met
-                ? "bg-emerald-100 text-emerald-800"
-                : "bg-amber-100 text-amber-800"
-            }`}
-          >
-            {currentCount}/{target} this week
-          </span>
-          <Link
-            href="/log/new"
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
-          >
-            + Add activity
-          </Link>
-        </div>
-      </div>
-
-      {/* Guided assist pointer.
-          Was `entries.length === 0` — shown only on an empty log, gone the
-          moment anyone logged anything. The reasoning was that it should never
-          nag someone who had decided against it, but the effect was that the
-          people most likely to want autofill (the ones actively logging
-          applications by hand, one at a time) were the only ones who never saw
-          it again.
-          Now it hides on two real signals instead: whether the extension is
-          installed in this browser (checked client-side, inside), and whether
-          they have ever logged a Guided application. */}
-      <GuidedPitch hasGuidedEntry={hasGuidedEntry} />
+      <h1 className="text-2xl font-semibold">Home</h1>
+      <p className="mt-1 text-sm text-slate-600">
+        Your next steps, and every job-search activity you&apos;ve logged.
+      </p>
 
       {sp.added && (
         <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
@@ -99,8 +82,129 @@ export default async function DashboardPage({
         </div>
       )}
 
+      {migrationMissing && (
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          {MIGRATION_NEEDED_MESSAGE}
+        </div>
+      )}
+      {!aiReady && (
+        <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          {AI_NOT_CONFIGURED_MESSAGE}
+        </div>
+      )}
+
+      {/* Next steps */}
+      <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-slate-900">1. Your resume</h2>
+          {resumeProfile ? (
+            <>
+              <p className="mt-2 text-sm text-slate-700">
+                {resumeProfile.headline || resumeProfile.name || "Resume saved."}
+              </p>
+              {titles.length > 0 && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Job titles we search for: {titles.slice(0, 3).join(", ")}
+                </p>
+              )}
+              <Link
+                href="/resume"
+                className="mt-3 inline-block text-sm font-medium text-brand hover:underline"
+              >
+                Edit resume
+              </Link>
+            </>
+          ) : (
+            <>
+              <p className="mt-2 text-sm text-slate-600">
+                Add your resume once. We use it to find jobs that fit you and to
+                write a resume and cover letter for each job.
+              </p>
+              <Link
+                href="/resume"
+                className="mt-3 inline-block rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+              >
+                Add your resume
+              </Link>
+            </>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-900">2. Jobs for you</h2>
+            <Link href="/jobs" className="text-xs font-medium text-brand hover:underline">
+              See all
+            </Link>
+          </div>
+          <div className="mt-2">
+            {titles.length > 0 ? (
+              <Suspense fallback={<ShellTopJobsLoading />}>
+                <ShellTopJobs titles={titles} location={jobLocation} />
+              </Suspense>
+            ) : (
+              <p className="text-sm text-slate-600">
+                Add your resume and jobs that fit will show here. Or{" "}
+                <Link href="/jobs" className="font-medium text-brand hover:underline">
+                  search jobs now
+                </Link>
+                .
+              </p>
+            )}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-slate-900">3. This week</h2>
+          <p className="mt-2 flex items-baseline gap-2">
+            <span className="text-3xl font-bold text-slate-900">{currentCount}</span>
+            <span className="text-sm text-slate-600">
+              of {target} activities logged
+            </span>
+          </p>
+          <span
+            className={`mt-2 inline-block rounded-full px-2.5 py-1 text-xs font-medium ${
+              met ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+            }`}
+          >
+            {met ? "Target met" : `${target - currentCount} to go`}
+          </span>
+          <div className="mt-3 flex flex-wrap gap-3">
+            <Link
+              href="/log/new"
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+            >
+              + Add activity
+            </Link>
+            <Link
+              href="/apply"
+              className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            >
+              Apply kit
+            </Link>
+          </div>
+        </section>
+      </div>
+
+      {/* Activity log */}
+      <div
+        id="log"
+        className="mt-10 flex scroll-mt-4 flex-wrap items-end justify-between gap-3"
+      >
+        <div>
+          <h2 className="text-xl font-semibold">Activity log</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Grouped by reporting week. Jobs you log from an apply kit land here
+            too.
+          </p>
+        </div>
+        <Link href="/log/new" className="text-sm font-medium text-brand hover:underline">
+          + Add activity
+        </Link>
+      </div>
+
       {groups.length === 0 ? (
-        <div className="mt-10 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
+        <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-slate-600">No activities logged yet.</p>
           <Link
             href="/log/new"
@@ -110,13 +214,13 @@ export default async function DashboardPage({
           </Link>
         </div>
       ) : (
-        <div className="mt-8 space-y-8">
+        <div className="mt-6 space-y-8">
           {groups.map((g) => {
             const groupMet = g.entries.length >= target;
             return (
               <section key={g.key}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold text-slate-700">
+                  <h3 className="text-sm font-semibold text-slate-700">
                     Week of {g.label}
                     <span
                       className={`ml-2 rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -127,7 +231,7 @@ export default async function DashboardPage({
                     >
                       {g.entries.length}/{target}
                     </span>
-                  </h2>
+                  </h3>
                   <div className="flex items-center gap-3 text-xs">
                     <a
                       href={`/export/pdf?period=${g.key}`}
@@ -144,8 +248,10 @@ export default async function DashboardPage({
                   </div>
                 </div>
 
-                <div className="mt-2 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                  <table className="w-full text-sm">
+                {/* overflow-x-auto: on a phone the table scrolls sideways
+                    inside its box instead of widening the whole page. */}
+                <div className="mt-2 overflow-x-auto rounded-xl border border-slate-200 bg-white">
+                  <table className="w-full min-w-[40rem] text-sm">
                     <thead className="bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                       <tr>
                         <th className="px-4 py-2 font-medium">Date</th>
@@ -191,7 +297,7 @@ export default async function DashboardPage({
                             {methodLabel(e.method)}
                             {e.source === "guided" && (
                               <span className="ml-1 rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-600">
-                                Guided
+                                Auto-logged
                               </span>
                             )}
                           </td>

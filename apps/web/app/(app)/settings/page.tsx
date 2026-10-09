@@ -129,13 +129,9 @@ export default async function SettingsPage({
               required
               className="mt-0.5"
             />
-            {/* The LOG disclaimer only. This is shown at signup to everyone,
-                and most people never install the extension — so the sentences
-                about never submitting anything, which are specifically about
-                Guided assist, moved to the Guided install page where they are
-                accepted by the people they actually apply to. Mixing them here
-                meant the extension's promise was agreed to months before anyone
-                saw the extension, and by plenty of people who never would. */}
+            {/* The LOG disclaimer only. This is shown at signup to everyone.
+                The AI tools carry their own "check every draft" notices on
+                the pages that use them, and in the Terms. */}
             <span className="text-slate-700">
               I understand JobAssistUI is a{" "}
               <strong>user-directed job-search documentation tool</strong>, not a
