@@ -82,7 +82,7 @@ export default function LandingPage() {
               href="/login"
               className="bg-brand px-4 py-2 font-bold text-paper hover:bg-brand-dark"
             >
-              Sign in
+              Sign in / Sign up
             </Link>
           </div>
         </div>

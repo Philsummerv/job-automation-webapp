@@ -13,9 +13,10 @@ export default function LoginPage() {
           JobAssistUI
         </Link>
         <div className="mt-8 border-[1.5px] border-brand bg-paper-field p-6">
-          <h1 className="text-2xl text-brand">Sign in</h1>
+          <h1 className="text-2xl text-brand">Sign in or sign up</h1>
           <p className="mt-1 text-sm text-slate-700">
-            We&apos;ll email you a sign-in code — no password needed.
+            New here? Just enter your email. We&apos;ll email you a code and make your account.
+            No password needed.
           </p>
 
           <Suspense
