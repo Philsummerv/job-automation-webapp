@@ -133,7 +133,10 @@ export default async function DashboardPage({
       {/* Next steps */}
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <section className="border-[1.5px] border-brand bg-paper-field p-5">
-          <h2 className="form-label">Part 1 · Your resume</h2>
+          <div>
+            <p className="form-label">Part 1</p>
+            <h2 className="mt-0.5 font-display text-lg font-bold uppercase tracking-tight text-slate-900">Your resume</h2>
+          </div>
           {resumeProfile ? (
             <>
               <p className="mt-2 text-sm text-slate-700">
@@ -169,7 +172,12 @@ export default async function DashboardPage({
 
         <section className="border-[1.5px] border-brand bg-paper-field p-5">
           <div className="flex items-baseline justify-between gap-2">
-            <h2 className="form-label">Part 2 · Today&apos;s jobs</h2>
+            <div>
+              <p className="form-label">Part 2</p>
+              <h2 className="mt-0.5 font-display text-lg font-bold uppercase tracking-tight text-slate-900">
+                Today&apos;s jobs
+              </h2>
+            </div>
             <Link href="/jobs" className="text-xs font-medium text-brand hover:underline">
               See all
             </Link>
@@ -199,7 +207,10 @@ export default async function DashboardPage({
         </section>
 
         <section className="border-[1.5px] border-brand bg-paper-field p-5">
-          <h2 className="form-label">Part 3 · This week</h2>
+          <div>
+            <p className="form-label">Part 3</p>
+            <h2 className="mt-0.5 font-display text-lg font-bold uppercase tracking-tight text-slate-900">This week</h2>
+          </div>
           <div className="relative mt-2 border-[1.5px] border-brand bg-paper">
             <div className="px-3 pt-2">
               <span className="form-label">Week ending</span>

@@ -62,14 +62,16 @@ export async function pickTodaysJobs(opts: {
   if (!query) return [];
   const applied = new Set(opts.appliedUrls);
   const skip = skipPattern(opts.template);
-  const { jobs } = await fetchAllJobs({ query, location, limit: 200 });
+  // Deep enough that one-per-company still finds `count` different employers.
+  const { jobs } = await fetchAllJobs({ query, location, limit: 1000 });
   const out: JobPosting[] = [];
   const seen = new Set<string>();
   for (const j of jobs) {
     if (!canAutoApply(j.id) || applied.has(j.url)) continue;
     if (skip && skip.test(j.title)) continue;
-    // One per company and title: boards often list the same job in many cities.
-    const key = `${j.company}|${j.title}`.toLowerCase();
+    // One per company: a big employer with many openings would otherwise
+    // fill every spot (and boards list the same job in many cities).
+    const key = j.company.trim().toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(j);
