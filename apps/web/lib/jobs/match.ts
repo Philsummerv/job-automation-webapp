@@ -67,7 +67,7 @@ export function prefilterJobs(
     let score = 0;
     for (const w of titleWords) if (jobTitle.has(w)) score += 3;
 
-    const body = ` ${job.title} ${job.descriptionText.slice(0, 5000)} `.toLowerCase();
+    const body = ` ${job.title} ${job.descriptionText.slice(0, 4000)} `.toLowerCase();
     let skillHits = 0;
     for (const s of skills) {
       // Whole-word-ish match so "go" doesn't hit "good".
@@ -117,7 +117,7 @@ const MATCH_SCHEMA: JsonSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["ref", "score", "reason"],
+        required: ["ref", "score", "reason", "summary"],
         properties: {
           ref: { type: "string", description: "The job's ref, e.g. J3." },
           score: {
@@ -127,6 +127,11 @@ const MATCH_SCHEMA: JsonSchema = {
           reason: {
             type: "string",
             description: "One short plain sentence, under 20 words.",
+          },
+          summary: {
+            type: "string",
+            description:
+              "2-3 short plain sentences about the job itself: what the work is, pay and hours if the posting gives them, and the main must-have. Under 60 words.",
           },
         },
       },
@@ -139,6 +144,7 @@ const MATCH_SYSTEM = [
   "Score 0-100: 80+ strong fit (has the main experience asked for), 50-79 partial fit, under 50 weak fit.",
   "Judge only from what the resume shows. Do not assume skills it does not list.",
   "For each job write one short, plain sentence (under 20 words) saying the main reason. Use everyday words. No hype.",
+  "Also write a summary of the job itself in 2-3 short sentences (under 60 words): what the work is, the pay and hours if the posting says them, and the main must-have. Only state what the posting says; never guess pay.",
   "Return one entry per job, using the job's ref exactly as given.",
   UNTRUSTED_DATA_RULE,
 ].join("\n");
@@ -179,13 +185,13 @@ export async function scoreJobsWithAi(
   ].join("\n");
 
   const out = await callJson<{
-    matches: { ref: string; score: number; reason: string }[];
+    matches: { ref: string; score: number; reason: string; summary?: string }[];
   }>({
     model: FAST_MODEL,
     system: MATCH_SYSTEM,
     user,
     schema: MATCH_SCHEMA,
-    maxTokens: 2500,
+    maxTokens: 5000,
   });
 
   const seen = new Set<string>();
@@ -199,6 +205,7 @@ export async function scoreJobsWithAi(
       jobId,
       score: Number.isFinite(score) ? Math.max(0, Math.min(100, score)) : 0,
       reason: String(m.reason ?? "").replace(/\s+/g, " ").trim().slice(0, 200),
+      summary: String(m.summary ?? "").replace(/\s+/g, " ").trim().slice(0, 500) || undefined,
     });
   }
   return matches;

@@ -80,7 +80,7 @@ export default function ResumeUpload({ hasResume }: { hasResume: boolean }) {
         setError(null);
       }}
       className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-        mode === m ? "bg-white text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
+        mode === m ? "bg-paper-field text-slate-900 shadow-sm" : "text-slate-600 hover:text-slate-900"
       }`}
       aria-pressed={mode === m}
     >
@@ -146,7 +146,7 @@ export default function ResumeUpload({ hasResume }: { hasResume: boolean }) {
         <button
           type="submit"
           disabled={busy}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60"
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark disabled:opacity-60"
         >
           {busy ? "Reading your resume…" : hasResume ? "Replace my resume" : "Read my resume"}
         </button>

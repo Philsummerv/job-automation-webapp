@@ -33,7 +33,7 @@ export default async function AssistantPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-2 text-xs text-sky-900">
+      <div className="rounded-lg border border-brand/40 bg-paper-field px-4 py-2 text-xs text-slate-800">
         Not released. Only you can see this page.
       </div>
 

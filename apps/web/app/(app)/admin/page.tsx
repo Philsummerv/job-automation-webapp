@@ -1,5 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import { createServiceClient } from "@/lib/supabase/service";
+import { isMissingTableError } from "@/lib/ai/usage";
+import { COMPANIES } from "@/lib/jobs/companies";
 
 // Owner-only product-health dashboard: who signed up and whether they are
 // actually using the thing. Reads through the service-role client (bypasses
@@ -33,11 +35,20 @@ type FeedbackRow = {
   created_at: string;
 };
 
+type BoardStatusRow = {
+  key: string;
+  ok: boolean;
+  count: number;
+  error: string | null;
+  refreshed_at: string;
+  last_ok_at: string | null;
+};
+
 const FEEDBACK_CAP = 200;
 const KIND_STYLE: Record<string, string> = {
   bug: "bg-red-100 text-red-800",
   confusing: "bg-amber-100 text-amber-800",
-  idea: "bg-sky-100 text-sky-800",
+  idea: "bg-paper-line text-brand",
   other: "bg-slate-100 text-slate-700",
 };
 
@@ -67,7 +78,7 @@ export default async function AdminPage() {
   await requireAdmin();
   const svc = createServiceClient();
 
-  const [usersRes, profilesRes, entriesRes, feedbackRes] = await Promise.all([
+  const [usersRes, profilesRes, entriesRes, feedbackRes, jobCountRes, boardsRes] = await Promise.all([
     svc.auth.admin.listUsers({ page: 1, perPage: 1000 }),
     svc
       .from("profiles")
@@ -82,12 +93,23 @@ export default async function AdminPage() {
       .select("id,email,kind,message,page,created_at")
       .order("created_at", { ascending: false })
       .limit(FEEDBACK_CAP),
+    svc.from("job_postings").select("id", { count: "exact", head: true }),
+    svc
+      .from("job_board_status")
+      .select("key,ok,count,error,refreshed_at,last_ok_at")
+      .order("refreshed_at", { ascending: false }),
   ]);
 
   const users = (usersRes.data?.users ?? []) as unknown as AuthUser[];
   const profiles = (profilesRes.data ?? []) as ProfileRow[];
   const entries = (entriesRes.data ?? []) as EntryRow[];
   const feedback = (feedbackRes.data ?? []) as FeedbackRow[];
+  const jobIndex = {
+    missing:
+      isMissingTableError(jobCountRes.error) || isMissingTableError(boardsRes.error),
+    jobs: jobCountRes.count ?? 0,
+    boards: (boardsRes.data ?? []) as BoardStatusRow[],
+  };
 
   const profileByUser = new Map(profiles.map((p) => [p.user_id, p]));
 
@@ -173,7 +195,7 @@ export default async function AdminPage() {
       </div>
 
       {/* Beta feedback inbox — newest first, above the charts on purpose. */}
-      <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
+      <section className="mt-8 border-[1.5px] border-brand bg-paper-field p-5">
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-slate-900">Feedback</h2>
           <span className="text-xs text-slate-500">
@@ -214,8 +236,10 @@ export default async function AdminPage() {
         )}
       </section>
 
+      <JobIndexSection {...jobIndex} />
+
       {/* Funnel: one measure across four stages → single hue, magnitude. */}
-      <section className="mt-8 rounded-xl border border-slate-200 bg-white p-5">
+      <section className="mt-8 border-[1.5px] border-brand bg-paper-field p-5">
         <h2 className="text-sm font-semibold text-slate-900">Signup funnel</h2>
         <p className="mt-1 text-xs text-slate-500">
           Where people stop. The gap between &ldquo;Onboarded&rdquo; and
@@ -231,7 +255,7 @@ export default async function AdminPage() {
       </section>
 
       {/* Change over time → bars, one per day. */}
-      <section className="mt-6 rounded-xl border border-slate-200 bg-white p-5">
+      <section className="mt-6 border-[1.5px] border-brand bg-paper-field p-5">
         <div className="flex items-baseline justify-between">
           <h2 className="text-sm font-semibold text-slate-900">
             Signups per day
@@ -243,7 +267,7 @@ export default async function AdminPage() {
         <DayChart days={days} />
       </section>
 
-      <section className="mt-6 rounded-xl border border-slate-200 bg-white">
+      <section className="mt-6 border-[1.5px] border-brand bg-paper-field">
         <div className="flex items-baseline justify-between px-5 pt-5">
           <h2 className="text-sm font-semibold text-slate-900">Users</h2>
           <span className="text-xs text-slate-500">newest first</span>
@@ -314,6 +338,73 @@ export default async function AdminPage() {
   );
 }
 
+// Health of the job index that /jobs searches (migration 0007, filled by
+// /api/cron/refresh-jobs).
+function JobIndexSection({
+  missing,
+  jobs,
+  boards,
+}: {
+  missing: boolean;
+  jobs: number;
+  boards: BoardStatusRow[];
+}) {
+  const failing = boards.filter((b) => !b.ok);
+  const lastRefresh = boards[0]?.refreshed_at ?? null;
+  return (
+    <section className="mt-8 border-[1.5px] border-brand bg-paper-field p-5">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold text-slate-900">Job index</h2>
+        <span className="text-xs text-slate-500">
+          {missing ? "not set up" : `last refresh ${relative(lastRefresh)}`}
+        </span>
+      </div>
+      {missing ? (
+        <p className="mt-3 text-sm text-slate-600">
+          The job tables are missing. Run{" "}
+          <code className="text-xs">packages/db/migrations/0007_job_index.sql</code>{" "}
+          in Supabase. Until then, search uses the first 56 companies, fetched
+          live.
+        </p>
+      ) : (
+        <>
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Stat label="Jobs indexed" value={jobs} sub={jobs === 0 ? "no refresh yet" : "US jobs only"} />
+            <Stat
+              label="Boards checked"
+              value={boards.length}
+              sub={`of ${COMPANIES.length} listed`}
+            />
+            <Stat
+              label="Boards failing"
+              value={failing.length}
+              sub={failing.length === 0 ? "all good" : "old jobs kept"}
+            />
+          </div>
+          {lastRefresh && (
+            <p className="mt-3 text-xs text-slate-500">
+              Last board checked {new Date(lastRefresh).toLocaleString("en-US")}.
+            </p>
+          )}
+          {failing.length > 0 && (
+            <ul className="mt-4 divide-y divide-slate-100 text-sm">
+              {failing.slice(0, 10).map((b) => (
+                <li key={b.key} className="flex flex-wrap items-baseline gap-x-3 py-2">
+                  <span className="font-medium text-slate-900">{b.key}</span>
+                  <span className="text-red-700">{b.error ?? "failed"}</span>
+                  <span className="text-xs text-slate-500">
+                    last worked {relative(b.last_ok_at)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function pct(n: number, total: number): string {
   if (!total) return "—";
   return `${Math.round((n / total) * 100)}% of signups`;
@@ -329,7 +420,7 @@ function Stat({
   sub: string;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
+    <div className="border-[1.5px] border-brand bg-paper-field p-4">
       <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
         {label}
       </div>

@@ -28,10 +28,10 @@ export default function BetaBar() {
   if (!show || pathname === "/feedback") return null;
 
   return (
-    <div className="border-b border-sky-200 bg-sky-50">
-      <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-2 text-sm text-sky-900">
-        <span className="rounded bg-sky-600 px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
-          Beta
+    <div className="border-b border-brand/30 bg-paper-field">
+      <div className="mx-auto flex max-w-5xl items-center gap-3 px-6 py-2 text-sm text-slate-800">
+        <span className="border border-brand px-1.5 font-mono text-[11px] text-brand">
+          BETA
         </span>
         <span className="flex-1">
           You&apos;re an early user — thank you. If anything breaks or reads
@@ -48,7 +48,7 @@ export default function BetaBar() {
           type="button"
           onClick={dismiss}
           aria-label="Dismiss beta notice"
-          className="shrink-0 rounded px-2 py-0.5 text-sky-700 hover:bg-sky-100"
+          className="shrink-0 px-2 py-0.5 text-brand hover:bg-paper"
         >
           ✕
         </button>

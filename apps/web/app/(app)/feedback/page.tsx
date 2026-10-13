@@ -91,7 +91,7 @@ export default async function FeedbackPage({
         <div className="flex items-center gap-4">
           <SubmitButton
             pendingLabel="Sending…"
-            className="rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-dark"
+            className="rounded-lg bg-brand px-5 py-2.5 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
           >
             Send it
           </SubmitButton>

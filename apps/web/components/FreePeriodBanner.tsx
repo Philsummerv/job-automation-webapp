@@ -14,8 +14,8 @@ export default function FreePeriodBanner() {
   if (!isFreePeriod()) return null;
 
   return (
-    <div className="border-b border-amber-200 bg-amber-50">
-      <div className="mx-auto max-w-5xl px-4 py-2 text-center text-sm text-amber-900 sm:px-6">
+    <div className="border-b border-brand bg-brand text-paper">
+      <div className="mx-auto max-w-5xl px-4 py-2 text-center text-sm sm:px-6">
         <strong className="font-semibold">
           Your work-search log is free forever. No credit card.
         </strong>{" "}

@@ -16,12 +16,14 @@ export default async function JobsResults({
   remoteOnly,
   resume,
   aiState,
+  stillNeeded,
 }: {
   query: string;
   location: string;
   remoteOnly: boolean;
   resume: ResumeProfile | null;
   aiState: JobsAiState;
+  stillNeeded: number;
 }) {
   const { jobs, sources } = await fetchAllJobs({ query, location, remoteOnly });
   const ranked = prefilterJobs(jobs, resume);
@@ -58,7 +60,7 @@ export default async function JobsResults({
       </div>
 
       {jobs.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-white px-4 py-6 text-sm text-slate-600">
+        <div className="border-[1.5px] border-brand bg-paper-field px-4 py-6 text-sm text-slate-600">
           Nothing matched. Try fewer words, a broader title, or leave the location
           blank. You can also{" "}
           <Link href="/apply" className="font-medium text-brand underline">
@@ -74,6 +76,7 @@ export default async function JobsResults({
           query={query}
           location={location}
           remoteOnly={remoteOnly}
+          stillNeeded={stillNeeded}
         />
       )}
     </div>

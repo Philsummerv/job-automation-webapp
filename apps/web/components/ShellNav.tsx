@@ -44,6 +44,9 @@ export default function ShellNav({
     { href: "/settings", label: "Settings", match: ["/settings"] },
     { href: "/billing", label: "Billing", match: ["/billing"] },
     { href: "/feedback", label: "Feedback", match: ["/feedback"] },
+    // Extras, not the main path. Last on purpose so it reads as optional.
+    // Today it holds only the Indeed extension (/guided, /template).
+    { href: "/more", label: "More tools", match: ["/more", "/guided", "/template"] },
     ...(isAdmin ? [{ href: "/admin", label: "Admin", match: ["/admin"] }] : []),
   ];
 
@@ -53,23 +56,21 @@ export default function ShellNav({
   return (
     <div className="mx-auto max-w-5xl px-4 sm:px-6">
       <div className="flex items-center justify-between gap-4 py-3">
-        <Link href="/dashboard" className="flex shrink-0 items-baseline gap-1.5">
-          <span className="text-lg font-bold text-brand">JobAssistUI</span>
-          <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700">
-            Beta
-          </span>
+        <Link href="/dashboard" className="flex shrink-0 items-baseline gap-2 font-display text-brand">
+          <span className="text-lg font-bold uppercase tracking-wide">JobAssistUI</span>
+          <span className="font-mono text-[10px] text-slate-600">BETA</span>
         </Link>
 
         <div className="flex items-center gap-3 text-sm">
           {email && (
-            <span className="hidden max-w-[16rem] truncate text-slate-500 md:inline">
+            <span className="hidden max-w-[16rem] truncate font-mono text-xs text-slate-600 md:inline">
               {email}
             </span>
           )}
           <form action="/auth/signout" method="post" className="hidden lg:block">
             <button
               type="submit"
-              className="whitespace-nowrap rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50"
+              className="whitespace-nowrap border-[1.5px] border-brand px-3 py-1 font-display uppercase tracking-wide text-brand hover:bg-paper-field"
             >
               Sign out
             </button>
@@ -79,7 +80,7 @@ export default function ShellNav({
             onClick={() => setOpen((o) => !o)}
             aria-expanded={open}
             aria-controls="shell-mobile-nav"
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-slate-700 hover:bg-slate-50 lg:hidden"
+            className="border-[1.5px] border-brand px-3 py-1 font-display uppercase tracking-wide text-brand hover:bg-paper-field lg:hidden"
           >
             {open ? "Close" : "Menu"}
           </button>
@@ -87,15 +88,15 @@ export default function ShellNav({
       </div>
 
       {/* Wide screens: one row under the logo. */}
-      <nav className="hidden flex-wrap items-center gap-x-5 gap-y-2 pb-3 text-sm lg:flex">
+      <nav className="hidden flex-wrap items-center gap-x-6 gap-y-2 font-display text-sm uppercase tracking-wide lg:flex">
         {items.map((item) => (
           <Link
             key={item.href}
             href={item.href}
             className={
               isActive(item)
-                ? "font-medium text-brand"
-                : "text-slate-600 hover:text-slate-900"
+                ? "-mb-0.5 border-b-[3px] border-brand pb-2 font-bold text-brand"
+                : "pb-2.5 text-slate-600 hover:text-brand"
             }
           >
             {item.label}
@@ -107,9 +108,9 @@ export default function ShellNav({
       {open && (
         <nav
           id="shell-mobile-nav"
-          className="-mx-4 border-t border-slate-200 pb-3 sm:-mx-6 lg:hidden"
+          className="-mx-4 border-t-[1.5px] border-brand pb-3 font-display uppercase tracking-wide sm:-mx-6 lg:hidden"
         >
-          <ul className="divide-y divide-slate-100">
+          <ul className="divide-y divide-paper-line">
             {items.map((item) => (
               <li key={item.href}>
                 <Link
@@ -117,8 +118,8 @@ export default function ShellNav({
                   onClick={() => setOpen(false)}
                   className={`block px-4 py-3 text-base sm:px-6 ${
                     isActive(item)
-                      ? "font-medium text-brand"
-                      : "text-slate-700 hover:bg-slate-50"
+                      ? "border-l-4 border-brand font-bold text-brand"
+                      : "text-slate-700 hover:bg-paper-field"
                   }`}
                 >
                   {item.label}
@@ -127,12 +128,12 @@ export default function ShellNav({
             ))}
             <li className="px-4 pt-3 sm:px-6">
               {email && (
-                <p className="mb-2 truncate text-sm text-slate-500">{email}</p>
+                <p className="mb-2 truncate font-mono text-sm normal-case tracking-normal text-slate-600">{email}</p>
               )}
               <form action="/auth/signout" method="post">
                 <button
                   type="submit"
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-700 hover:bg-slate-50"
+                  className="w-full border-[1.5px] border-brand px-3 py-2 uppercase tracking-wide text-brand hover:bg-paper-field"
                 >
                   Sign out
                 </button>

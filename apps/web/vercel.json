@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "crons": [
+    { "path": "/api/cron/refresh-jobs?shard=0&of=4", "schedule": "0 7 * * *" },
+    { "path": "/api/cron/refresh-jobs?shard=1&of=4", "schedule": "15 7 * * *" },
+    { "path": "/api/cron/refresh-jobs?shard=2&of=4", "schedule": "30 7 * * *" },
+    { "path": "/api/cron/refresh-jobs?shard=3&of=4", "schedule": "45 7 * * *" }
+  ]
+}

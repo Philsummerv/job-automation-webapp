@@ -57,7 +57,7 @@ export default function AnswerBubble({ answer }: { answer: Answer }) {
       className={
         isRefusal
           ? "rounded-xl border border-amber-300 bg-amber-50 p-5"
-          : "rounded-xl border border-slate-200 bg-white p-6"
+          : "border-[1.5px] border-brand bg-paper-field p-6"
       }
     >
       {/* Watermark line 1 — inside the card, so it lands in the screenshot. */}
@@ -93,7 +93,7 @@ export default function AnswerBubble({ answer }: { answer: Answer }) {
               href={answer.lookup.url}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-dark"
+              className="rounded-lg bg-brand px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
             >
               {answer.lookup.label} →
             </a>
@@ -102,7 +102,7 @@ export default function AnswerBubble({ answer }: { answer: Answer }) {
               href={answer.contact.url}
               target="_blank"
               rel="noreferrer"
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              className="border-[1.5px] border-brand px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wide text-brand hover:bg-slate-50"
             >
               Open the source page →
             </a>

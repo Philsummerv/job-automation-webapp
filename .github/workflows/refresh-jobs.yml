@@ -1,0 +1,46 @@
+# Refreshes the job index every hour by calling the site's refresh route once
+# per shard. Free on any Vercel plan (Vercel's own cron on Hobby runs only
+# once a day; see apps/web/vercel.json).
+#
+# Needs two repository secrets (GitHub -> Settings -> Secrets and variables
+# -> Actions -> New repository secret):
+#   JOBS_REFRESH_URL  https://www.jobassistui.com/api/cron/refresh-jobs
+#   CRON_SECRET       the same value as CRON_SECRET in Vercel
+name: Refresh job index
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: refresh-jobs
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Call each shard
+        env:
+          JOBS_REFRESH_URL: ${{ secrets.JOBS_REFRESH_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$JOBS_REFRESH_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "JOBS_REFRESH_URL or CRON_SECRET secret is not set. Skipping."
+            exit 0
+          fi
+          SHARDS=4
+          failed=0
+          for i in $(seq 0 $((SHARDS - 1))); do
+            echo "::group::shard $i of $SHARDS"
+            code=$(curl -sS -o body.json -w "%{http_code}" --max-time 320 \
+              -X POST -H "Authorization: Bearer $CRON_SECRET" \
+              "$JOBS_REFRESH_URL?shard=$i&of=$SHARDS") || code=000
+            cat body.json 2>/dev/null; echo
+            echo "HTTP $code"
+            echo "::endgroup::"
+            if [ "$code" != "200" ]; then failed=1; fi
+          done
+          exit $failed

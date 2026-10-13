@@ -1,8 +1,27 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { IBM_Plex_Mono, IBM_Plex_Sans, IBM_Plex_Sans_Condensed } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SITE_URL } from "@/lib/site";
 import FreePeriodBanner from "@/components/FreePeriodBanner";
+
+// Plex reads like typed paperwork: condensed for headings and form labels,
+// regular for body text, mono for dates and counts.
+const display = IBM_Plex_Sans_Condensed({
+  subsets: ["latin"],
+  weight: ["400", "600", "700"],
+  variable: "--font-display",
+});
+const body = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+});
+const mono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "600"],
+  variable: "--font-mono",
+});
 
 const title = "JobAssistUI: AI job search help for people on unemployment";
 const description =
@@ -38,7 +57,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${display.variable} ${body.variable} ${mono.variable}`}>
       <body>
         <FreePeriodBanner />
         {children}

@@ -10,7 +10,7 @@ export default function LegalPage({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-paper-field">
       <header className="border-b border-slate-100">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <Link href="/" className="text-lg font-bold text-brand">
@@ -18,7 +18,7 @@ export default function LegalPage({
           </Link>
           <Link
             href="/login"
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
           >
             Sign in
           </Link>

@@ -5,6 +5,7 @@ import { isCompedEmail, requireOnboarded } from "@/lib/auth";
 import { AI_NOT_CONFIGURED_MESSAGE, isAiConfigured } from "@/lib/ai/client";
 import { MIGRATION_NEEDED_MESSAGE, isMissingTableError } from "@/lib/ai/usage";
 import { getJobById } from "@/lib/jobs/lookup";
+import { toApplyBasics } from "@/lib/applyBasics";
 import ApplyKitBuilder, { type ApplyPreselectedJob, type ApplyResumeBasics } from "./ApplyKitBuilder";
 
 export const dynamic = "force-dynamic";
@@ -74,18 +75,7 @@ export default async function ApplyPage({
   if (!resume?.profile) redirect("/resume");
   const p = resume.profile;
 
-  const basics: ApplyResumeBasics = {
-    name: p.name || profile.full_name || "",
-    email: p.email || "",
-    phone: p.phone || "",
-    location: p.locations?.[0] || "",
-    certifications: p.certifications ?? [],
-    education: (p.education ?? []).map((e) => ({
-      school: e.school,
-      credential: e.credential,
-      dates: e.dates ?? "",
-    })),
-  };
+  const basics: ApplyResumeBasics = toApplyBasics(p, profile);
 
   // Job picked from the feed.
   let preselected: ApplyPreselectedJob | null = null;

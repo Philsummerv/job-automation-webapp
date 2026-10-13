@@ -6,6 +6,41 @@
   color-scheme: light;
 }
 
-body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+@layer base {
+  body {
+    @apply bg-paper text-slate-900 antialiased;
+  }
+  h1 {
+    @apply font-display font-bold uppercase tracking-tight;
+  }
+  h2,
+  h3 {
+    @apply font-display;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible {
+    @apply outline outline-2 outline-offset-2 outline-brand;
+  }
+}
+
+@layer components {
+  /* Small caps label that sits inside the top of a form box. */
+  .form-label {
+    @apply font-display text-[10px] font-bold uppercase tracking-[0.1em] text-slate-700;
+  }
+  /* The rubber stamp: double red border, tilted. */
+  .stamp {
+    @apply inline-block border-[3px] border-double border-stamp px-2.5 py-0.5 font-display text-sm font-bold uppercase tracking-[0.12em] text-stamp;
+    transform: rotate(-8deg);
+  }
+  /* Pale ruled paper, for the landing page background. */
+  .ruled {
+    background-image: repeating-linear-gradient(
+      theme("colors.paper.DEFAULT") 0 27px,
+      theme("colors.paper.line") 27px 28px
+    );
+  }
 }

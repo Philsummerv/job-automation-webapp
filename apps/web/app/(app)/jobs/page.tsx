@@ -8,6 +8,7 @@ import { isMissingTableError, MIGRATION_NEEDED_MESSAGE } from "@/lib/ai/usage";
 import JobsSearchForm from "@/components/JobsSearchForm";
 import JobsResults from "@/components/JobsResults";
 import type { JobsAiState } from "@/components/JobsList";
+import { getWeekProgress } from "@/lib/week";
 
 export const metadata: Metadata = {
   title: "Find jobs — JobAssistUI",
@@ -64,6 +65,9 @@ export default async function JobsPage({
   else if (!isAiConfigured()) aiState = "not_configured";
   else aiState = "ready";
 
+  // Start the batch size at what's still needed this week.
+  const week = await getWeekProgress(supabase, profile);
+
   return (
     <div className="space-y-6">
       <div>
@@ -80,7 +84,7 @@ export default async function JobsPage({
         </div>
       )}
       {aiState === "no_resume" && (
-        <div className="rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+        <div className="rounded-lg border border-brand/40 bg-paper-field px-4 py-3 text-sm text-slate-800">
           Add your resume to see how well each job fits you.{" "}
           <Link href="/resume" className="font-medium underline">
             Add your resume
@@ -107,7 +111,7 @@ export default async function JobsPage({
         <Suspense
           key={`${query}|${location}|${remoteOnly}`}
           fallback={
-            <div className="rounded-lg border border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-500">
+            <div className="border-[1.5px] border-brand bg-paper-field px-4 py-8 text-center text-sm text-slate-500">
               Checking company job boards. This can take about 10 seconds.
             </div>
           }
@@ -118,6 +122,7 @@ export default async function JobsPage({
             remoteOnly={remoteOnly}
             resume={resume}
             aiState={aiState}
+            stillNeeded={week.needed}
           />
         </Suspense>
       ) : (

@@ -14,7 +14,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="mt-6 rounded-lg bg-brand px-5 py-2.5 text-sm font-medium text-white hover:bg-brand-dark"
+        className="mt-6 rounded-lg bg-brand px-5 py-2.5 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
       >
         Back to JobAssistUI
       </Link>

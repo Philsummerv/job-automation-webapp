@@ -53,6 +53,7 @@ export async function POST(request: Request) {
   // Validate input fully BEFORE counting it against the daily cap.
   let input: { kind: "pdf"; base64: string } | { kind: "text"; text: string };
   let fileName: string | null = null;
+  let pdfBytes: Buffer | null = null;
 
   if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
     if (file.size > RESUME_MAX_PDF_BYTES) {
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
       return fail(400, "That file is not a PDF. Upload a PDF or paste the text instead.");
     }
     fileName = (file.name || "resume.pdf").slice(0, 200);
+    pdfBytes = bytes;
     input = { kind: "pdf", base64: bytes.toString("base64") };
   } else if (text) {
     if (text.length > RESUME_MAX_TEXT_CHARS) {
@@ -114,6 +116,23 @@ export async function POST(request: Request) {
     if (err instanceof MigrationMissingError) return fail(503, err.message, "migration");
     console.error("resume save failed", err);
     return fail(500, "We read your resume but couldn't save it. Try again.");
+  }
+
+  // Keep the original PDF so "Apply for me" can upload it to application
+  // forms. Private bucket, one file per user, replaced on every upload. A
+  // failure here doesn't fail the upload: Apply for me falls back to a PDF
+  // built from the parsed resume.
+  if (pdfBytes) {
+    const { error: storeErr } = await supabase.storage
+      .from("resumes")
+      .upload(`${user.id}/resume.pdf`, pdfBytes, {
+        contentType: "application/pdf",
+        upsert: true,
+      });
+    if (storeErr) console.error("resume pdf store failed", storeErr.message);
+  } else {
+    // Pasted text replaces the resume, so an older PDF would now be out of date.
+    await supabase.storage.from("resumes").remove([`${user.id}/resume.pdf`]);
   }
 
   return NextResponse.json({ ok: true, profile: p });

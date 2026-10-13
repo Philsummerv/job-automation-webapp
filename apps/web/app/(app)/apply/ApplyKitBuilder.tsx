@@ -26,7 +26,7 @@ export interface ApplyPreselectedJob {
   fallbackUrl: string | null;
 }
 
-interface JobInfo {
+export interface JobInfo {
   company: string;
   title: string;
   url: string | null;
@@ -45,9 +45,9 @@ const STORAGE_KEY = "jobassistui:apply-kit";
 const inputClass =
   "mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand";
 const primaryBtn =
-  "rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60";
+  "rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark disabled:opacity-60";
 
-function isHttpUrl(u: string | null | undefined): u is string {
+export function isHttpUrl(u: string | null | undefined): u is string {
   return !!u && /^https?:\/\//i.test(u);
 }
 
@@ -95,7 +95,11 @@ export default function ApplyKitBuilder({
     setError(null);
     let body: Record<string, unknown>;
     if (usePreselected && preselected) {
-      body = { mode: "job", jobId: preselected.id, fallbackUrl: preselected.fallbackUrl ?? preselected.url };
+      body = {
+        mode: "job",
+        jobId: preselected.id,
+        fallbackUrl: preselected.fallbackUrl ?? preselected.url,
+      };
     } else if (tab === "url") {
       if (!isHttpUrl(url.trim())) {
         setError("Paste a full job link that starts with http:// or https://.");
@@ -133,7 +137,11 @@ export default function ApplyKitBuilder({
         setResult({ kit: data.kit, job: data.job });
         setRemaining(data.remaining);
         try {
-          const saved: Saved = { key: storageKey, kit: data.kit, job: data.job };
+          const saved: Saved = {
+            key: storageKey,
+            kit: data.kit,
+            job: data.job,
+          };
           sessionStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
         } catch {
           /* ignore */
@@ -183,11 +191,9 @@ export default function ApplyKitBuilder({
   return (
     <div className="mt-6 space-y-5">
       {usePreselected && preselected ? (
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="border-[1.5px] border-brand bg-paper-field p-5">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Job</p>
-          <p className="mt-1 text-lg font-semibold">
-            {preselected.title || "Job from your feed"}
-          </p>
+          <p className="mt-1 text-lg font-semibold">{preselected.title || "Job from your feed"}</p>
           <p className="text-sm text-slate-600">
             {[preselected.company, preselected.location].filter(Boolean).join(" · ")}
           </p>
@@ -212,7 +218,7 @@ export default function ApplyKitBuilder({
           </div>
         </div>
       ) : (
-        <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <div className="border-[1.5px] border-brand bg-paper-field p-5">
           <div className="flex gap-2 text-sm" role="tablist">
             {(
               [
@@ -227,7 +233,9 @@ export default function ApplyKitBuilder({
                 aria-selected={tab === key}
                 onClick={() => setTab(key)}
                 className={`rounded-md px-3 py-1.5 font-medium ${
-                  tab === key ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  tab === key
+                    ? "bg-slate-900 text-white"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 {label}
@@ -251,8 +259,8 @@ export default function ApplyKitBuilder({
                 className={inputClass}
               />
               <p className="mt-1 text-xs text-slate-500">
-                Works best with company career pages. Some big job sites block us. If that
-                happens, paste the job text instead.
+                Works best with company career pages. Some big job sites block us. If that happens,
+                paste the job text instead.
               </p>
             </div>
           ) : (
@@ -316,7 +324,9 @@ export default function ApplyKitBuilder({
           {loading ? "Building your kit…" : "Build apply kit"}
         </button>
         {loading && (
-          <span className="text-sm text-slate-600">This takes about a minute. Keep this page open.</span>
+          <span className="text-sm text-slate-600">
+            This takes about a minute. Keep this page open.
+          </span>
         )}
       </div>
     </div>
@@ -337,7 +347,9 @@ function resumeAsText(kit: ApplyKit, b: ApplyResumeBasics): string {
   if (r.experience.length) {
     lines.push("EXPERIENCE");
     for (const e of r.experience) {
-      lines.push([e.title, e.employer].filter(Boolean).join(", ") + (e.dates ? ` (${e.dates})` : ""));
+      lines.push(
+        [e.title, e.employer].filter(Boolean).join(", ") + (e.dates ? ` (${e.dates})` : ""),
+      );
       for (const bullet of e.bullets) lines.push(`- ${bullet}`);
       lines.push("");
     }
@@ -346,16 +358,25 @@ function resumeAsText(kit: ApplyKit, b: ApplyResumeBasics): string {
   if (b.education.length) {
     lines.push("EDUCATION");
     for (const e of b.education) {
-      lines.push([e.credential, e.school].filter(Boolean).join(", ") + (e.dates ? ` (${e.dates})` : ""));
+      lines.push(
+        [e.credential, e.school].filter(Boolean).join(", ") + (e.dates ? ` (${e.dates})` : ""),
+      );
     }
     lines.push("");
   }
-  if (b.certifications.length) lines.push("CERTIFICATIONS", ...b.certifications.map((c) => `- ${c}`), "");
+  if (b.certifications.length)
+    lines.push("CERTIFICATIONS", ...b.certifications.map((c) => `- ${c}`), "");
   return lines.join("\n").trim() + "\n";
 }
 
 function fileSlug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "job";
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "job"
+  );
 }
 
 function downloadText(filename: string, content: string) {
@@ -372,7 +393,7 @@ function downloadText(filename: string, content: string) {
 
 function scoreClass(score: number): string {
   if (score >= 75) return "bg-emerald-100 text-emerald-800";
-  if (score >= 50) return "bg-sky-100 text-sky-800";
+  if (score >= 50) return "bg-paper-line text-brand";
   return "bg-slate-100 text-slate-700";
 }
 
@@ -386,7 +407,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-5">
+    <section className="border-[1.5px] border-brand bg-paper-field p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold">{title}</h2>
         {action && <div className="flex flex-wrap items-center gap-2">{action}</div>}
@@ -396,20 +417,27 @@ function Section({
   );
 }
 
-function ApplyKitView({
+export function ApplyKitView({
   kit,
   job,
   basics,
   remaining,
   onStartOver,
   onLogged,
+  stay = false,
+  alreadyLogged = false,
 }: {
   kit: ApplyKit;
   job: JobInfo;
   basics: ApplyResumeBasics;
   remaining: number | null;
-  onStartOver: () => void;
+  /** Omit to hide the "start over" link (batch mode). */
+  onStartOver?: () => void;
   onLogged: () => void;
+  /** Batch mode: log without leaving the page, then call onLogged. */
+  stay?: boolean;
+  /** Hides the log form for a job that's already in the log. */
+  alreadyLogged?: boolean;
 }) {
   const resumeText = resumeAsText(kit, basics);
   const applyHref = isHttpUrl(job.applyUrl) ? job.applyUrl : isHttpUrl(job.url) ? job.url : null;
@@ -417,38 +445,37 @@ function ApplyKitView({
 
   return (
     <div className="mt-6 space-y-5">
-      <div className="rounded-xl border border-slate-200 bg-white p-5">
+      <div className="border-[1.5px] border-brand bg-paper-field p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-lg font-semibold">{job.title || "Your apply kit"}</p>
             {job.company && <p className="text-sm text-slate-600">{job.company}</p>}
           </div>
-          <span className={`rounded-full px-3 py-1 text-sm font-medium ${scoreClass(kit.matchScore)}`}>
+          <span
+            className={`rounded-full px-3 py-1 text-sm font-medium ${scoreClass(kit.matchScore)}`}
+          >
             {kit.matchScore}% match
           </span>
         </div>
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {applyHref && (
-            <a
-              href={applyHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={primaryBtn}
-            >
+            <a href={applyHref} target="_blank" rel="noopener noreferrer" className={primaryBtn}>
               Apply on the company site
             </a>
           )}
-          <button
-            type="button"
-            onClick={onStartOver}
-            className="text-sm text-slate-600 underline hover:text-slate-900"
-          >
-            Start over with another job
-          </button>
+          {onStartOver && (
+            <button
+              type="button"
+              onClick={onStartOver}
+              className="text-sm text-slate-600 underline hover:text-slate-900"
+            >
+              Start over with another job
+            </button>
+          )}
         </div>
         <p className="mt-3 text-xs text-slate-500">
-          We don&apos;t send anything for you. Read the kit, fix anything that&apos;s off, then apply
-          yourself.
+          We don&apos;t send anything for you. Read the kit, fix anything that&apos;s off, then
+          apply yourself.
           {remaining !== null && ` You have ${remaining} AI requests left today.`}
         </p>
       </div>
@@ -475,7 +502,10 @@ function ApplyKitView({
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {kit.missingKeywords.map((k) => (
-              <span key={k} className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+              <span
+                key={k}
+                className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700"
+              >
                 {k}
               </span>
             ))}
@@ -493,7 +523,7 @@ function ApplyKitView({
               onClick={() =>
                 downloadText(`resume-${fileSlug(job.company || job.title)}.txt`, resumeText)
               }
-              className="rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              className="rounded-md border border-slate-300 bg-paper-field px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
             >
               Download .txt
             </button>
@@ -529,7 +559,9 @@ function ApplyKitView({
 
       {kit.coverLetter && (
         <Section title="Cover letter" action={<ApplyCopyButton text={kit.coverLetter} />}>
-          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">{kit.coverLetter}</p>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
+            {kit.coverLetter}
+          </p>
         </Section>
       )}
 
@@ -555,14 +587,18 @@ function ApplyKitView({
         </Section>
       )}
 
-      <Section title="Did you apply?">
-        <ApplyLogForm
-          company={job.company}
-          title={job.title}
-          url={job.applyUrl ?? job.url}
-          onSubmit={onLogged}
-        />
-      </Section>
+      {alreadyLogged ? null : (
+        <Section title="Did you apply?">
+          <ApplyLogForm
+            company={job.company}
+            title={job.title}
+            url={job.applyUrl ?? job.url}
+            onSubmit={stay ? undefined : onLogged}
+            stay={stay}
+            onLogged={stay ? onLogged : undefined}
+          />
+        </Section>
+      )}
     </div>
   );
 }

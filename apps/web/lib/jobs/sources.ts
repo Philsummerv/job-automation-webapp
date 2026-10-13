@@ -1,33 +1,76 @@
-import { US_STATES, type JobPosting, type JobSource } from "@jobassistui/shared";
-import { COMPANIES, type CompanyBoard } from "@/lib/jobs/companies";
-import { capText, htmlToText } from "@/lib/jobs/html";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { JobPosting, JobSource } from "@jobassistui/shared";
+import {
+  COMPANIES,
+  LIVE_FALLBACK_COMPANIES,
+  boardKey,
+  type CompanyBoard,
+} from "@/lib/jobs/companies";
+import {
+  REVALIDATE_SECONDS,
+  REMOTE_RE,
+  cleanTitle,
+  desc,
+  fetchBoardJobs,
+  fetchOnePosting,
+  getJson,
+  toIso,
+} from "@/lib/jobs/boards";
+import { htmlToText } from "@/lib/jobs/html";
+import {
+  dedupeKey,
+  indexQueryParts,
+  isLikelyUS,
+  locationMatches,
+  locationSqlPatterns,
+  parseQuery,
+  placeMatches,
+  queryMatchLevel,
+} from "@/lib/jobs/filters";
+import { isMissingTableError } from "@/lib/ai/usage";
+import { createClient } from "@/lib/supabase/server";
 
-// The job feed. Pulls from public job-board APIs on demand, normalizes every
-// posting to JobPosting, filters, dedupes and sorts. No cron, no jobs table.
+export { DESCRIPTION_MAX_CHARS } from "@/lib/jobs/boards";
+export {
+  isLikelyUS,
+  locationMatches,
+  parseQuery,
+  placeMatches,
+  queryMatchLevel,
+} from "@/lib/jobs/filters";
+
+// The job feed: finds postings, filters, dedupes and sorts them.
 //
-// Caching, two layers:
-//  1. Next's fetch cache (`next.revalidate`, 1 hour). Note: Next won't cache a
-//     response over 2MB (a few big Greenhouse boards) and logs a warning; that's
-//     harmless, layer 2 covers it.
-//  2. An in-memory cache of the NORMALIZED postings per board, also 1 hour.
-//     Survives between requests on a warm server; empty after a cold start.
+// Employer boards (Greenhouse, Lever, Ashby; ~260 of them in companies.ts)
+// are read from the job_postings table (migration 0007), which the refresh
+// job (app/api/cron/refresh-jobs) fills every hour. A search asks Postgres for
+// up to CANDIDATE_LIMIT rows with full-text search, then runs the same JS
+// ranking as before over them, then loads descriptions for the jobs it keeps.
 //
-// Failure isolation: every source runs in parallel with its own timeout and its
-// own try/catch. One board being down never breaks the feed; the result says
-// which sources failed.
+// FALLBACK: if that table is missing (migration not applied) or empty (first
+// refresh not run yet), boards are fetched live like before, but only the
+// original 56 (LIVE_FALLBACK_COMPANIES). The site keeps working either way.
 //
-// Sources:
-//  - Greenhouse, Lever, Ashby: the curated employers in companies.ts. Always on.
+// Live feeds, always fetched at search time (their results depend on the query):
 //  - USAJOBS: only if USAJOBS_API_KEY and USAJOBS_EMAIL are set.
 //  - Adzuna (US): only if ADZUNA_APP_ID and ADZUNA_APP_KEY are set.
 //  - Arbeitnow: free, but almost all EU jobs, so only with includeInternational.
 //  - Remotive: NOT used. Its API terms forbid showing its jobs behind a sign-up.
+//
+// Live fetches have an in-memory cache (1 hour) of normalized postings, and
+// every source runs with its own timeout and try/catch: one source being down
+// never breaks the feed; the result says which sources failed.
 
-const REVALIDATE_SECONDS = 3600;
 const CACHE_TTL_MS = REVALIDATE_SECONDS * 1000;
-const SOURCE_TIMEOUT_MS = 12_000;
-/** Per-posting description cap. Enough for matching and the apply kit. */
-export const DESCRIPTION_MAX_CHARS = 8000;
+/** Most rows one search pulls from the index before JS ranking. */
+const CANDIDATE_LIMIT = 1000;
+/**
+ * Description characters loaded per index job. The resume ranking
+ * (prefilterJobs) reads the first 4000; getJobById gives the full text.
+ */
+const HYDRATE_CHARS = 4000;
+/** How long "the index has rows" (or doesn't) is trusted before re-checking. */
+const INDEX_STATE_TTL_MS = 5 * 60 * 1000;
 
 export interface FetchJobsOptions {
   /** Keywords or titles. Commas separate alternatives: "cashier, retail associate". Empty = everything. */
@@ -35,14 +78,14 @@ export interface FetchJobsOptions {
   /** e.g. "Syracuse, NY" or "NY". Empty = anywhere. Remote jobs always pass. */
   location?: string;
   remoteOnly?: boolean;
-  /** Include non-US jobs (and the Arbeitnow feed). Default false. */
+  /** Include non-US jobs (and the Arbeitnow feed). Default false. The index only holds US jobs. */
   includeInternational?: boolean;
   /** Max postings returned. Default 300. */
   limit?: number;
 }
 
 export interface SourceStatus {
-  /** e.g. "greenhouse:carvana", "usajobs". */
+  /** e.g. "greenhouse:carvana", "usajobs", "index". */
   key: string;
   source: JobSource;
   ok: boolean;
@@ -55,18 +98,7 @@ export interface FetchJobsResult {
   sources: SourceStatus[];
 }
 
-// ─── Small utilities ────────────────────────────────────────────────────────
-
-async function getJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, {
-    ...init,
-    headers: { Accept: "application/json", ...(init?.headers ?? {}) },
-    signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS),
-    next: { revalidate: REVALIDATE_SECONDS },
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return (await res.json()) as T;
-}
+// ─── Memory cache (live fetches only) ───────────────────────────────────────
 
 const memCache = new Map<string, { at: number; jobs: JobPosting[] }>();
 const inFlight = new Map<string, Promise<JobPosting[]>>();
@@ -89,171 +121,8 @@ async function cached(
   return p;
 }
 
-function toIso(v: unknown): string | null {
-  if (v == null || v === "") return null;
-  const d = typeof v === "number" ? new Date(v) : new Date(String(v));
-  return Number.isNaN(d.getTime()) ? null : d.toISOString();
-}
-
-function cleanTitle(s: unknown): string {
-  return String(s ?? "").replace(/\s+/g, " ").trim();
-}
-
-function desc(text: string): string {
-  return capText(text, DESCRIPTION_MAX_CHARS);
-}
-
-const REMOTE_RE = /\b(remote|work from home|wfh|anywhere)\b/i;
-
-// ─── Greenhouse ─────────────────────────────────────────────────────────────
-
-interface GhJob {
-  id: number;
-  title: string;
-  absolute_url: string;
-  company_name?: string;
-  location?: { name?: string };
-  first_published?: string;
-  updated_at?: string;
-  content?: string;
-  metadata?: { name?: string; value?: unknown }[] | null;
-}
-
-function normalizeGreenhouse(board: CompanyBoard, j: GhJob): JobPosting {
-  const location = j.location?.name ?? "";
-  const workplace = (j.metadata ?? []).find((m) =>
-    /workplace|remote/i.test(m.name ?? ""),
-  )?.value;
-  return {
-    id: `greenhouse:${board.slug}:${j.id}`,
-    source: "greenhouse",
-    company: j.company_name || board.name,
-    title: cleanTitle(j.title),
-    location,
-    remote: REMOTE_RE.test(location) || /remote/i.test(String(workplace ?? "")),
-    url: j.absolute_url,
-    applyUrl: j.absolute_url,
-    postedAt: toIso(j.first_published ?? j.updated_at),
-    descriptionText: desc(htmlToText(j.content ?? "")),
-  };
-}
-
-async function fetchGreenhouse(board: CompanyBoard): Promise<JobPosting[]> {
-  const data = await getJson<{ jobs?: GhJob[] }>(
-    `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(board.slug)}/jobs?content=true`,
-  );
-  return (data.jobs ?? []).map((j) => normalizeGreenhouse(board, j));
-}
-
-// ─── Lever ──────────────────────────────────────────────────────────────────
-
-interface LeverJob {
-  id: string;
-  text: string;
-  hostedUrl: string;
-  applyUrl?: string;
-  createdAt?: number;
-  workplaceType?: string;
-  categories?: { location?: string; allLocations?: string[]; commitment?: string };
-  descriptionPlain?: string;
-  description?: string;
-  lists?: { text?: string; content?: string }[];
-  additionalPlain?: string;
-}
-
-function normalizeLever(board: CompanyBoard, j: LeverJob): JobPosting {
-  const locs = j.categories?.allLocations?.length
-    ? j.categories.allLocations
-    : j.categories?.location
-      ? [j.categories.location]
-      : [];
-  const location = locs.join("; ");
-  const parts = [
-    j.descriptionPlain ?? htmlToText(j.description ?? ""),
-    ...(j.lists ?? []).map(
-      (l) => `${l.text ?? ""}\n${htmlToText(l.content ?? "")}`,
-    ),
-    j.additionalPlain ?? "",
-  ];
-  return {
-    id: `lever:${board.slug}:${j.id}`,
-    source: "lever",
-    company: board.name,
-    title: cleanTitle(j.text),
-    location,
-    remote: j.workplaceType === "remote" || REMOTE_RE.test(location),
-    url: j.hostedUrl,
-    applyUrl: j.applyUrl || j.hostedUrl,
-    postedAt: toIso(j.createdAt),
-    descriptionText: desc(parts.filter(Boolean).join("\n\n").trim()),
-  };
-}
-
-async function fetchLever(board: CompanyBoard): Promise<JobPosting[]> {
-  const data = await getJson<LeverJob[]>(
-    `https://api.lever.co/v0/postings/${encodeURIComponent(board.slug)}?mode=json`,
-  );
-  return (Array.isArray(data) ? data : []).map((j) => normalizeLever(board, j));
-}
-
-// ─── Ashby ──────────────────────────────────────────────────────────────────
-
-interface AshbyJob {
-  id: string;
-  title: string;
-  location?: string;
-  secondaryLocations?: { location?: string }[];
-  isRemote?: boolean;
-  isListed?: boolean;
-  workplaceType?: string;
-  jobUrl: string;
-  applyUrl?: string;
-  publishedAt?: string;
-  descriptionPlain?: string;
-  descriptionHtml?: string;
-}
-
-function normalizeAshby(board: CompanyBoard, j: AshbyJob): JobPosting {
-  const location = [j.location, ...(j.secondaryLocations ?? []).map((l) => l.location)]
-    .filter(Boolean)
-    .join("; ");
-  return {
-    id: `ashby:${board.slug}:${j.id}`,
-    source: "ashby",
-    company: board.name,
-    title: cleanTitle(j.title),
-    location,
-    remote:
-      Boolean(j.isRemote) ||
-      /remote/i.test(j.workplaceType ?? "") ||
-      REMOTE_RE.test(location),
-    url: j.jobUrl,
-    applyUrl: j.applyUrl || j.jobUrl,
-    postedAt: toIso(j.publishedAt),
-    descriptionText: desc(j.descriptionPlain || htmlToText(j.descriptionHtml ?? "")),
-  };
-}
-
-async function fetchAshby(board: CompanyBoard): Promise<JobPosting[]> {
-  const data = await getJson<{ jobs?: AshbyJob[] }>(
-    `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(board.slug)}`,
-  );
-  return (data.jobs ?? [])
-    .filter((j) => j.isListed !== false)
-    .map((j) => normalizeAshby(board, j));
-}
-
-function fetchBoard(board: CompanyBoard): Promise<JobPosting[]> {
-  return cached(`${board.system}:${board.slug}`, () => {
-    switch (board.system) {
-      case "greenhouse":
-        return fetchGreenhouse(board);
-      case "lever":
-        return fetchLever(board);
-      case "ashby":
-        return fetchAshby(board);
-    }
-  });
+function fetchBoardCached(board: CompanyBoard): Promise<JobPosting[]> {
+  return cached(boardKey(board), () => fetchBoardJobs(board));
 }
 
 // ─── Arbeitnow (keyless, mostly EU) ─────────────────────────────────────────
@@ -301,6 +170,7 @@ interface UsaJobsItem {
     PositionURI?: string;
     ApplyURI?: string[];
     PositionLocationDisplay?: string;
+    PositionLocation?: { LocationName?: string }[];
     OrganizationName?: string;
     DepartmentName?: string;
     PublicationStartDate?: string;
@@ -331,7 +201,17 @@ function fetchUsaJobs(query: string, location: string): Promise<JobPosting[]> {
       const d = item.MatchedObjectDescriptor;
       if (!d?.PositionURI) return [];
       const nativeId = item.MatchedObjectId ?? d.PositionID ?? d.PositionURI;
-      const location = d.PositionLocationDisplay ?? "";
+      // "Multiple Locations" names no place, so the location filter would
+      // drop the job. List the real places instead (a few, then "+N more").
+      const all = (d.PositionLocation ?? []).map((l) => l.LocationName?.trim()).filter(Boolean) as string[];
+      // Places matching the search first, so they survive the cut below.
+      const hit = (p: string) => !!location && placeMatches({ location: p } as JobPosting, location);
+      const places = [...all.filter(hit), ...all.filter((p) => !hit(p))];
+      const display = d.PositionLocationDisplay ?? "";
+      const where =
+        /^multiple locations$/i.test(display.trim()) && places.length
+          ? places.slice(0, 8).join("; ") + (places.length > 8 ? `; +${places.length - 8} more` : "")
+          : display;
       const text = [
         d.UserArea?.Details?.JobSummary,
         ...(d.UserArea?.Details?.MajorDuties ?? []),
@@ -345,8 +225,8 @@ function fetchUsaJobs(query: string, location: string): Promise<JobPosting[]> {
           source: "usajobs" as const,
           company: d.OrganizationName || d.DepartmentName || "U.S. federal government",
           title: cleanTitle(d.PositionTitle),
-          location,
-          remote: REMOTE_RE.test(location),
+          location: where,
+          remote: REMOTE_RE.test(where),
           url: d.PositionURI,
           applyUrl: d.ApplyURI?.[0] || d.PositionURI,
           postedAt: toIso(d.PublicationStartDate),
@@ -407,101 +287,141 @@ function fetchAdzuna(query: string, location: string): Promise<JobPosting[]> {
   });
 }
 
-// ─── Filtering ──────────────────────────────────────────────────────────────
+// ─── The job index (job_postings, migration 0007) ───────────────────────────
 
-const STOP_WORDS = new Set(["and", "or", "the", "a", "an", "of", "in", "for", "to", "with", "jobs", "job"]);
-
-function tokens(s: string): string[] {
-  return s
-    .toLowerCase()
-    .split(/[^a-z0-9+#]+/)
-    .filter((t) => t.length > 1 && !STOP_WORDS.has(t));
+interface IndexRow {
+  id: string;
+  source: string;
+  board_slug: string;
+  company: string;
+  title: string;
+  location: string;
+  remote: boolean;
+  url: string;
+  apply_url: string | null;
+  posted_at: string | null;
+  description_text?: string;
 }
 
-/** "cashier, retail associate" -> [["cashier"], ["retail","associate"]] */
-export function parseQuery(query: string): string[][] {
-  return query
-    .split(/,|\bor\b|\|/i)
-    .map((p) => tokens(p))
-    .filter((p) => p.length > 0);
+interface SearchRow extends IndexRow {
+  title_hit: boolean;
+  is_local: boolean;
+  query_used: boolean;
+}
+
+function rowToPosting(r: IndexRow): JobPosting {
+  return {
+    id: r.id,
+    source: r.source as JobSource,
+    company: r.company,
+    title: r.title,
+    location: r.location ?? "",
+    remote: Boolean(r.remote),
+    url: r.url,
+    applyUrl: r.apply_url || r.url,
+    postedAt: r.posted_at ? new Date(r.posted_at).toISOString() : null,
+    descriptionText: r.description_text ?? "",
+  };
+}
+
+/** "missing" = no table (migration not applied); "empty" = no rows yet. */
+let indexState: { at: number; state: "ready" | "missing" | "empty" } | null = null;
+
+async function getDb(): Promise<SupabaseClient | null> {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return null;
+  }
+  try {
+    // The signed-in user's client: job_postings is readable by any signed-in
+    // user (RLS). Outside a request (no cookies) this throws; we fall back.
+    return (await createClient()) as unknown as SupabaseClient;
+  } catch {
+    return null;
+  }
+}
+
+async function checkIndexState(db: SupabaseClient): Promise<"ready" | "missing" | "empty"> {
+  if (indexState && Date.now() - indexState.at < INDEX_STATE_TTL_MS) return indexState.state;
+  const { data, error } = await db.from("job_postings").select("id").limit(1);
+  let state: "ready" | "missing" | "empty";
+  if (error) {
+    if (!isMissingTableError(error)) throw new Error(error.message);
+    state = "missing";
+  } else {
+    state = data && data.length > 0 ? "ready" : "empty";
+  }
+  indexState = { at: Date.now(), state };
+  return state;
+}
+
+interface IndexSearch {
+  rows: SearchRow[];
+  db: SupabaseClient;
 }
 
 /**
- * 2 = every word of some phrase is in the title; 1 = every word of some phrase
- * is in title + description; 0 = no match. Empty query matches everything (1).
+ * Candidate postings from the index, or null when the index can't be used
+ * (no client, table missing or empty, or an error). Null means: use the
+ * live fallback.
  */
-export function queryMatchLevel(job: JobPosting, phrases: string[][]): 0 | 1 | 2 {
-  if (phrases.length === 0) return 1;
-  const title = new Set(tokens(job.title));
-  let best: 0 | 1 | 2 = 0;
-  let body: Set<string> | null = null;
-  for (const phrase of phrases) {
-    if (phrase.every((t) => title.has(t))) return 2;
-    if (best === 0) {
-      body ??= new Set([...title, ...tokens(job.descriptionText.slice(0, 4000))]);
-      if (phrase.every((t) => body!.has(t))) best = 1;
+async function searchIndex(
+  phrases: string[][],
+  location: string,
+  remoteOnly: boolean,
+): Promise<IndexSearch | null> {
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    const state = await checkIndexState(db);
+    if (state !== "ready") return null;
+    const loc = locationSqlPatterns(location);
+    // Same phrases the JS ranking uses, as websearch syntax:
+    // [["retail","associate"],["cashier"]] -> "retail associate or cashier".
+    // Postgres stop words ("it") go in separately as regexes.
+    const q = indexQueryParts(phrases);
+    const { data, error } = await db.rpc("search_job_postings", {
+      p_query: q.query,
+      p_title_query: q.titleQuery,
+      p_title_res: q.titleRes,
+      p_body_res: q.bodyRes,
+      p_has_location: location.length > 0,
+      p_loc_like: loc.like,
+      p_loc_regex: loc.regex,
+      p_remote_only: remoteOnly,
+      p_limit: CANDIDATE_LIMIT,
+    });
+    if (error) {
+      if (isMissingTableError(error)) indexState = { at: Date.now(), state: "missing" };
+      throw new Error(error.message);
     }
+    return { rows: (data ?? []) as SearchRow[], db };
+  } catch (err) {
+    console.error("[jobs] index search failed, using live boards:", err instanceof Error ? err.message : err);
+    return null;
   }
-  return best;
 }
 
-const STATE_BY_CODE = new Map<string, string>(US_STATES.map(([c, n]) => [c, n.toLowerCase()]));
-const STATE_BY_NAME = new Map<string, string>(US_STATES.map(([c, n]) => [n.toLowerCase(), c]));
-
-const FOREIGN_RE =
-  /\b(canada|toronto|vancouver|montreal|ontario|united kingdom|uk|england|london|ireland|dublin|germany|berlin|munich|france|paris|spain|madrid|barcelona|portugal|lisbon|netherlands|amsterdam|poland|warsaw|india|bangalore|bengaluru|hyderabad|pune|singapore|japan|tokyo|australia|sydney|melbourne|brazil|são paulo|sao paulo|mexico|israel|tel aviv|emea|apac|latam|europe|switzerland|zurich|sweden|stockholm|denmark|copenhagen|korea|seoul|china|hong kong|taiwan|philippines|argentina|colombia|chile|uae|dubai)\b/i;
-
-function mentionsUS(loc: string): boolean {
-  if (/\b(us|usa|u\.s\.|united states|americas|north america)\b/i.test(loc)) return true;
-  for (const [code, name] of STATE_BY_CODE) {
-    if (new RegExp(`\\b${code}\\b`).test(loc)) return true;
-    if (loc.toLowerCase().includes(name)) return true;
+/**
+ * Fills in descriptionText for index jobs (search rows leave it out to stay
+ * small). Cut to HYDRATE_CHARS. At most 1000 jobs (fetchAllJobs' cap), which
+ * is also PostgREST's row cap, so one call is enough.
+ */
+async function hydrateDescriptions(db: SupabaseClient, jobs: JobPosting[]): Promise<void> {
+  const ids = jobs.map((j) => j.id);
+  if (ids.length === 0) return;
+  const byId = new Map(jobs.map((j) => [j.id, j]));
+  const { data, error } = await db.rpc("job_descriptions", {
+    p_ids: ids,
+    p_max: HYDRATE_CHARS,
+  });
+  if (error) {
+    console.error("[jobs] description load failed:", error.message);
+    return;
   }
-  return false;
-}
-
-/** Keeps US jobs and location-less/"Remote" jobs; drops clearly foreign ones. */
-export function isLikelyUS(job: JobPosting): boolean {
-  const loc = job.location.trim();
-  if (!loc) return true;
-  if (mentionsUS(loc)) return true;
-  return !FOREIGN_RE.test(loc);
-}
-
-/** Does the job's location fit what the user typed? Remote jobs always fit. */
-export function locationMatches(job: JobPosting, location: string): boolean {
-  if (!location.trim()) return true;
-  return job.remote || placeMatches(job, location);
-}
-
-/** Does the job's own location text name the place the user typed? */
-export function placeMatches(job: JobPosting, location: string): boolean {
-  const want = location.trim();
-  if (!want) return false;
-  const loc = job.location;
-  const lower = loc.toLowerCase();
-  const parts = want.split(",").map((p) => p.trim()).filter(Boolean);
-  for (const part of parts) {
-    const p = part.toLowerCase();
-    const upper = part.toUpperCase();
-    if (STATE_BY_CODE.has(upper)) {
-      if (new RegExp(`\\b${upper}\\b`).test(loc)) return true;
-      if (lower.includes(STATE_BY_CODE.get(upper)!)) return true;
-      continue;
-    }
-    if (STATE_BY_NAME.has(p)) {
-      if (lower.includes(p)) return true;
-      if (new RegExp(`\\b${STATE_BY_NAME.get(p)}\\b`).test(loc)) return true;
-      continue;
-    }
-    if (p.length > 1 && lower.includes(p)) return true;
+  for (const r of (data ?? []) as { id: string; description_text: string }[]) {
+    const job = byId.get(r.id);
+    if (job) job.descriptionText = r.description_text ?? "";
   }
-  return false;
-}
-
-function dedupeKey(j: JobPosting): string {
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-  return `${norm(j.company)}|${norm(j.title)}|${norm(j.location)}`;
 }
 
 // ─── Public API ─────────────────────────────────────────────────────────────
@@ -525,47 +445,82 @@ async function runSource(
   }
 }
 
+interface Scored {
+  job: JobPosting;
+  level: number;
+  local: boolean;
+  /** From the index: description not loaded yet. */
+  indexed: boolean;
+}
+
 /**
- * Fetches every source in parallel and returns matching postings, best first
- * (title matches, then newest). Never throws for a source failure; check
- * `sources` to see which ones failed.
+ * Searches the employer-board index plus the live feeds and returns matching
+ * postings, best first (title matches, then jobs in the typed place, then
+ * newest). Never throws for a source failure; check `sources` to see which
+ * ones failed.
  */
 export async function fetchAllJobs(opts: FetchJobsOptions = {}): Promise<FetchJobsResult> {
   const query = (opts.query ?? "").trim().slice(0, 200);
   const location = (opts.location ?? "").trim().slice(0, 100);
   const limit = Math.max(1, Math.min(opts.limit ?? 300, 1000));
-
-  const tasks: Promise<{ status: SourceStatus; jobs: JobPosting[] }>[] = COMPANIES.map(
-    (b) => runSource(`${b.system}:${b.slug}`, b.system, () => fetchBoard(b)),
-  );
-  if (usaJobsConfigured()) {
-    tasks.push(runSource("usajobs", "usajobs", () => fetchUsaJobs(query, location)));
-  }
-  if (adzunaConfigured()) {
-    tasks.push(runSource("adzuna", "adzuna", () => fetchAdzuna(query, location)));
-  }
-  if (opts.includeInternational) {
-    tasks.push(runSource("arbeitnow", "arbeitnow", fetchArbeitnow));
-  }
-
-  const results = await Promise.all(tasks);
   const phrases = parseQuery(query);
 
+  const feedTasks: Promise<{ status: SourceStatus; jobs: JobPosting[] }>[] = [];
+  if (usaJobsConfigured()) {
+    feedTasks.push(runSource("usajobs", "usajobs", () => fetchUsaJobs(query, location)));
+  }
+  if (adzunaConfigured()) {
+    feedTasks.push(runSource("adzuna", "adzuna", () => fetchAdzuna(query, location)));
+  }
+  if (opts.includeInternational) {
+    feedTasks.push(runSource("arbeitnow", "arbeitnow", fetchArbeitnow));
+  }
+
+  const [index, feedResults] = await Promise.all([
+    searchIndex(phrases, location, opts.remoteOnly === true),
+    Promise.all(feedTasks),
+  ]);
+
+  // Live jobs (feeds, plus the fallback boards when the index can't be used).
+  const liveResults = [...feedResults];
+  if (!index) {
+    liveResults.push(
+      ...(await Promise.all(
+        LIVE_FALLBACK_COMPANIES.map((b) =>
+          runSource(boardKey(b), b.system, () => fetchBoardCached(b)),
+        ),
+      )),
+    );
+  }
+
   const seen = new Set<string>();
-  const scored: { job: JobPosting; level: number; local: boolean }[] = [];
-  for (const { jobs } of results) {
-    for (const job of jobs) {
-      if (!job.title || !job.url) continue;
-      if (opts.remoteOnly && !job.remote) continue;
-      if (!opts.includeInternational && !isLikelyUS(job)) continue;
-      if (!locationMatches(job, location)) continue;
-      const level = queryMatchLevel(job, phrases);
-      if (level === 0) continue;
-      const k = dedupeKey(job);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      scored.push({ job, level, local: location ? placeMatches(job, location) : false });
+  const scored: Scored[] = [];
+  const consider = (job: JobPosting, level: number, indexed: boolean) => {
+    if (!job.title || !job.url) return;
+    if (opts.remoteOnly && !job.remote) return;
+    if (!opts.includeInternational && !isLikelyUS(job)) return;
+    if (!locationMatches(job, location)) return;
+    if (level === 0) return;
+    const k = dedupeKey(job);
+    if (seen.has(k)) return;
+    seen.add(k);
+    scored.push({ job, level, local: location ? placeMatches(job, location) : false, indexed });
+  };
+
+  if (index) {
+    for (const row of index.rows) {
+      const job = rowToPosting(row);
+      // Postgres already matched the words somewhere in title, company or
+      // description (level 1 at least). Title-only check here decides level 2.
+      // Description isn't loaded yet, so queryMatchLevel sees the title only.
+      const titleLevel = queryMatchLevel(job, phrases);
+      const level =
+        phrases.length === 0 ? 1 : titleLevel === 2 ? 2 : row.query_used ? 1 : 0;
+      consider(job, level, true);
     }
+  }
+  for (const { jobs } of liveResults) {
+    for (const job of jobs) consider(job, queryMatchLevel(job, phrases), false);
   }
 
   // Title matches first; within those, jobs in the place the user typed come
@@ -576,23 +531,90 @@ export async function fetchAllJobs(opts: FetchJobsOptions = {}): Promise<FetchJo
     return (b.job.postedAt ?? "").localeCompare(a.job.postedAt ?? "");
   });
 
-  return {
-    jobs: scored.slice(0, limit).map((s) => s.job),
-    sources: results.map((r) => r.status),
-  };
+  const top = scored.slice(0, limit);
+  if (index) {
+    await hydrateDescriptions(
+      index.db,
+      top.filter((s) => s.indexed).map((s) => s.job),
+    );
+  }
+
+  const sources: SourceStatus[] = liveResults.map((r) => r.status);
+  if (index) {
+    sources.unshift({ key: "index", source: "greenhouse", ok: true, count: index.rows.length });
+  }
+  return { jobs: top.map((s) => s.job), sources };
+}
+
+/** Reads one posting from the index. Null when absent or the index can't be used. */
+async function getIndexedJob(id: string): Promise<JobPosting | null> {
+  const db = await getDb();
+  if (!db) return null;
+  try {
+    const { data, error } = await db
+      .from("job_postings")
+      .select("id, source, board_slug, company, title, location, remote, url, apply_url, posted_at, description_text")
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !data) return null;
+    return rowToPosting(data as IndexRow);
+  } catch {
+    return null;
+  }
+}
+
+export interface GetJobOptions {
+  /**
+   * Check the employer's board first and treat "not found there" as closed.
+   * For Apply for me, which must not open a cloud browser on a dead form.
+   * The index can hold a closed posting for up to a day or two.
+   */
+  fresh?: boolean;
+}
+
+/** True for an HTTP 404/410 from getJson: the posting is gone. */
+function isGoneError(err: unknown): boolean {
+  return err instanceof Error && /^HTTP (404|410)$/.test(err.message);
 }
 
 /**
- * Looks up one posting by its JobPosting.id (for /apply?job=...). Only ids for
- * boards in companies.ts or the configured feeds resolve, so this can't be
- * used to fetch arbitrary URLs. Returns null when not found.
+ * Looks up one posting by its JobPosting.id (for /apply?job=...). Order:
+ * memory cache, then the job index, then a live re-fetch. With `fresh`,
+ * board jobs are checked live first. Only ids for boards in companies.ts or
+ * the configured feeds resolve, so this can't be used to fetch arbitrary
+ * URLs. Returns null when not found.
  */
-export async function getJobById(id: string): Promise<JobPosting | null> {
+export async function getJobById(
+  id: string,
+  opts: GetJobOptions = {},
+): Promise<JobPosting | null> {
   const parts = id.split(":");
   if (parts.length < 3) return null;
   const [system, slug] = parts;
   const nativeId = parts.slice(2).join(":");
   if (!/^[\w.-]{1,200}$/.test(nativeId)) return null;
+
+  const isBoard = system === "greenhouse" || system === "lever" || system === "ashby";
+  const board = isBoard
+    ? COMPANIES.find((c) => c.system === system && c.slug === slug)
+    : undefined;
+  if (isBoard && !board) return null;
+
+  // 0. Fresh check. Greenhouse and Lever have a one-posting endpoint; a 404
+  //    there means closed. Ashby has none, so its board is read (no cache).
+  //    If the board can't be reached, fall through to the usual order.
+  if (opts.fresh && board) {
+    try {
+      if (board.system === "ashby") {
+        const jobs = await fetchBoardJobs(board, { noStore: true });
+        return jobs.find((j) => j.id === id) ?? null;
+      }
+      const one = await fetchOnePosting(board, nativeId, { noStore: true });
+      if (one) return one;
+    } catch (err) {
+      if (isGoneError(err)) return null;
+    }
+  }
 
   // 1. Anything already in memory.
   for (const entry of memCache.values()) {
@@ -600,24 +622,18 @@ export async function getJobById(id: string): Promise<JobPosting | null> {
     if (hit) return hit;
   }
 
-  // 2. Fetch from the source.
+  // 2. The job index.
+  if (board) {
+    const hit = await getIndexedJob(id);
+    if (hit) return hit;
+  }
+
+  // 3. Fetch from the source.
   try {
-    if (system === "greenhouse" || system === "lever" || system === "ashby") {
-      const board = COMPANIES.find((c) => c.system === system && c.slug === slug);
-      if (!board) return null;
-      if (system === "greenhouse") {
-        const j = await getJson<GhJob>(
-          `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(slug)}/jobs/${encodeURIComponent(nativeId)}`,
-        );
-        return normalizeGreenhouse(board, j);
-      }
-      if (system === "lever") {
-        const j = await getJson<LeverJob>(
-          `https://api.lever.co/v0/postings/${encodeURIComponent(slug)}/${encodeURIComponent(nativeId)}?mode=json`,
-        );
-        return normalizeLever(board, j);
-      }
-      const jobs = await fetchBoard(board);
+    if (board) {
+      const one = await fetchOnePosting(board, nativeId);
+      if (one) return one;
+      const jobs = await fetchBoardCached(board);
       return jobs.find((j) => j.id === id) ?? null;
     }
     if (system === "arbeitnow") {

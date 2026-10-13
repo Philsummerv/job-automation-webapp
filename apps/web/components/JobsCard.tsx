@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { JobMatch, JobSource } from "@jobassistui/shared";
 import type { JobsCardData } from "@/components/JobsList";
+import { isAutoApplyJobId } from "@/lib/autoapply/supported";
 
 const SOURCE_LABEL: Record<JobSource, string> = {
   greenhouse: "Greenhouse",
@@ -58,13 +59,14 @@ export default function JobsCard({
   scoring: boolean;
 }) {
   const posted = postedLabel(job.postedAt);
+  const autoApply = isAutoApplyJobId(job.id);
   const openHref = safeHref(job.applyUrl) ?? safeHref(job.url);
   const where = [job.location, job.remote && !/remote/i.test(job.location) ? "Remote" : ""]
     .filter(Boolean)
     .join(" · ");
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="border-[1.5px] border-brand bg-paper-field p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="font-semibold text-slate-900">{job.title}</h2>
@@ -91,12 +93,29 @@ export default function JobsCard({
         ) : null}
       </div>
 
-      {match?.reason && <p className="mt-2 text-sm text-slate-700">{match.reason}</p>}
+      {match?.summary && <p className="mt-2 text-sm text-slate-800">{match.summary}</p>}
+      {match?.reason && (
+        <p className="mt-1 text-sm text-slate-600">
+          <span className="font-medium">Your fit:</span> {match.reason}
+        </p>
+      )}
 
       <div className="mt-3 flex flex-wrap gap-2 text-sm">
+        {autoApply && (
+          <Link
+            href={`/apply/auto?job=${encodeURIComponent(job.id)}`}
+            className="rounded-md bg-brand px-3 py-1.5 font-display font-bold uppercase tracking-wide text-paper hover:opacity-90"
+          >
+            Apply for me
+          </Link>
+        )}
         <Link
           href={`/apply?job=${encodeURIComponent(job.id)}${/^https?:\/\//i.test(job.url) ? `&url=${encodeURIComponent(job.url)}` : ""}`}
-          className="rounded-md bg-brand px-3 py-1.5 font-medium text-white hover:opacity-90"
+          className={
+            autoApply
+              ? "rounded-md border-[1.5px] border-brand px-3 py-1.5 font-display font-bold uppercase tracking-wide text-brand hover:bg-paper"
+              : "rounded-md bg-brand px-3 py-1.5 font-display font-bold uppercase tracking-wide text-paper hover:opacity-90"
+          }
         >
           Build apply kit
         </Link>

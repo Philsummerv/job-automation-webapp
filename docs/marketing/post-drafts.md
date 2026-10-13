@@ -33,7 +33,7 @@ and stating requirements as fact in a group is how you end up wrong in public
 and blamed for it. Describing his own routine is true, useful, and safe.
 
 ```text
-I got laid off in September. Lack of work — nothing dramatic, the work just ran out.
+In February a job offer I had lined up got pulled at the last minute. I started claiming unemployment in March.
 
 I'd never filed for unemployment before, so I assumed the application was the hard part. It isn't. The hard part is every week after it.
 

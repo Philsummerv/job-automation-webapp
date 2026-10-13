@@ -50,7 +50,7 @@ export default function ApplyCopyButton({
       onClick={copy}
       className={
         className ??
-        "rounded-md border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        "rounded-md border border-slate-300 bg-paper-field px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
       }
     >
       {state === "copied" ? "Copied" : state === "failed" ? "Couldn't copy" : label}

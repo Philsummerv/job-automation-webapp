@@ -1,0 +1,298 @@
+// The run reducer: a PURE function `reduce(state, action) → { state, effects }`.
+// No `chrome`, no timers, no I/O — the controller (background.ts) owns all of
+// that. This is what makes the run logic testable without a browser: feed it a
+// state and an action, assert on the next state and the emitted effects.
+
+import type {
+  Action,
+  Effect,
+  JobMeta,
+  ReduceResult,
+  RunEvent,
+  RunState,
+  RunStatus,
+} from "./types";
+
+const MAX_EVENTS = 50;
+
+/** A stale message — its runId doesn't match the active run — is ignored. */
+function isForActiveRun(state: RunState | null, runId: string): state is RunState {
+  return state != null && state.runId === runId;
+}
+
+function withStatus(state: RunState, status: RunStatus, note: string, at: number, patch: Partial<RunState> = {}): RunState {
+  const event: RunEvent = { at, status, note };
+  return {
+    ...state,
+    ...patch,
+    status,
+    events: [...state.events, event].slice(-MAX_EVENTS),
+  };
+}
+
+// Effects when a run finishes by reaching a formless page (i.e. the submission
+// confirmation): clear the run, and — if we captured the job — ask the content
+// script to confirm logging it to the compliance activity log. The reject path
+// does NOT go through here, so a user-aborted run is never logged.
+function completionEffects(done: RunState): Effect[] {
+  const effects: Effect[] = [{ kind: "clear-run" }];
+  if (done.job && (done.job.title || done.job.company)) {
+    effects.push({ kind: "confirm-log", tabId: done.tabId, job: done.job });
+  }
+  return effects;
+}
+
+function noChange(state: RunState | null): ReduceResult {
+  return { state, effects: [] };
+}
+
+/** Leave "advancing" for the next page: broadcast a fresh scan. */
+function rescanNextPage(state: RunState, note: string, at: number): ReduceResult {
+  const nextPage = withStatus(state, "scanning", note, at, {
+    pageIndex: state.pageIndex + 1,
+    formFrameId: null,
+    questions: [],
+    reviewDecision: null,
+  });
+  return {
+    state: nextPage,
+    effects: [
+      { kind: "send-command", tabId: state.tabId, command: "scan", runId: state.runId },
+      { kind: "arm-no-form-timeout", tabId: state.tabId, runId: state.runId },
+    ],
+  };
+}
+
+/**
+ * Merge job identity FIELD BY FIELD across the pages of a run. A whole-object
+ * "first non-null wins" loses data: an early page often yields the job title
+ * while the employer name only appears on a later step, so locking the object
+ * on the first sighting left the employer permanently blank.
+ */
+function mergeJob(prev: JobMeta | null, next: JobMeta | null): JobMeta | null {
+  if (!next) return prev;
+  if (!prev) return next;
+  return {
+    title: prev.title ?? next.title,
+    company: prev.company ?? next.company,
+    url: prev.url ?? next.url,
+  };
+}
+
+export function reduce(state: RunState | null, action: Action): ReduceResult {
+  switch (action.type) {
+    // ── Start a run ──────────────────────────────────────────────────────────
+    // Replaces any existing run (single active run at a time). Broadcast a scan
+    // to every frame; the frame that owns the form answers with scan-result and
+    // thereby reveals its frameId.
+    case "start-run": {
+      const fresh: RunState = {
+        runId: action.runId,
+        tabId: action.tabId,
+        status: "starting",
+        pageIndex: 0,
+        formFrameId: null,
+        questions: [],
+        reviewDecision: null,
+        job: null,
+        events: [{ at: action.at, status: "starting", note: "run created" }],
+      };
+      const scanning = withStatus(fresh, "scanning", "broadcast scan", action.at);
+      const effects: Effect[] = [
+        { kind: "send-command", tabId: action.tabId, command: "scan", runId: action.runId },
+        { kind: "arm-no-form-timeout", tabId: action.tabId, runId: action.runId },
+      ];
+      return { state: scanning, effects };
+    }
+
+    // ── Job identity sighting ─────────────────────────────────────────────────
+    // Accepted in ANY status: the page naming the employer is frequently one
+    // with no form on it, so this can't be tied to the scan/fill cycle.
+    case "job-meta": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      const merged = mergeJob(state.job, action.job);
+      return { state: { ...state, job: merged }, effects: [] };
+    }
+
+    // ── Cancel ───────────────────────────────────────────────────────────────
+    case "cancel-run": {
+      if (state == null) return noChange(state);
+      return { state: null, effects: [{ kind: "clear-run" }] };
+    }
+
+    // ── Scan result ──────────────────────────────────────────────────────────
+    // Only meaningful while scanning. Empty result = no form on this page →
+    // the flow is done (e.g. the post-submit confirmation page).
+    case "scan-result": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "scanning") return noChange(state);
+
+      const job = mergeJob(state.job, action.job);
+
+      if (action.questions.length === 0) {
+        const done = withStatus(state, "done", "no questions — flow complete", action.at, { job });
+        return { state: done, effects: completionEffects(done) };
+      }
+
+      const filling = withStatus(
+        state,
+        "filling",
+        `scanned ${action.questions.length} question(s)`,
+        action.at,
+        { formFrameId: action.frameId, questions: action.questions, job },
+      );
+      return {
+        state: filling,
+        effects: [
+          { kind: "send-command", tabId: state.tabId, frameId: action.frameId, command: "fill", runId: state.runId },
+        ],
+      };
+    }
+
+    // ── Fill result ──────────────────────────────────────────────────────────
+    // Fill done → open the review gate (M-B5 renders the actual UI). NEVER
+    // auto-advances; we wait for a review-decision.
+    case "fill-result": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "filling") return noChange(state);
+      const review = withStatus(state, "review", "awaiting review", action.at, {
+        reviewDecision: null,
+      });
+      const effects: Effect[] =
+        state.formFrameId != null
+          ? [{ kind: "send-command", tabId: state.tabId, frameId: state.formFrameId, command: "review", runId: state.runId }]
+          : [];
+      return { state: review, effects };
+    }
+
+    // ── Review decision ──────────────────────────────────────────────────────
+    case "review-decision": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "review") return noChange(state);
+
+      if (action.decision === "rejected") {
+        const done = withStatus(state, "done", "user rejected — run ended", action.at, {
+          reviewDecision: "rejected",
+        });
+        return { state: done, effects: [{ kind: "clear-run" }] };
+      }
+
+      // approved | edited → click Continue and wait for the next page to load.
+      const advancing = withStatus(state, "advancing", `review ${action.decision} — advancing`, action.at, {
+        reviewDecision: action.decision,
+      });
+      // The advance timeout is the backstop for "Continue was pressed and no
+      // navigation we can see followed" — see the advance-timeout case.
+      const effects: Effect[] =
+        state.formFrameId != null
+          ? [
+              { kind: "send-command", tabId: state.tabId, frameId: state.formFrameId, command: "advance", runId: state.runId },
+              { kind: "arm-advance-timeout", runId: state.runId },
+            ]
+          : [];
+      return { state: advancing, effects };
+    }
+
+    // ── Pause / resume (user takes manual control) ────────────────────────────
+    // Pause is allowed from any live, non-terminal status. The assist simply
+    // stops issuing commands; the user edits the real page directly.
+    case "pause-run": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status === "done" || state.status === "error" || state.status === "paused") {
+        return noChange(state);
+      }
+      return { state: withStatus(state, "paused", "user paused — manual control", action.at), effects: [] };
+    }
+
+    // Resume re-opens the review gate on the current page so it reflects any
+    // manual edits (the gate reads live form state). If we somehow have no
+    // questions, fall back to a rescan.
+    case "resume-run": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "paused") return noChange(state);
+
+      if (state.questions.length > 0 && state.formFrameId != null) {
+        const review = withStatus(state, "review", "resumed — re-review current page", action.at, {
+          reviewDecision: null,
+        });
+        return {
+          state: review,
+          effects: [{ kind: "send-command", tabId: state.tabId, frameId: state.formFrameId, command: "review", runId: state.runId }],
+        };
+      }
+      const rescan = withStatus(state, "scanning", "resumed — rescanning", action.at, {
+        formFrameId: null,
+        questions: [],
+      });
+      return {
+        state: rescan,
+        effects: [
+          { kind: "send-command", tabId: state.tabId, command: "scan", runId: state.runId },
+          { kind: "arm-no-form-timeout", tabId: state.tabId, runId: state.runId },
+        ],
+      };
+    }
+
+    // ── Navigation completed (from chrome.webNavigation, top frame) ───────────
+    // Only advances the run when we were expecting it (status advancing). A nav
+    // in any other status (user clicked around) is ignored so we don't rescan
+    // spuriously.
+    case "nav-completed": {
+      if (state == null || state.tabId !== action.tabId) return noChange(state);
+      if (state.status !== "advancing") return noChange(state);
+      return rescanNextPage(state, "next page loaded — rescanning", action.at);
+    }
+
+    // ── Continue pressed, no navigation seen ──────────────────────────────────
+    // Waiting ONLY for a top-frame navigation hung the run forever in three
+    // ordinary cases: the form lives in an iframe, Indeed swaps the step in
+    // place without touching the URL, or Indeed refused Continue because a
+    // required field was empty. Rescan regardless. In the refused case the scan
+    // finds the same page again and the review gate reappears, which is the
+    // right outcome — the user can see what still needs answering.
+    case "advance-timeout": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "advancing") return noChange(state);
+      return rescanNextPage(state, "no navigation seen after Continue — rescanning", action.at);
+    }
+
+    // ── Scan still in progress ────────────────────────────────────────────────
+    // The scanning frame reports that it's stepping past a page that asks
+    // nothing (commute-check, resume-selection). Each of those steps costs a
+    // click plus a render, which easily outlasts the no-form window — and once
+    // that fires the run is over, so the eventual scan-result is dropped and the
+    // panel spins forever. Re-arm the window for every step the frame reports.
+    case "scan-progress": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "scanning") return noChange(state);
+      return {
+        state,
+        effects: [{ kind: "arm-no-form-timeout", tabId: state.tabId, runId: state.runId }],
+      };
+    }
+
+    // ── No form found within the scan window ──────────────────────────────────
+    // The controller's timeout fired without a scan-result. If we were still
+    // scanning, treat the flow as complete (nothing left to fill).
+    case "no-form": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      if (state.status !== "scanning") return noChange(state);
+      const done = withStatus(state, "done", "no form frame responded — flow complete", action.at);
+      return { state: done, effects: completionEffects(done) };
+    }
+
+    // ── Error ─────────────────────────────────────────────────────────────────
+    case "run-error": {
+      if (!isForActiveRun(state, action.runId)) return noChange(state);
+      const errored = withStatus(state, "error", action.reason, action.at, { error: action.reason });
+      // Retain the run in storage for debugging; no clear-run.
+      return { state: errored, effects: [] };
+    }
+
+    default: {
+      // Exhaustiveness guard: a new Action member without a case fails tsc here.
+      const _never: never = action;
+      return noChange(state as RunState | null);
+    }
+  }
+}

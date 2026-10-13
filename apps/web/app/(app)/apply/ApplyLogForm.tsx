@@ -15,12 +15,18 @@ export default function ApplyLogForm({
   title,
   url,
   onSubmit,
+  stay = false,
+  onLogged,
 }: {
   company: string;
   title: string;
   url: string | null;
   /** Runs when the form is sent, e.g. to clear the saved kit. */
   onSubmit?: () => void;
+  /** Stay on this page after logging instead of going to the dashboard. */
+  stay?: boolean;
+  /** Runs after a successful log when `stay` is on. */
+  onLogged?: () => void;
 }) {
   const [state, action] = useActionState<LogApplicationState, FormData>(logApplication, {
     error: null,
@@ -28,6 +34,11 @@ export default function ApplyLogForm({
   // The person's own calendar day, not the server's.
   const [date, setDate] = useState("");
   useEffect(() => setDate(toISODate(new Date())), []);
+  useEffect(() => {
+    if (state.logged) onLogged?.();
+    // onLogged is a fresh function each render; only react to the result.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <form action={action} onSubmit={() => onSubmit?.()} className="space-y-4">
@@ -60,6 +71,7 @@ export default function ApplyLogForm({
       </div>
       <input type="hidden" name="url" value={url ?? ""} />
       <input type="hidden" name="date" value={date} />
+      {stay && <input type="hidden" name="stay" value="1" />}
       {state.error && (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
           {state.error}
@@ -67,7 +79,7 @@ export default function ApplyLogForm({
       )}
       <SubmitButton
         pendingLabel="Logging…"
-        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+        className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-white hover:bg-emerald-700"
       >
         I applied — log it
       </SubmitButton>

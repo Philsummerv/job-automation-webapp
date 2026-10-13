@@ -1,6 +1,8 @@
 import Link from "next/link";
 import BetaBar from "@/components/BetaBar";
 import ShellNav from "@/components/ShellNav";
+import WeekReminder from "@/components/WeekReminder";
+import { getWeekProgress } from "@/lib/week";
 import { getProfileContext } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 
@@ -17,14 +19,18 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, profile } = await getProfileContext();
+  const { supabase, user, profile } = await getProfileContext();
+  // Not onboarded yet means no target to remind about.
+  const week = profile.disclaimer_accepted_at ? await getWeekProgress(supabase, profile) : null;
   const status = profile.subscription_status;
 
   return (
     <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
+      <header className="border-b-2 border-brand bg-paper">
         <ShellNav email={user.email ?? null} isAdmin={isAdminEmail(user.email)} />
       </header>
+
+      {week && <WeekReminder week={week} />}
 
       <BetaBar />
 

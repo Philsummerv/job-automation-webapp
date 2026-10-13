@@ -24,7 +24,7 @@ function Notice({
   children: React.ReactNode;
 }) {
   const styles = {
-    info: "border-sky-200 bg-sky-50 text-sky-900",
+    info: "border-brand/40 bg-paper-field text-slate-800",
     warn: "border-amber-200 bg-amber-50 text-amber-900",
     error: "border-red-200 bg-red-50 text-red-800",
     ok: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -175,7 +175,7 @@ export default async function ResumePage({
 
               <SubmitButton
                 pendingLabel="Saving…"
-                className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+                className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
               >
                 Save changes
               </SubmitButton>
@@ -252,7 +252,7 @@ export default async function ResumePage({
             </div>
             <Link
               href="/jobs"
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
             >
               Find jobs
             </Link>

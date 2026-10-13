@@ -7,6 +7,8 @@ import { parseISODate, reportingPeriodKey, toISODate } from "@jobassistui/shared
 
 export interface LogApplicationState {
   error: string | null;
+  /** Set when the form asked to stay on the page (batch mode) and the row saved. */
+  logged?: boolean;
 }
 
 function isValidDate(s: string): boolean {
@@ -73,5 +75,10 @@ export async function logApplication(
   }
 
   revalidatePath("/dashboard");
+  // Batch mode stays on the page so the user can move to the next job.
+  if (formData.get("stay") === "1") {
+    revalidatePath("/apply/batch");
+    return { error: null, logged: true };
+  }
   redirect("/dashboard?added=1");
 }

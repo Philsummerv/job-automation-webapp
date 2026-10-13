@@ -25,6 +25,7 @@ function formatDate(iso: string | null) {
 // the checkout box was selling things nobody has to pay for while omitting the
 // only feature behind the paywall.
 const FEATURES = [
+  "Apply for me: we fill in the company's form, you check it and press submit",
   "Resume help: upload your resume and get a clean profile",
   "Job matches from company career sites, with a score for each",
   "Apply kits: a tailored resume, cover letter and draft answers per job",
@@ -94,6 +95,11 @@ export default async function BillingPage({
               <li key={f}>✓ {f}</li>
             ))}
           </ul>
+          <p className="mt-4 text-sm text-emerald-800">
+            The Indeed add-on for Chrome is a separate extra. It&apos;s free
+            right now too. After {FREE_UNTIL_LABEL} it will cost a little extra
+            on top of Guided.
+          </p>
           <div className="mt-6 flex items-center gap-3">
             <StartApplyingButton />
             {profile.stripe_customer_id && <ManageBillingButton />}
@@ -126,7 +132,8 @@ export default async function BillingPage({
           </p>
           <p className="mt-2 text-sm text-slate-600">
             Your job-search log, weekly tracking and exports stay free whether
-            you subscribe or not. This only adds the AI tools.
+            you subscribe or not. This only adds the AI tools. The Indeed
+            add-on is a separate extra and isn&apos;t included.
           </p>
           <ul className="mt-5 space-y-2 text-sm text-slate-700">
             {FEATURES.map((f) => (
@@ -136,7 +143,7 @@ export default async function BillingPage({
           <form action={startCheckout} className="mt-6">
             <SubmitButton
               pendingLabel="Opening checkout…"
-              className="w-full rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white hover:bg-brand-dark"
+              className="w-full rounded-lg bg-brand px-6 py-3 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
             >
               Start free trial
             </SubmitButton>
@@ -197,7 +204,7 @@ export default async function BillingPage({
           <form action={startCheckout} className="mt-6">
             <SubmitButton
               pendingLabel="Opening checkout…"
-              className="w-full rounded-lg bg-brand px-6 py-3 text-sm font-medium text-white hover:bg-brand-dark"
+              className="w-full rounded-lg bg-brand px-6 py-3 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
             >
               Resubscribe
             </SubmitButton>
@@ -212,7 +219,7 @@ function StartApplyingButton() {
   return (
     <Link
       href="/jobs"
-      className="rounded-lg bg-brand px-6 py-2.5 text-sm font-medium text-white hover:bg-brand-dark"
+      className="rounded-lg bg-brand px-6 py-2.5 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
     >
       Find jobs
     </Link>
@@ -224,7 +231,7 @@ function ManageBillingButton({ label = "Manage billing" }: { label?: string }) {
     <form action={openBillingPortal}>
       <SubmitButton
         pendingLabel="Opening portal…"
-        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        className="border-[1.5px] border-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-brand hover:bg-slate-50"
       >
         {label}
       </SubmitButton>

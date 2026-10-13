@@ -104,6 +104,8 @@ export interface JobMatch {
   score: number;
   /** One short sentence, plain words. */
   reason: string;
+  /** Two or three short sentences: what the job is, pay/hours if posted, the main must-have. */
+  summary?: string;
 }
 
 // ─── Apply kit ──────────────────────────────────────────────────────────────
@@ -133,7 +135,7 @@ export interface ApplyKit {
 
 // ─── AI usage ───────────────────────────────────────────────────────────────
 
-export type AiUsageKind = "resume_parse" | "job_match" | "apply_kit" | "other";
+export type AiUsageKind = "resume_parse" | "job_match" | "apply_kit" | "auto_apply" | "other";
 
 /** Max AI calls per user per day (UTC day). */
 export const AI_DAILY_LIMIT = 40;

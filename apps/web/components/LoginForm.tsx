@@ -252,7 +252,7 @@ export default function LoginForm() {
           <button
             type="submit"
             disabled={verifying || code.trim().length < 6}
-            className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60"
+            className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark disabled:opacity-60"
           >
             {verifying ? "Verifying…" : "Sign in"}
           </button>
@@ -294,7 +294,7 @@ export default function LoginForm() {
       <button
         type="submit"
         disabled={status === "sending"}
-        className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-60"
+        className="w-full rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark disabled:opacity-60"
       >
         {status === "sending" ? "Sending…" : "Email me a sign-in code"}
       </button>

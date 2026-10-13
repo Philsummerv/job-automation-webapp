@@ -123,7 +123,7 @@ export default async function NewEntryPage() {
 
         <div className="flex items-center gap-3">
           <SubmitButton
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+            className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
           >
             Save activity
           </SubmitButton>

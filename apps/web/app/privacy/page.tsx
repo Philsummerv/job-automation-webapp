@@ -8,14 +8,15 @@ export const metadata: Metadata = {
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy Policy" updated="October 8, 2026">
+    <LegalPage title="Privacy Policy" updated="October 11, 2026">
       <p>
         This policy explains what information JobAssistUI collects, why, and
         what your choices are. The short version: we store the job-search
         records you create so we can show them back to you and export them,
         if you use the AI tools we send your resume and job posts to Anthropic
-        to process them, we use a payment processor for billing, and we do
-        not sell your data.
+        to process them, if you use Apply for me a cloud browser run by
+        Browserbase fills in the application form, we use a payment processor
+        for billing, and we do not sell your data.
       </p>
 
       <h2>1. Information we collect</h2>
@@ -30,13 +31,18 @@ export default function PrivacyPage() {
           — and any evidence screenshots you upload.
         </li>
         <li>
-          <strong>Settings:</strong> your state, weekly target, and
-          reporting period start day.
+          <strong>Settings:</strong> your state, weekly target,
+          reporting period start day, and (if you use Apply for me or the
+          Indeed extension) the answer template you fill out.
         </li>
         <li>
           <strong>Resume (if you use the AI tools):</strong> the resume file
           name, its text, and the profile built from it (name, contact
-          details, work history, education and skills).
+          details, work history, education and skills). If you upload a PDF,
+          we also keep the original file in private storage so Apply for me
+          can upload it to job applications. Only you can reach it. When you
+          upload a new resume or paste one in, the old file is replaced or
+          deleted.
         </li>
         <li>
           <strong>AI usage:</strong> a count of AI requests per day, used
@@ -69,6 +75,26 @@ export default function PrivacyPage() {
         applied&quot;, we add that job to your activity log. We never submit
         an application for you.
       </p>
+      <p>
+        <strong>Apply for me.</strong> When you start it for a job, we open
+        the company&apos;s application form in a cloud browser run by
+        Browserbase. We fill in the form from your resume profile and answer
+        template, and may upload your resume file. Questions we can&apos;t
+        fill from those are sent to Anthropic along with your resume so the
+        AI can draft an answer. Browserbase runs the browser, so it sees the
+        application page and the answers being filled in. You see the same
+        live page on our site and press submit yourself. The browser session
+        is closed when you finish or after 15 minutes. If you submit, we add
+        the job to your activity log.
+      </p>
+      <p>
+        The optional Indeed extension reads the job-application page you
+        are working on in order to fill in form values. It uses your
+        JobAssistUI account only to fetch your answer template, check your
+        subscription, and record an activity-log entry when you confirm an
+        application. It never submits an application without you present and
+        confirming.
+      </p>
 
       <h2>3. How we use information</h2>
       <p>
@@ -83,8 +109,9 @@ export default function PrivacyPage() {
       <p>
         We rely on a small number of processors to run the Service: Supabase
         (database, authentication, and file storage), Anthropic (AI
-        processing of resumes and job posts), Stripe (payments), and Vercel
-        (hosting). Each receives only what it needs to perform its
+        processing of resumes and job posts), Browserbase (runs the cloud
+        browser for Apply for me; it sees the application form and the
+        answers being filled in), Stripe (payments), and Vercel (hosting). Each receives only what it needs to perform its
         role and is bound by its own privacy and security commitments.
       </p>
 

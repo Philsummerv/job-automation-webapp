@@ -1,5 +1,5 @@
 import type { JobPosting, JobSource } from "@jobassistui/shared";
-import { getJobById as getJobByIdFromSources } from "@/lib/jobs/sources";
+import { getJobById as getJobByIdFromSources, type GetJobOptions } from "@/lib/jobs/sources";
 
 // Find one feed posting by its id, for /apply?job=<id>.
 //
@@ -10,10 +10,13 @@ import { getJobById as getJobByIdFromSources } from "@/lib/jobs/sources";
 //   usajobs:feed:812345600
 //   adzuna:us:4455667788
 //
-// Greenhouse, Lever and Ashby ids re-fetch the posting straight from that
-// company's board (only boards listed in companies.ts, so the id can't be used
-// to fetch arbitrary URLs). USAJOBS and Adzuna results depend on the search
-// that found them; they resolve only while still in the server's memory cache.
+// Greenhouse, Lever and Ashby ids are read from the job index (job_postings)
+// first, then re-fetched straight from that company's board (only boards
+// listed in companies.ts, so the id can't be used to fetch arbitrary URLs).
+// Pass { fresh: true } to check the board first (Apply for me does), since
+// the index can still hold a posting that closed in the last day or two.
+// USAJOBS and Adzuna results depend on the search that found them; they
+// resolve only while still in the server's memory cache.
 // When this returns null for those, the caller should ask for the job URL.
 
 const FEED_SOURCES: JobSource[] = [
@@ -55,10 +58,13 @@ export function isStableJobId(id: string): boolean {
  * one we list, the posting is gone, or (USAJOBS/Adzuna) it left the cache.
  * Never throws.
  */
-export async function getJobById(id: string): Promise<JobPosting | null> {
+export async function getJobById(
+  id: string,
+  opts: GetJobOptions = {},
+): Promise<JobPosting | null> {
   if (!parseJobId(id)) return null;
   try {
-    return await getJobByIdFromSources(id);
+    return await getJobByIdFromSources(id, opts);
   } catch {
     return null;
   }

@@ -99,3 +99,22 @@ export async function checkAndRecordUsage(
   if (!Number.isFinite(remaining) || remaining < 0) throw new AiLimitError(limit);
   return { remaining };
 }
+
+/** How many calls of one kind the user has made today (UTC). */
+export async function getKindUsageToday(
+  supabase: SupabaseClient,
+  userId: string,
+  kind: AiUsageKind,
+): Promise<number> {
+  const { count, error } = await supabase
+    .from("ai_usage")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("kind", kind)
+    .gte("created_at", startOfUtcDay());
+  if (error) {
+    if (isMissingTableError(error)) throw new MigrationMissingError();
+    throw new Error(error.message);
+  }
+  return count ?? 0;
+}

@@ -107,7 +107,7 @@ export default function AssistantChat({
   const stateName = states.find((s) => s[0] === state)?.[1] ?? state;
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white">
+    <div className="border-[1.5px] border-brand bg-paper-field">
       <div className="space-y-4 p-6">
         {/* ─── Disclaimer placement 1: the gate ─── */}
         {!gateAccepted || step === "gate" ? (
@@ -132,7 +132,7 @@ export default function AssistantChat({
             <button
               type="button"
               onClick={acceptGate}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
             >
               Got it
             </button>
@@ -169,7 +169,7 @@ export default function AssistantChat({
               type="button"
               disabled={!state}
               onClick={() => setStep("situation")}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-40"
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark disabled:opacity-40"
             >
               Next
             </button>
@@ -204,7 +204,7 @@ export default function AssistantChat({
               type="button"
               disabled={!situation}
               onClick={() => setStep("exemptions")}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-40"
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark disabled:opacity-40"
             >
               Next
             </button>
@@ -246,7 +246,7 @@ export default function AssistantChat({
             <button
               type="button"
               onClick={() => setStep("topic")}
-              className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+              className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
             >
               {exemptions.length ? "Next" : "None of these"}
             </button>
@@ -288,7 +288,7 @@ export default function AssistantChat({
                 setAnswer(null);
                 setStep("topic");
               }}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              className="border-[1.5px] border-brand px-3 py-1.5 text-xs font-display font-bold uppercase tracking-wide text-brand hover:bg-slate-50"
             >
               Ask something else
             </button>

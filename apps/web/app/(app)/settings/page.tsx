@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { getProfileContext, isCompedEmail } from "@/lib/auth";
 import {
-  US_STATES,
   DAYS_OF_WEEK,
   FREE_UNTIL_LABEL,
   isFreePeriod,
   type SubscriptionStatus,
 } from "@jobassistui/shared";
 import SubmitButton from "@/components/SubmitButton";
+import StateTargetFields from "@/components/StateTargetFields";
 import { saveSettings } from "./actions";
 
 const SUBSCRIPTION_LABELS: Record<SubscriptionStatus, string> = {
@@ -62,43 +62,10 @@ export default async function SettingsPage({
           />
         </div>
 
-        <div>
-          <label htmlFor="state" className="block text-sm font-medium">
-            State
-          </label>
-          <select
-            id="state"
-            name="state"
-            defaultValue={profile.state ?? ""}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-          >
-            <option value="">Select your state…</option>
-            {US_STATES.map(([abbr, name]) => (
-              <option key={abbr} value={abbr}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="weekly_target" className="block text-sm font-medium">
-              Weekly activity requirement
-            </label>
-            <input
-              id="weekly_target"
-              name="weekly_target"
-              type="number"
-              min={0}
-              max={20}
-              defaultValue={profile.weekly_target}
-              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-            />
-            <p className="mt-1 text-xs text-slate-500">
-              Most states require 3–5 per week.
-            </p>
-          </div>
+        <StateTargetFields
+          initialState={profile.state ?? ""}
+          initialTarget={profile.weekly_target}
+        >
           <div>
             <label
               htmlFor="reporting_period_start_day"
@@ -119,7 +86,7 @@ export default async function SettingsPage({
               ))}
             </select>
           </div>
-        </div>
+        </StateTargetFields>
 
         {onboarding && (
           <label className="flex items-start gap-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
@@ -145,7 +112,7 @@ export default async function SettingsPage({
 
         <SubmitButton
           pendingLabel={onboarding ? "Setting up…" : "Saving…"}
-          className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark"
+          className="rounded-lg bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:bg-brand-dark"
         >
           {onboarding ? "Get started" : "Save settings"}
         </SubmitButton>

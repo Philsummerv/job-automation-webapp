@@ -13,7 +13,7 @@ export default function JobsSearchForm({
     <form
       action="/jobs"
       method="get"
-      className="rounded-lg border border-slate-200 bg-white p-4"
+      className="border-[1.5px] border-brand bg-paper-field p-4"
     >
       <input type="hidden" name="s" value="1" />
       <div className="grid gap-3 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
@@ -41,7 +41,7 @@ export default function JobsSearchForm({
         </label>
         <button
           type="submit"
-          className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+          className="rounded-md bg-brand px-4 py-2 text-sm font-display font-bold uppercase tracking-wide text-paper hover:opacity-90"
         >
           Search
         </button>
