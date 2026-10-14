@@ -108,8 +108,9 @@ familiar when she does read it.
 
 The message sent 2026-08-30 said the tracker is free until January 1st and then
 $12 a month for everyone including early signups. **On 2026-08-29 the tracker
-became free permanently** — no card, ever. The paid tier is now only the Guided
-assist (the browser extension that fills the application form for you).
+became free permanently** — no card, ever. The paid tier is now only Guided
+(the optional AI tools: job matches, apply kits, and Apply for me, which fills
+in the application form for you to check).
 
 That matters here for one reason: the sent DM promised *"I'm not going to tell
 your group it's free and quietly change that later."* The change runs in her
@@ -123,7 +124,7 @@ replied within a few days. Do not send both at once.
 ```text
 Quick correction to what I sent you, and it's in the group's favour.
 
-I said the tracker would start costing $12 a month in January. I've since decided to leave it free permanently — no card, no trial, no expiry. If I ever charge for anything it'll be a separate optional add-on that fills the application forms for you, and the tracking side stays free either way.
+I said the tracker would start costing $12 a month in January. I've since decided to leave it free permanently — no card, no trial, no expiry. The only paid part will be the optional AI tools, which find jobs and fill in application forms for you to check. Those are free until January 1st and $12 a month after. The tracking side stays free either way.
 
 I told you I wouldn't say free and quietly change it later, so I'd rather flag it when it moves in the other direction too. Same question stands and no rush on it.
 ```

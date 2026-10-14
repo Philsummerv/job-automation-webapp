@@ -108,6 +108,9 @@ export default function LandingPage() {
             >
               Start my log →
             </Link>
+            <Link href="/find-jobs" className="font-display text-sm uppercase tracking-wide hover:underline">
+              Browse jobs, no account
+            </Link>
             <a href="#how" className="font-display text-sm uppercase tracking-wide hover:underline">
               See how it works
             </a>

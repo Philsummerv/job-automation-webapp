@@ -17,6 +17,7 @@ export default async function JobsResults({
   resume,
   aiState,
   stillNeeded,
+  signedOut = false,
 }: {
   query: string;
   location: string;
@@ -24,6 +25,8 @@ export default async function JobsResults({
   resume: ResumeProfile | null;
   aiState: JobsAiState;
   stillNeeded: number;
+  /** Public page: apply buttons send the visitor to sign in first. */
+  signedOut?: boolean;
 }) {
   const { jobs, sources } = await fetchAllJobs({ query, location, remoteOnly });
   const ranked = prefilterJobs(jobs, resume);
@@ -63,7 +66,7 @@ export default async function JobsResults({
         <div className="border-[1.5px] border-brand bg-paper-field px-4 py-6 text-sm text-slate-600">
           Nothing matched. Try fewer words, a broader title, or leave the location
           blank. You can also{" "}
-          <Link href="/apply" className="font-medium text-brand underline">
+          <Link href={signedOut ? "/login?redirect=%2Fapply" : "/apply"} className="font-medium text-brand underline">
             paste a job you found somewhere else
           </Link>
           .
@@ -77,6 +80,7 @@ export default async function JobsResults({
           location={location}
           remoteOnly={remoteOnly}
           stillNeeded={stillNeeded}
+          signedOut={signedOut}
         />
       )}
     </div>

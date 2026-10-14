@@ -31,6 +31,11 @@ up; search pages are what make it stop depending on your hours.
 
 ## Before any marketing: 3 must-dos
 
+**Status 2026-10-14:** #1 shipped 2026-10-12 (owner still to test it on a
+phone). #2 built: public search at `/find-jobs`, linked from the homepage.
+#3 done: reply brief, canned answer Q12 and the follow-up DM updated;
+`video-script.md` marked out of date.
+
 1. **Ship the new version.** Production still runs the old log-only site. Don't
    promote jobs or Apply for me until they're live and you've applied to one
    real job yourself on your phone.

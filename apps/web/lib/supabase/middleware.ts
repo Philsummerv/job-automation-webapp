@@ -79,7 +79,9 @@ export async function updateSession(request: NextRequest) {
   if (!user && isAppRoute) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("redirect", path);
+    // Keep the query too, so /apply?job=... survives the sign-in.
+    url.search = "";
+    url.searchParams.set("redirect", path + request.nextUrl.search);
     return NextResponse.redirect(url);
   }
 

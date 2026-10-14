@@ -37,6 +37,7 @@ export default function JobsList({
   location,
   remoteOnly,
   stillNeeded,
+  signedOut = false,
 }: {
   jobs: JobsCardData[];
   /** The ids to send for AI scoring (the top of the list, at most 15). */
@@ -47,6 +48,8 @@ export default function JobsList({
   remoteOnly: boolean;
   /** Activities still needed this week; the batch size starts here. */
   stillNeeded: number;
+  /** Public page: apply buttons send the visitor to sign in first. */
+  signedOut?: boolean;
 }) {
   const router = useRouter();
   const [batchSize, setBatchSize] = useState(
@@ -192,6 +195,7 @@ export default function JobsList({
               job={job}
               match={matchById.get(job.id) ?? null}
               scoring={status.kind === "loading" && scoreIds.includes(job.id)}
+              signedOut={signedOut}
             />
           </li>
         ))}

@@ -4,14 +4,17 @@ export default function JobsSearchForm({
   query,
   location,
   remoteOnly,
+  action = "/jobs",
 }: {
   query: string;
   location: string;
   remoteOnly: boolean;
+  /** Where the form submits. The public page uses /find-jobs. */
+  action?: string;
 }) {
   return (
     <form
-      action="/jobs"
+      action={action}
       method="get"
       className="border-[1.5px] border-brand bg-paper-field p-4"
     >

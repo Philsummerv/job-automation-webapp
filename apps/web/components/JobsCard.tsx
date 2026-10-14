@@ -53,14 +53,23 @@ export default function JobsCard({
   job,
   match,
   scoring,
+  signedOut = false,
 }: {
   job: JobsCardData;
   match: JobMatch | null;
   scoring: boolean;
+  /** Public page: send the visitor to sign in, then on to the same button. */
+  signedOut?: boolean;
 }) {
   const posted = postedLabel(job.postedAt);
   const autoApply = isAutoApplyJobId(job.id);
   const openHref = safeHref(job.applyUrl) ?? safeHref(job.url);
+  const gate = (href: string) =>
+    signedOut ? `/login?redirect=${encodeURIComponent(href)}` : href;
+  const autoHref = gate(`/apply/auto?job=${encodeURIComponent(job.id)}`);
+  const kitHref = gate(
+    `/apply?job=${encodeURIComponent(job.id)}${/^https?:\/\//i.test(job.url) ? `&url=${encodeURIComponent(job.url)}` : ""}`,
+  );
   const where = [job.location, job.remote && !/remote/i.test(job.location) ? "Remote" : ""]
     .filter(Boolean)
     .join(" · ");
@@ -103,14 +112,14 @@ export default function JobsCard({
       <div className="mt-3 flex flex-wrap gap-2 text-sm">
         {autoApply && (
           <Link
-            href={`/apply/auto?job=${encodeURIComponent(job.id)}`}
+            href={autoHref}
             className="rounded-md bg-brand px-3 py-1.5 font-display font-bold uppercase tracking-wide text-paper hover:opacity-90"
           >
             Apply for me
           </Link>
         )}
         <Link
-          href={`/apply?job=${encodeURIComponent(job.id)}${/^https?:\/\//i.test(job.url) ? `&url=${encodeURIComponent(job.url)}` : ""}`}
+          href={kitHref}
           className={
             autoApply
               ? "rounded-md border-[1.5px] border-brand px-3 py-1.5 font-display font-bold uppercase tracking-wide text-brand hover:bg-paper"

@@ -1,5 +1,11 @@
 # The tutorial video — script and shot list
 
+> **OUT OF DATE (2026-10-14).** This script shows the log only. The site now
+> also finds jobs and has Apply for me. Don't record from this as written.
+> The plan's newer idea is a 60-second screen video of Apply for me on a real
+> New York job (see `user-acquisition-plan.md`, first week, Friday). Rewrite
+> before recording.
+
 For recording **Mon 2026-08-25**. Every label and button below is checked
 against the live app, so you can follow it straight through without stopping to
 find things.

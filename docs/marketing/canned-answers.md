@@ -200,7 +200,7 @@ You'll get this as a reply to your own post or comment. Answer it in public,
 calmly, once. Everybody else reading trusts you more afterwards.
 
 ```text
-Fair question, I'd ask it too. I'm on unemployment in New York and I built it for my own claim. The tracking side is free permanently — no card, nothing to cancel, no date where it flips — because charging people to prove they looked for work isn't something I'm going to do. There's one optional add-on I'll charge for next year that fills application forms in, and you never have to touch it. It's new and built by one person, so it's rough in places, and I'd rather you tell me what's broken than pretend otherwise.
+Fair question, I'd ask it too. I'm on unemployment in New York and I built it for my own claim. The tracking side is free permanently — no card, nothing to cancel, no date where it flips — because charging people to prove they looked for work isn't something I'm going to do. The optional AI part, which finds jobs and fills in applications for you to check, is free until January and $12 a month after that. You never have to touch it. It's new and built by one person, so it's rough in places, and I'd rather you tell me what's broken than pretend otherwise.
 ```
 
 ---
