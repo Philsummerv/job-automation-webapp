@@ -43,18 +43,17 @@ export default async function JobsPage({
     resume = (row?.profile ?? null) as ResumeProfile | null;
   }
 
-  const defaultQuery = (resume?.titles ?? [])
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .slice(0, 3)
-    .join(", ");
+  // Resume titles are offered as one-tap suggestions, never typed into the box.
+  const suggestions = [
+    ...new Set((resume?.titles ?? []).map((t) => t.trim()).filter(Boolean)),
+  ].slice(0, 3);
   const defaultLocation = resume?.locations?.find((l) => l.trim())?.trim() ?? "";
 
   const submitted = sp.s === "1" || sp.q !== undefined || sp.l !== undefined;
-  const query = (submitted ? sp.q ?? "" : defaultQuery).trim().slice(0, 200);
+  const query = (sp.q ?? "").trim().slice(0, 200);
   const location = (submitted ? sp.l ?? "" : defaultLocation).trim().slice(0, 100);
   const remoteOnly = sp.remote === "1";
-  const shouldSearch = submitted || query !== "";
+  const shouldSearch = submitted;
 
   const entitled =
     isEntitled(profile.subscription_status) || isCompedEmail(user.email);
@@ -105,7 +104,12 @@ export default async function JobsPage({
         </div>
       )}
 
-      <JobsSearchForm query={query} location={location} remoteOnly={remoteOnly} />
+      <JobsSearchForm
+        query={query}
+        location={location}
+        remoteOnly={remoteOnly}
+        suggestions={suggestions}
+      />
 
       {shouldSearch ? (
         <Suspense
@@ -127,7 +131,9 @@ export default async function JobsPage({
         </Suspense>
       ) : (
         <p className="text-sm text-slate-600">
-          Type a job title or a few keywords, then press Search.
+          {suggestions.length > 0
+            ? "Type a job title or a few keywords, or tap a suggestion."
+            : "Type a job title or a few keywords, then press Search."}
         </p>
       )}
     </div>

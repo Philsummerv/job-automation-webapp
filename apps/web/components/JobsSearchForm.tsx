@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 // Plain GET form: the search lives in the URL, so results can be bookmarked
 // and the back button works. No client JS needed.
 export default function JobsSearchForm({
@@ -5,13 +7,23 @@ export default function JobsSearchForm({
   location,
   remoteOnly,
   action = "/jobs",
+  suggestions = [],
 }: {
   query: string;
   location: string;
   remoteOnly: boolean;
   /** Where the form submits. The public page uses /find-jobs. */
   action?: string;
+  /** Titles to offer as one-tap searches (from the resume). Never pre-filled. */
+  suggestions?: string[];
 }) {
+  const suggestionHref = (title: string) => {
+    const qs = new URLSearchParams({ s: "1", q: title });
+    if (location) qs.set("l", location);
+    if (remoteOnly) qs.set("remote", "1");
+    return `${action}?${qs}`;
+  };
+
   return (
     <form
       action={action}
@@ -28,7 +40,7 @@ export default function JobsSearchForm({
             defaultValue={query}
             maxLength={200}
             placeholder="e.g. customer service, warehouse"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 placeholder:italic placeholder:text-slate-400"
           />
         </label>
         <label className="block text-sm">
@@ -39,7 +51,7 @@ export default function JobsSearchForm({
             defaultValue={location}
             maxLength={100}
             placeholder="e.g. Buffalo, NY"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2"
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 placeholder:italic placeholder:text-slate-400"
           />
         </label>
         <button
@@ -49,6 +61,20 @@ export default function JobsSearchForm({
           Search
         </button>
       </div>
+      {suggestions.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-slate-600">From your resume:</span>
+          {suggestions.map((t) => (
+            <Link
+              key={t}
+              href={suggestionHref(t)}
+              className="rounded-full border border-brand px-3 py-1 text-brand hover:bg-paper"
+            >
+              {t}
+            </Link>
+          ))}
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">
         <label className="inline-flex items-center gap-2">
           <input type="checkbox" name="remote" value="1" defaultChecked={remoteOnly} />
