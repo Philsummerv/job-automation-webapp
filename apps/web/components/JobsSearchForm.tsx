@@ -8,6 +8,7 @@ export default function JobsSearchForm({
   remoteOnly,
   action = "/jobs",
   suggestions = [],
+  suggestedLocation = "",
 }: {
   query: string;
   location: string;
@@ -16,13 +17,19 @@ export default function JobsSearchForm({
   action?: string;
   /** Titles to offer as one-tap searches (from the resume). Never pre-filled. */
   suggestions?: string[];
+  /** The resume's town, offered as a one-tap button. Never pre-filled. */
+  suggestedLocation?: string;
 }) {
-  const suggestionHref = (title: string) => {
-    const qs = new URLSearchParams({ s: "1", q: title });
-    if (location) qs.set("l", location);
+  const searchHref = (q: string, l: string) => {
+    const qs = new URLSearchParams({ s: "1", q });
+    if (l) qs.set("l", l);
     if (remoteOnly) qs.set("remote", "1");
     return `${action}?${qs}`;
   };
+  const showLocation =
+    suggestedLocation !== "" &&
+    suggestedLocation.toLowerCase() !== location.toLowerCase();
+  const chip = "rounded-full border border-brand px-3 py-1 text-brand hover:bg-paper";
 
   return (
     <form
@@ -61,18 +68,19 @@ export default function JobsSearchForm({
           Search
         </button>
       </div>
-      {suggestions.length > 0 && (
+      {(suggestions.length > 0 || showLocation) && (
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
           <span className="text-slate-600">From your resume:</span>
           {suggestions.map((t) => (
-            <Link
-              key={t}
-              href={suggestionHref(t)}
-              className="rounded-full border border-brand px-3 py-1 text-brand hover:bg-paper"
-            >
+            <Link key={t} href={searchHref(t, location)} className={chip}>
               {t}
             </Link>
           ))}
+          {showLocation && (
+            <Link href={searchHref(query, suggestedLocation)} className={chip}>
+              Near {suggestedLocation}
+            </Link>
+          )}
         </div>
       )}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-600">

@@ -47,11 +47,11 @@ export default async function JobsPage({
   const suggestions = [
     ...new Set((resume?.titles ?? []).map((t) => t.trim()).filter(Boolean)),
   ].slice(0, 3);
-  const defaultLocation = resume?.locations?.find((l) => l.trim())?.trim() ?? "";
+  const suggestedLocation = resume?.locations?.find((l) => l.trim())?.trim() ?? "";
 
   const submitted = sp.s === "1" || sp.q !== undefined || sp.l !== undefined;
   const query = (sp.q ?? "").trim().slice(0, 200);
-  const location = (submitted ? sp.l ?? "" : defaultLocation).trim().slice(0, 100);
+  const location = (sp.l ?? "").trim().slice(0, 100);
   const remoteOnly = sp.remote === "1";
   const shouldSearch = submitted;
 
@@ -109,6 +109,7 @@ export default async function JobsPage({
         location={location}
         remoteOnly={remoteOnly}
         suggestions={suggestions}
+        suggestedLocation={suggestedLocation}
       />
 
       {shouldSearch ? (
